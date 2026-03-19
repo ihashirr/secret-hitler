@@ -10,7 +10,6 @@ import RoleReveal from '../components/RoleReveal';
 import GameBoard from '../components/GameBoard';
 import GameOver from '../components/GameOver';
 import GlobalControls from '../components/GlobalControls';
-import InstallGate from '../components/InstallGate';
 
 export default function App() {
   const [mounted, setMounted] = useState(false);
@@ -27,6 +26,7 @@ export default function App() {
   }, []);
 
   const gameState = useQuery(api.game.getGameState, roomId ? { roomId, playerId } : "skip");
+  console.log("[App] Render. State:", { roomId, playerId, phase: gameState?.phase });
   
   const joinRoom = useMutation(api.game.joinRoom);
   const startGame = useMutation(api.game.startGame);
@@ -42,6 +42,7 @@ export default function App() {
 
   const [error, setError] = useState('');
 
+  // Prevent hydration mismatch: render nothing until client-side state is ready
   if (!mounted) return null;
 
   const handleConnect = async (playerName, rId) => {
@@ -74,20 +75,7 @@ export default function App() {
     window.location.search = '';
   };
 
-  const handleWipe = async () => {
-    if (confirm("NUCLEAR OPTION: This will delete ALL rooms and players from the database. Proceed?")) {
-      const password = prompt("Enter Administration Password:");
-      if (password === "ECLIPSE-99") {
-        await wipeAllData();
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = '/';
-      } else {
-        alert("ACCESS DENIED: Invalid Password");
-      }
-    }
-  };
-
+  // 0. Loading State
   if (roomId && gameState === undefined) {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center bg-obsidian-950">
@@ -99,65 +87,69 @@ export default function App() {
     );
   }
 
+  // 1. Splash Screen / Join Phase
   const isParticipant = gameState?.players?.some(p => p.id === playerId);
   
   if (!roomId || !gameState || !isParticipant) {
     return (
-      <InstallGate>
-        <Splash 
-          onConnect={handleConnect} 
-          onReset={(rId) => resetRoom({ roomId: rId })}
-        />
-      </InstallGate>
+      <Splash 
+        onConnect={handleConnect} 
+        onReset={(rId) => resetRoom({ roomId: rId })}
+      />
     );
   }
 
+  // 2. Main Game Wrapper (with Admin Controls)
   return (
-    <InstallGate>
-      <div className="min-h-[100dvh] w-full bg-obsidian-950 text-white relative font-sans selection:bg-cyan-500/30">
-        <GlobalControls 
-          gameState={gameState} 
-          playerId={playerId} 
-          onExit={handleExit}
-          onReset={() => resetRoom({ roomId })}
-          onWipe={handleWipe}
-        />
+    <div className="min-h-[100dvh] bg-obsidian-950 text-white relative">
+      <GlobalControls 
+        gameState={gameState} 
+        playerId={playerId} 
+        onReset={async () => {
+          await resetRoom({ roomId });
+          handleExit();
+        }}
+        onWipe={async () => {
+          await wipeAllData();
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = '/';
+        }}
+        onExit={handleExit}
+      />
+      
+      <div>
         {gameState.phase === PHASES.LOBBY && (
-          <Lobby 
-            gameState={gameState} 
-            playerId={playerId} 
-            onStart={() => startGame({ roomId })}
-            onReady={() => toggleReady({ roomId, playerId })}
-          />
+          <Lobby gameState={gameState} playerId={playerId} onStart={() => startGame({ roomId })} onExit={handleExit} />
         )}
+        
         {gameState.phase === PHASES.ROLE_REVEAL && (
           <RoleReveal 
             gameState={gameState} 
             playerId={playerId} 
+            onReady={() => toggleReady({ roomId, playerId })} 
+            onReset={() => resetRoom({ roomId })}
           />
         )}
-        {(gameState.phase !== PHASES.LOBBY && gameState.phase !== PHASES.ROLE_REVEAL && gameState.phase !== PHASES.GAME_OVER) && (
+        
+        {gameState.phase !== PHASES.LOBBY && gameState.phase !== PHASES.ROLE_REVEAL && gameState.phase !== PHASES.GAME_OVER && (
           <GameBoard 
             gameState={gameState} 
             playerId={playerId}
-            onNominate={(nominatedId) => nominateChancellor({ roomId, presidentId: playerId, nominatedId })}
-            onVote={(approve) => submitVote({ roomId, playerId, approve })}
-            onDiscard={(index) => presidentDiscard({ roomId, presidentId: playerId, discardIndex: index })}
-            onEnact={(index) => chancellorEnact({ roomId, chancellorId: playerId, policyIndex: index })}
-            onKill={(targetId) => killPlayer({ roomId, presidentId: playerId, targetId })}
+            onNominate={(id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id })}
+            onVote={(approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" })}
+            onDiscard={(i) => presidentDiscard({ roomId, discardedIndex: i })}
+            onEnact={(idx) => chancellorEnact({ roomId, enactedIndex: idx })}
+            onKill={(targetId) => killPlayer({ roomId, targetPlayerId: targetId })}
             onExit={handleExit}
             onReset={() => resetRoom({ roomId })}
           />
         )}
+        
         {gameState.phase === PHASES.GAME_OVER && (
-          <GameOver 
-            gameState={gameState} 
-            playerId={playerId}
-            onRestart={() => resetRoom({ roomId })}
-            onExit={handleExit}
-          />
+          <GameOver gameState={gameState} playerId={playerId} onExit={handleExit} />
         )}
       </div>
-    </InstallGate>
+    </div>
   );
 }
