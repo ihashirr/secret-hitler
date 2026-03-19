@@ -4,9 +4,9 @@ import { PHASES, ROLES, FACTIONS, FASCIST_TO_WIN, LIBERAL_TO_WIN, MAX_ELECTION_T
 import { Shield, Skull, Crown, Star, AlertTriangle } from 'lucide-react';
 
 export default function GameBoard({ gameState, playerId, onNominate, onVote, onDiscard, onEnact, onKill, onExit, onReset }) {
-  const me = gameState.players.find(p => p.id === playerId);
-  const isPresident = playerId === gameState.currentPresident;
-  const isChancellor = playerId === gameState.currentChancellor;
+  const me = gameState.players.find(p => p.id === (gameState.myPlayerId || playerId));
+  const isPresident = gameState.amIPresident ?? (playerId === gameState.currentPresident);
+  const isChancellor = gameState.amIChancellor ?? (playerId === gameState.currentChancellor);
 
   const canNominate = gameState.phase === PHASES.NOMINATION && isPresident;
   const canKill = gameState.phase === PHASES.EXECUTIVE_ACTION && isPresident;

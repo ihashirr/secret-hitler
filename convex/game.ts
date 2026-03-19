@@ -607,6 +607,10 @@ export const getGameState = query({
             drawnCards: (room.phase === PHASES.LEGISLATIVE_PRESIDENT && room.currentPresidentId === callerId) ||
                         (room.phase === PHASES.LEGISLATIVE_CHANCELLOR && room.currentChancellorId === callerId)
                         ? room.drawnCards : [],
+            // Server-side role flags — authoritative, avoids client ID mismatch
+            amIPresident: room.currentPresidentId === callerId,
+            amIChancellor: room.currentChancellorId === callerId,
+            myPlayerId: callerId,
         };
     },
 });
