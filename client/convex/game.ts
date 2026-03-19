@@ -460,12 +460,25 @@ export const chancellorEnactPolicy = mutation({
     } else if (fasCount >= 6) {
         await ctx.db.patch(room._id, { phase: PHASES.GAME_OVER, winner: FACTIONS.FASCIST, winReason: "6 Fascist policies enacted." });
     } else {
-        // Go to next nomination
         const players = await ctx.db
           .query("players")
           .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
           .collect();
-        await startNextNomination(ctx, room, players);
+
+        // Determine if an executive action is triggered by this fascist policy
+        // Standard Secret Hitler rules: executive actions trigger at certain fascist policy thresholds
+        // (for 5-6 players: 3=peek, 4=execution, 5=execution)
+        // (for 7-8: 2=investigate, 3=elect, 4=execution, 5=execution)
+        // (for 9-10: 1=investigate, 2=investigate, 3=elect, 4=execution, 5=execution)
+        // For simplicity, we trigger EXECUTIVE_ACTION at 3, 4, 5 fascist policies (execution)
+        const triggerExecAction = enacted === CARD_TYPES.FASCIST && (fasCount === 3 || fasCount === 4 || fasCount === 5);
+
+        if (triggerExecAction) {
+            await ctx.db.patch(room._id, { phase: PHASES.EXECUTIVE_ACTION });
+            await logSystem(ctx.db, args.roomId, `President must now execute a player.`);
+        } else {
+            await startNextNomination(ctx, room, players);
+        }
     }
 
     return { success: true };
@@ -486,19 +499,26 @@ export const killPlayer = mutation({
         await ctx.db.patch(player._id, { isAlive: false });
         await logSystem(ctx.db, args.roomId, `${player.name} has been executed.`);
 
-        // Check if Hitler was killed
+        const room = await ctx.db
+          .query("rooms")
+          .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
+          .unique();
+        if (!room) return { success: true };
+
+        // Check if Hitler was killed -> Liberals win
         if (player.role === ROLES.HITLER) {
-            const room = await ctx.db
-              .query("rooms")
+            await ctx.db.patch(room._id, {
+                phase: PHASES.GAME_OVER,
+                winner: FACTIONS.LIBERAL,
+                winReason: "Hitler was executed!"
+            });
+        } else {
+            // Advance to the next nomination after the execution
+            const players = await ctx.db
+              .query("players")
               .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
-              .unique();
-            if (room) {
-                await ctx.db.patch(room._id, {
-                    phase: PHASES.GAME_OVER,
-                    winner: FACTIONS.LIBERAL,
-                    winReason: "Hitler was executed!"
-                });
-            }
+              .collect();
+            await startNextNomination(ctx, room, players);
         }
 
         return { success: true };

@@ -12,35 +12,34 @@ The game features a **"Next-Gen Tactical Dashboard"** theme. We abandoned the cl
 - Sharp, interconnected grids and tactical UI elements
 
 ## Features
-- **Real-Time Multiplayer**: Instantly see votes, policy enactments, and lobby updates.
+- **Real-Time Multiplayer**: Powered by Convex, see every vote and policy enactment instantly.
 - **Mobile-First**: Designed specifically to be played on phones in portrait mode.
-- **Auto-Reconnection**: If you accidentally refresh the page during a game, you'll instantly be dropped right back into your secret operative role without losing your identity.
-- **Secret Role Masking**: The server strictly guarantees that your secret role is never sent to other players' devices.
-- **Abort Protocol**: Integrated "Abort Mission" and "Leave Lobby" buttons across every phase of the game, allowing players to gracefully exit, clear their session data, and return to the main entry terminal.
+- **Auto-Reconnection**: If you accidentally refresh, you'll stay in your session.
+- **Secret Role Masking**: Server-side logic ensures your role is never leaked to others.
+- **Absolute Host Control**: The host has a global panel to manage or destroy the session.
 
 ## How to Run Locally
 
-You'll need two terminal windows to run both the frontend and backend servers.
+You'll need two terminal windows.
 
-1. **Start the Backend (Server)**
+1. **Setup**
    ```bash
-   cd backend
+   cd client
    npm install
+   ```
+
+2. **Start Backend (Convex)**
+   ```bash
+   npx convex dev
+   ```
+
+3. **Start Frontend (Next.js)**
+   ```bash
    npm run dev
    ```
-   *(Runs on http://localhost:3001)*
-
-2. **Start the Frontend (Client)**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-   *(Runs on http://localhost:5173 or the port Vite exposes)*
+   *Runs on http://localhost:3000*
 
 ## How to Play
-1. Open a browser to the frontend local URL on your phone or desktop.
-2. Form a group of 5 to 10 players.
-3. Have one person enter their Name and click **GENERATE SECTOR** to host the lobby.
-4. Have the others enter their Names and the 4-letter **_SECTOR_CODE** to join.
-5. Hit **INITIATE PROTOCOL** to deal roles and begin!
+1. Open http://localhost:3000.
+2. Host creates a sector, others join with the 4-alpha code.
+3. Use the admin panel (bottom left) for session management (Password for Wipe: `ECLIPSE`).

@@ -38,6 +38,7 @@ export default function App() {
   const leaveRoom = useMutation(api.game.leaveRoom);
   const resetRoom = useMutation(api.game.resetRoom);
   const wipeAllData = useMutation(api.game.wipeAllData);
+  const killPlayer = useMutation(api.game.killPlayer);
 
   const [error, setError] = useState('');
 
@@ -117,7 +118,7 @@ export default function App() {
         onExit={handleExit}
       />
       
-      <div className={gameState.players.find(p => p.id === playerId)?.isHost ? "pt-12" : ""}>
+      <div>
         {gameState.phase === PHASES.LOBBY && (
           <Lobby gameState={gameState} playerId={playerId} onStart={() => startGame({ roomId })} onExit={handleExit} />
         )}
@@ -139,6 +140,7 @@ export default function App() {
             onVote={(approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" })}
             onDiscard={(i) => presidentDiscard({ roomId, discardedIndex: i })}
             onEnact={(idx) => chancellorEnact({ roomId, enactedIndex: idx })}
+            onKill={(targetId) => killPlayer({ roomId, targetPlayerId: targetId })}
             onExit={handleExit}
             onReset={() => resetRoom({ roomId })}
           />

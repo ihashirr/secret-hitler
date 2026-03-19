@@ -1,6 +1,0 @@
-{
-  "name": "@secret-hitler/shared",
-  "version": "1.0.0",
-  "main": "constants.js",
-  "type": "module"
-}

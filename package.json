@@ -1,11 +1,6 @@
 {
-  "name": "secret-hitler-monorepo",
+  "name": "secret-hitler",
   "private": true,
-  "workspaces": [
-    "client",
-    "server",
-    "shared"
-  ],
   "dependencies": {
     "convex": "^1.33.1"
   }
