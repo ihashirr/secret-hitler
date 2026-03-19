@@ -18,8 +18,8 @@ dist/
 .env.test.local
 .env.production.local
 
-# Convex generated files (regenerated on deploy)
-convex/_generated/
+# Convex (keep _generated since it's needed for deployment)
+# convex/_generated/
 
 # Misc
 .DS_Store
