@@ -604,8 +604,8 @@ export const getGameState = query({
             discardPile: undefined,
             discardPileCount: room.discardPile.length,
             // Drawn cards only visible to acting President/Chancellor
-            drawnCards: (room.phase === PHASES.LEGISLATIVE_PRESIDENT && room.currentPresidentId === me?.playerId) ||
-                        (room.phase === PHASES.LEGISLATIVE_CHANCELLOR && room.currentChancellorId === me?.playerId)
+            drawnCards: (room.phase === PHASES.LEGISLATIVE_PRESIDENT && room.currentPresidentId === callerId) ||
+                        (room.phase === PHASES.LEGISLATIVE_CHANCELLOR && room.currentChancellorId === callerId)
                         ? room.drawnCards : [],
         };
     },

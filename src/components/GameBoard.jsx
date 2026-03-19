@@ -313,27 +313,25 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
         </div>
       )}
 
-      {/* OBSERVER WAITING SCREEN — for non-acting players during legislative phase */}
+      {/* OBSERVER BANNER — non-blocking bottom bar for non-acting players during legislative phase */}
       {(gameState.phase === PHASES.LEGISLATIVE_PRESIDENT && !isPresident) && (
-        <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 pointer-events-none">
-          <div className="tactical-panel p-6 sm:p-8 text-center border-cyan-500/20 max-w-xs sm:max-w-sm w-full">
-            <div className="w-10 h-10 border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mx-auto mb-5 transform rotate-45" />
-            <h3 className="text-sm font-mono text-cyan-400 uppercase tracking-[0.2em] mb-2">Awaiting President</h3>
-            <p className="text-cyan-500/50 text-xs font-mono uppercase tracking-widest">
-              {gameState.players.find(p => p.id === gameState.currentPresident)?.name} is reviewing policies...
-            </p>
+        <div className="fixed bottom-4 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+          <div className="tactical-panel px-4 py-2.5 flex items-center gap-3 border-cyan-500/20 bg-black/80">
+            <div className="w-2.5 h-2.5 border border-cyan-500/40 border-t-cyan-400 animate-spin transform rotate-45 shrink-0" />
+            <span className="text-cyan-400 font-mono text-[10px] uppercase tracking-widest">
+              Awaiting President — {gameState.players.find(p => p.id === gameState.currentPresident)?.name} reviewing policies...
+            </span>
           </div>
         </div>
       )}
 
       {(gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && !isChancellor) && (
-        <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 pointer-events-none">
-          <div className="tactical-panel p-6 sm:p-8 text-center border-cyan-500/20 max-w-xs sm:max-w-sm w-full">
-            <div className="w-10 h-10 border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mx-auto mb-5 transform rotate-45" />
-            <h3 className="text-sm font-mono text-cyan-400 uppercase tracking-[0.2em] mb-2">Awaiting Chancellor</h3>
-            <p className="text-cyan-500/50 text-xs font-mono uppercase tracking-widest">
-              {gameState.players.find(p => p.id === gameState.currentChancellor)?.name} is selecting a policy...
-            </p>
+        <div className="fixed bottom-4 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+          <div className="tactical-panel px-4 py-2.5 flex items-center gap-3 border-cyan-500/20 bg-black/80">
+            <div className="w-2.5 h-2.5 border border-cyan-500/40 border-t-cyan-400 animate-spin transform rotate-45 shrink-0" />
+            <span className="text-cyan-400 font-mono text-[10px] uppercase tracking-widest">
+              Awaiting Chancellor — {gameState.players.find(p => p.id === gameState.currentChancellor)?.name} selecting a policy...
+            </span>
           </div>
         </div>
       )}
