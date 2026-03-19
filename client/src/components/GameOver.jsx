@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FACTIONS, ROLES } from '@secret-hitler/shared';
+import { FACTIONS, ROLES } from '../lib/constants';
 import { Shield, Skull, Crown, LogOut } from 'lucide-react';
 
 export default function GameOver({ gameState, playerId, onExit }) {
@@ -38,18 +38,15 @@ export default function GameOver({ gameState, playerId, onExit }) {
              </p>
           </div>
         </motion.div>
-
         <div className="w-full max-w-md tactical-panel p-6 mb-8 flex-1 overflow-y-auto border border-cyan-500/20 relative">
           {/* Decorative Corner Accents */}
           <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-500/50" />
           <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-500/50" />
           <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-500/50" />
           <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-500/50" />
-
           <h3 className="text-left font-mono text-white/50 mb-6 tracking-[0.2em] text-xs uppercase border-b border-cyan-500/20 pb-2">
             {'>'} FULL_DEBRIEFING_LOG
           </h3>
-          
           <div className="flex flex-col gap-2">
             {gameState.players.map(p => (
               <div key={p.id} className="p-3 flex items-center justify-between border-b border-white/5 bg-black/40">
@@ -77,25 +74,20 @@ export default function GameOver({ gameState, playerId, onExit }) {
           </div>
         </div>
         
-        {isHost ? (
+        {isHost && (
           <button 
              onClick={() => window.location.reload()}
              className="w-full max-w-md bg-cyan-600 text-white font-mono font-bold uppercase tracking-[0.2em] p-4 text-sm border border-cyan-400 hover:bg-cyan-500 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:shadow-[0_0_25px_rgba(0,240,255,0.5)]"
           >
             {'>'} INITIATE_NEW_MISSION
           </button>
-        ) : (
+        )}
+        
+        {!isHost && (
           <div className="text-center text-cyan-500/50 text-xs font-mono uppercase tracking-[0.2em] animate-pulse">
             Awaiting host signal to restart...
           </div>
         )}
-        
-        <button 
-           onClick={onExit}
-           className="w-full mt-4 max-w-md bg-obsidian-800 text-red-500 font-mono font-bold uppercase tracking-[0.2em] p-4 text-xs border border-red-500/20 hover:border-red-500/50 transition-all flex items-center justify-center gap-2"
-        >
-          <LogOut size={14} /> Leave Mission
-        </button>
       </div>
     </div>
   );

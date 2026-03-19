@@ -94,7 +94,7 @@ export default function Lobby({ gameState, playerId, onStart, onExit }) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
               key={p.id} 
-              className={`p-3 flex items-center justify-between border-l-4 ${p.id === playerId ? 'bg-cyan-900/20 border-cyan-400' : 'bg-black/40 border-cyan-900/50'}`}
+              className={`p-3 flex items-center justify-between bworder-l-4 ${p.id === playerId ? 'bg-cyan-900/20 border-cyan-400' : 'bg-black/40 border-cyan-900/50'}`}
             >
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 bg-cyan-950 flex items-center justify-center border border-cyan-500/30">
@@ -137,13 +137,6 @@ export default function Lobby({ gameState, playerId, onStart, onExit }) {
             Awaiting host signal...
           </div>
         )}
-        
-        <button 
-          onClick={onExit}
-          className="w-full mt-4 bg-obsidian-800 text-red-500 font-mono font-bold uppercase tracking-[0.2em] p-4 border border-red-500/20 hover:border-red-500/50 transition-all text-xs flex items-center justify-center gap-2"
-        >
-          <X size={14} /> Abort Mission
-        </button>
       </div>
     </div>
   );

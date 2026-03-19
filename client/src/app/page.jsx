@@ -9,6 +9,7 @@ import Lobby from '../components/Lobby';
 import RoleReveal from '../components/RoleReveal';
 import GameBoard from '../components/GameBoard';
 import GameOver from '../components/GameOver';
+import GlobalControls from '../components/GlobalControls';
 
 export default function App() {
   const [mounted, setMounted] = useState(false);
@@ -36,6 +37,7 @@ export default function App() {
   const chancellorEnact = useMutation(api.game.chancellorEnactPolicy);
   const leaveRoom = useMutation(api.game.leaveRoom);
   const resetRoom = useMutation(api.game.resetRoom);
+  const wipeAllData = useMutation(api.game.wipeAllData);
 
   const [error, setError] = useState('');
 
@@ -72,17 +74,6 @@ export default function App() {
     window.location.search = '';
   };
 
-  // Routing Logic
-  if (roomId && gameState === undefined) {
-    return (
-      <div className="min-h-[100dvh] w-full flex items-center justify-center p-6 bg-obsidian-900 border-cyan-500/30">
-        <div className="tactical-panel p-8 text-center text-cyan-400 font-mono tracking-[0.2em] uppercase">
-           <div className="w-8 h-8 mx-auto mb-4 border-2 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin" />
-           REESTABLISHING CONNECTION...
-        </div>
-      </div>
-    );
-  }
   // 0. Loading State
   if (roomId && gameState === undefined) {
     return (
@@ -96,7 +87,9 @@ export default function App() {
   }
 
   // 1. Splash Screen / Join Phase
-  if (!roomId || !gameState) {
+  const isParticipant = gameState?.players?.some(p => p.id === playerId);
+  
+  if (!roomId || !gameState || !isParticipant) {
     return (
       <Splash 
         onConnect={handleConnect} 
@@ -105,36 +98,56 @@ export default function App() {
     );
   }
 
-  // 2. Lobby Phase
-  if (gameState.phase === PHASES.LOBBY) {
-    return <Lobby gameState={gameState} playerId={playerId} onStart={() => startGame({ roomId })} onExit={handleExit} />;
-  }
-
-  if (gameState.phase === PHASES.ROLE_REVEAL) {
-    return (
-      <RoleReveal 
+  // 2. Main Game Wrapper (with Admin Controls)
+  return (
+    <div className="min-h-[100dvh] bg-obsidian-950 text-white relative">
+      <GlobalControls 
         gameState={gameState} 
         playerId={playerId} 
-        onReady={() => toggleReady({ roomId, playerId })} 
-        onReset={() => resetRoom({ roomId })}
-      />
-    );
-  }
-
-  if (gameState.phase !== PHASES.GAME_OVER) {
-    return (
-      <GameBoard 
-        gameState={gameState} 
-        playerId={playerId}
-        onNominate={(id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id })}
-        onVote={(approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" })}
-        onDiscard={(i) => presidentDiscard({ roomId, discardedIndex: i })}
-        onEnact={(idx) => chancellorEnact({ roomId, enactedIndex: idx })}
+        onReset={async () => {
+          await resetRoom({ roomId });
+          handleExit();
+        }}
+        onWipe={async () => {
+          await wipeAllData();
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = '/';
+        }}
         onExit={handleExit}
-        onReset={() => resetRoom({ roomId })}
       />
-    );
-  }
-
-  return <GameOver gameState={gameState} playerId={playerId} onExit={handleExit} />;
+      
+      <div className={gameState.players.find(p => p.id === playerId)?.isHost ? "pt-12" : ""}>
+        {gameState.phase === PHASES.LOBBY && (
+          <Lobby gameState={gameState} playerId={playerId} onStart={() => startGame({ roomId })} onExit={handleExit} />
+        )}
+        
+        {gameState.phase === PHASES.ROLE_REVEAL && (
+          <RoleReveal 
+            gameState={gameState} 
+            playerId={playerId} 
+            onReady={() => toggleReady({ roomId, playerId })} 
+            onReset={() => resetRoom({ roomId })}
+          />
+        )}
+        
+        {gameState.phase !== PHASES.LOBBY && gameState.phase !== PHASES.ROLE_REVEAL && gameState.phase !== PHASES.GAME_OVER && (
+          <GameBoard 
+            gameState={gameState} 
+            playerId={playerId}
+            onNominate={(id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id })}
+            onVote={(approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" })}
+            onDiscard={(i) => presidentDiscard({ roomId, discardedIndex: i })}
+            onEnact={(idx) => chancellorEnact({ roomId, enactedIndex: idx })}
+            onExit={handleExit}
+            onReset={() => resetRoom({ roomId })}
+          />
+        )}
+        
+        {gameState.phase === PHASES.GAME_OVER && (
+          <GameOver gameState={gameState} playerId={playerId} onExit={handleExit} />
+        )}
+      </div>
+    </div>
+  );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ROLES, FACTIONS } from '@secret-hitler/shared';
+import { ROLES, FACTIONS } from '../lib/constants';
 import { Shield, Skull, Eye } from 'lucide-react';
 
 export default function RoleReveal({ gameState, playerId, onReady, onReset }) {
@@ -142,15 +142,6 @@ export default function RoleReveal({ gameState, playerId, onReady, onReset }) {
         >
           {'>'} ACKNOWLEDGE_DIRECTIVE
         </button>
-
-        {isHost && (
-          <button
-            onClick={onReset}
-            className="w-full mt-4 bg-red-900/20 text-red-500 hover:text-red-400 font-mono text-[10px] uppercase tracking-[0.2em] p-2 border border-red-500/30 hover:border-red-500/50 transition-all"
-          >
-            {'>'} DESTROY_SESSION_AND_RESET
-          </button>
-        )}
       </div>
     </div>
   );

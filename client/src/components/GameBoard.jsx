@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PHASES, ROLES, FACTIONS, FASCIST_TO_WIN, LIBERAL_TO_WIN, MAX_ELECTION_TRACKER } from '@secret-hitler/shared';
+import { PHASES, ROLES, FACTIONS, FASCIST_TO_WIN, LIBERAL_TO_WIN, MAX_ELECTION_TRACKER } from '../lib/constants';
 import { Shield, Skull, Crown, Star, AlertTriangle, LogOut } from 'lucide-react';
 
 export default function GameBoard({ gameState, playerId, onNominate, onVote, onDiscard, onEnact, onExit, onReset }) {
@@ -140,16 +140,6 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
                    <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" /> 
                    LIVE_INTEL_SYSTEM
                 </h3>
-             </div>
-             <div className="flex gap-2">
-               {me?.isHost && (
-                 <button onClick={onReset} className="text-[10px] text-red-500/60 hover:text-red-500 flex items-center gap-1 uppercase font-mono tracking-widest border border-red-500/20 px-3 py-1 bg-black/40">
-                    Destroy_Session
-                 </button>
-               )}
-               <button onClick={onExit} className="text-[10px] text-cyan-500/40 hover:text-red-500 flex items-center gap-1 uppercase font-mono tracking-widest border border-cyan-500/20 px-3 py-1 bg-black/40">
-                  <LogOut size={12} /> Exit_Session
-               </button>
              </div>
           </div>
 
