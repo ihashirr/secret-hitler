@@ -43,10 +43,7 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
   const [hasActedLocal, setHasActedLocal] = React.useState(false);
 
   React.useEffect(() => {
-    const activeGamePhases = [PHASES.VOTING, PHASES.LEGISLATIVE_PRESIDENT, PHASES.LEGISLATIVE_CHANCELLOR, PHASES.EXECUTIVE_ACTION];
-    if (!activeGamePhases.includes(gameState.phase)) {
-      setHasActedLocal(false);
-    }
+    setHasActedLocal(false);
   }, [gameState.phase]);
 
   const handleVote = (approve) => { onVote(approve); setHasActedLocal(true); };
