@@ -83,12 +83,13 @@ export default function GameOver({ gameState, playerId, onExit }) {
 
         {/* Actions */}
         {isHost ? (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.985 }}
             onClick={() => window.location.reload()}
-            className="w-full bg-cyan-600 text-white font-mono font-bold uppercase tracking-[0.15em] p-3.5 sm:p-4 text-xs sm:text-sm border border-cyan-400 hover:bg-cyan-500 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:shadow-[0_0_25px_rgba(0,240,255,0.5)]"
+            className="w-full h-[64px] bg-cyan-400 text-black font-mono font-black uppercase tracking-[0.3em] text-xs sm:text-sm shadow-[0_0_20px_rgba(0,240,255,0.3)] flex items-center justify-center"
           >
             {'>'} INITIATE_NEW_MISSION
-          </button>
+          </motion.button>
         ) : (
           <div className="text-center text-cyan-500/50 text-xs font-mono uppercase tracking-[0.2em] animate-pulse">
             Awaiting host signal to restart...

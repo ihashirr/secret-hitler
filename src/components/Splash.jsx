@@ -75,7 +75,7 @@ const CustomCursor = ({ active = true }) => {
 };
 
 export default function Splash({ onConnect, onReset }) {
-  const [step, setStep] = useState(STEPS.BOOT);
+  const [step, setStep] = useState(STEPS.IDENT);
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,11 +95,6 @@ export default function Splash({ onConnect, onReset }) {
       setSysTime(new Date().toLocaleTimeString([], { hour12: false }));
     }, 1000);
 
-    // Boot sequence timing (No logs, just a cinematic wait)
-    if (step === STEPS.BOOT) {
-      setTimeout(() => setStep(STEPS.IDENT), 2400);
-    }
-
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const room = params.get('room');
@@ -111,9 +106,8 @@ export default function Splash({ onConnect, onReset }) {
 
   // Auto-focus inputs based on step
   useEffect(() => {
-    if (step === STEPS.IDENT && identRef.current) setTimeout(() => identRef.current.focus(), 250);
-    if (step === STEPS.SECTOR && sectorRef.current) setTimeout(() => sectorRef.current.focus(), 250);
-    if (step !== STEPS.BOOT) triggerHaptic(20);
+    if (step === STEPS.IDENT && identRef.current) setTimeout(() => identRef.current.focus(), 50);
+    if (step === STEPS.SECTOR && sectorRef.current) setTimeout(() => sectorRef.current.focus(), 50);
   }, [step]);
 
   const handleNext = (e) => {
@@ -309,21 +303,20 @@ export default function Splash({ onConnect, onReset }) {
                   </div>
                   
                   <motion.button 
-                    whileHover={name.trim() ? { scale: 1.01, boxShadow: '0 0 30px rgba(0, 240, 255, 0.2)' } : {}}
-                    whileTap={name.trim() ? { scale: 0.98 } : {}}
+                    whileTap={{ scale: 0.985 }}
                     type="submit"
                     disabled={!name.trim()}
-                    className={`relative w-full shrink-0 h-[64px] font-mono text-[11px] font-black tracking-[0.4em] uppercase transition-[all] duration-200 overflow-hidden ${name.trim() ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(0,240,255,0.25)]' : 'bg-transparent border border-cyan-900/30 text-cyan-800'}`}
+                    className={`relative w-full shrink-0 h-[64px] font-mono text-[11px] font-black tracking-[0.4em] uppercase transition-all duration-200 overflow-hidden ${name.trim() ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'bg-transparent border border-cyan-900/30 text-cyan-800'}`}
                   >
                     <span className="relative z-10">CONTINUE</span>
                     
                     {/* Shockwave Ripple */}
                     {name.trim() && (
                       <motion.div 
-                        initial={{ scale: 0, opacity: 0 }}
-                        whileTap={{ scale: 4, opacity: [0, 0.4, 0] }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0 rounded-full pointer-events-none bg-white/30"
+                        initial={{ opacity: 0 }}
+                        whileTap={{ opacity: [0, 0.2, 0] }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute inset-0 bg-white pointer-events-none"
                       />
                     )}
                   </motion.button>
@@ -377,25 +370,25 @@ export default function Splash({ onConnect, onReset }) {
 
                   <div className="relative w-full shrink-0 h-[64px] overflow-hidden">
                     <motion.button 
-                      whileHover={{ scale: 1.01, boxShadow: '0 0 35px rgba(0, 240, 255, 0.3)' }}
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={{ scale: 0.985 }}
                       type="submit" disabled={loading}
-                      className={`relative w-full h-full font-mono text-[11px] font-black tracking-[0.4em] uppercase transition-[background,shadow] duration-200 overflow-hidden
-                        ${loading ? 'bg-cyan-900/50 text-black' : roomId ? 'bg-cyan-400 text-black shadow-[0_0_25px_rgba(0,240,255,0.3)]' : 'bg-[#00f0ff]/10 border border-cyan-400/30 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.05)]'}
+                      className={`relative w-full h-full font-mono text-[11px] font-black tracking-[0.4em] uppercase transition-all duration-200 overflow-hidden
+                        ${loading ? 'bg-cyan-900/50 text-black' : roomId ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'bg-[#00f0ff]/10 border border-cyan-400/30 text-cyan-300'}
                       `}
                     >
                       <span className="relative z-10">{loading ? 'UPLINKING...' : (roomId ? 'JOIN_SECTOR' : 'CREATE_SECTOR')}</span>
                       
                       {/* Shockwave Ripple */}
                       <motion.div 
-                        initial={{ scale: 0, opacity: 0 }}
-                        whileTap={{ scale: 4, opacity: [0, 0.4, 0] }}
-                        transition={{ duration: 0.5 }}
-                        className="absolute inset-0 bg-white/30 rounded-full pointer-events-none"
+                        initial={{ opacity: 0 }}
+                        whileTap={{ opacity: [0, 0.2, 0] }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute inset-0 bg-white pointer-events-none"
                       />
                     </motion.button>
                   </div>
                 </motion.form>
+
               )}
 
             </AnimatePresence>

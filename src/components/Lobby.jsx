@@ -200,100 +200,101 @@ export default function Lobby({ gameState, playerId, onStart, onExit }) {
         <div className="max-w-sm mx-auto w-full flex flex-col gap-0 pointer-events-auto">
           
           {/* Action Group Container */}
-          <div className="flex flex-col border border-cyan-500/10 bg-black/40 backdrop-blur-sm overflow-hidden rounded-sm shadow-[0_40px_80px_rgba(0,0,0,0.9)]">
+          <div className="flex flex-col border border-cyan-500/30 bg-black/80 backdrop-blur-md overflow-hidden rounded-sm shadow-[0_20px_50px_rgba(0,0,0,1)]">
             
             {/* A. Contextual Primary Action */}
             {isHost ? (
               <motion.button
                 whileTap={{ scale: 0.985 }}
                 animate={canStart ? { 
-                  boxShadow: [
-                    'inset 0 0 15px rgba(255, 255, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.2)',
-                    'inset 0 0 25px rgba(255, 255, 255, 0.2), 0 0 40px rgba(0, 240, 255, 0.4)',
-                    'inset 0 0 15px rgba(255, 255, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.2)'
-                  ],
-                } : {}}
-                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  scale: [0.98, 1.02, 1],
+                  transition: { duration: 0.4, ease: "easeOut" }
+                } : { opacity: 0.8 }}
                 onClick={onStart}
                 disabled={!canStart}
-                className={`relative w-full overflow-hidden text-center h-[90px] font-mono transition-all duration-300 flex flex-col justify-center items-center px-6 border-b
+                className={`relative w-full py-4 font-mono transition-all duration-500 flex flex-col justify-center items-center px-6 border
                   ${canStart 
-                    ? 'bg-cyan-400 text-black border-white/40 shadow-[0_0_40px_rgba(34,211,238,0.4)] z-20' 
-                    : 'bg-black/80 text-cyan-500/30 border-cyan-500/20 z-10'}`}
+                    ? 'bg-cyan-400 text-black border-cyan-400 shadow-[inset_0_0_10px_rgba(255,255,255,0.4),0_0_30px_rgba(0,240,255,0.5)] z-10' 
+                    : 'bg-[#00f0ff]/5 border-cyan-500/30'}`}
               >
-                {/* Tactical Inner Bevel */}
-                <div className={`absolute inset-[1px] border ${canStart ? 'border-white/20' : 'border-cyan-500/5'} pointer-events-none`} />
-                
-                <span className={`relative z-10 text-[13.5px] tracking-[0.4em] font-black uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${canStart ? 'text-black' : 'text-cyan-400/80'}`}>
-                  {canStart ? 'INITIATE PROTOCOL' : 'INITIATE PROTOCOL'}
+                <span className={`relative z-10 text-[13px] sm:text-[14px] tracking-[0.25em] font-black uppercase transition-colors duration-500 ${canStart ? 'text-black' : 'text-cyan-300'}`}>
+                  INITIATE PROTOCOL
                 </span>
                 
-                {!canStart && (
-                  <motion.span 
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2.5 }}
-                    className="relative z-10 block mt-1.5 text-[10.5px] tracking-widest font-bold text-cyan-400/60 uppercase"
-                  >
-                    NEED {neededPlayers} MORE OPERATIVES
-                  </motion.span>
-                )}
+                <div className="relative z-10 mt-0.5 h-3.5 flex items-center justify-center overflow-hidden">
+                  <AnimatePresence mode="popLayout">
+                    {canStart ? (
+                      <motion.span 
+                        key="ready"
+                        initial={{ y: 10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1, textShadow: ['0 0 0px #000', '0 0 10px rgba(0,0,0,0.5)', '0 0 0px #000'] }}
+                        transition={{ duration: 0.4 }}
+                        className="text-[10px] tracking-[0.3em] font-black text-black/80 uppercase block"
+                      >
+                        [ READY TO INITIATE ]
+                      </motion.span>
+                    ) : (
+                      <motion.span 
+                        key="waiting"
+                        initial={{ y: -10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -10, opacity: 0 }}
+                        className="text-[10px] tracking-widest font-bold text-cyan-500 uppercase block"
+                      >
+                        NEED {neededPlayers} MORE OPERATIVES
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
 
-                {canStart && (
-                  <motion.div 
-                    initial={{ x: '-100%', skewX: -20 }}
-                    animate={{ x: '200%', skewX: -20 }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                    className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
-                  />
-                )}
-                
-                {/* Intense Tap Feedback Flash */}
+                {/* Simple Tap Flash */}
                 <motion.div
                   initial={{ opacity: 0 }}
-                  whileTap={{ opacity: [0, 0.8, 0] }}
-                  transition={{ duration: 0.15 }}
+                  whileTap={{ opacity: [0, 0.2, 0] }}
+                  transition={{ duration: 0.1 }}
                   className="absolute inset-0 bg-white pointer-events-none"
                 />
               </motion.button>
             ) : (
-              <div className="w-full bg-black/60 backdrop-blur-md h-[90px] flex items-center justify-center flex-col gap-1.5 text-cyan-500/40 uppercase tracking-[0.3em] text-[10px] font-mono font-black border-b border-cyan-500/10">
+              <div className={`w-full backdrop-blur-md py-4 flex items-center justify-center flex-col gap-1.5 uppercase tracking-[0.2em] text-[10px] font-mono font-black transition-colors duration-500 ${canStart ? 'bg-cyan-950/40 text-cyan-400' : 'bg-black/60 text-cyan-500/30'}`}>
                 <div className="flex items-center gap-2">
-                  <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-1.5 h-1.5 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                  <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }} className={`w-1.5 h-1.5 rounded-full ${canStart ? 'bg-cyan-400' : 'bg-cyan-700'}`} />
                   AWAITING HOST SIGNAL
                 </div>
-                <div className="w-32 h-[2px] bg-cyan-900/40 rounded-full overflow-hidden">
+                <div className="w-24 h-[1px] bg-cyan-900/20 rounded-full overflow-hidden mt-1">
                   <motion.div 
                      animate={{ x: ['-100%', '100%'] }} 
-                     transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
-                     className="w-full h-full bg-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                     transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                     className={`w-full h-full ${canStart ? 'bg-cyan-400' : 'bg-cyan-500/20'}`}
                   />
                 </div>
               </div>
             )}
 
             {/* B. Secondary Action (Share) */}
-            <motion.button
-              whileTap={{ scale: 0.985 }}
-              onClick={() => handleCopy(`${window.location.origin}?room=${gameState.roomId}`, 'link')}
-              className={`relative w-full h-[60px] flex items-center justify-center gap-3 px-6 text-[9.5px] font-mono font-bold tracking-[0.3em] uppercase transition-all border-t border-cyan-500/10
-                ${copiedLink 
-                  ? 'text-cyan-300 bg-cyan-950/40' 
-                  : 'text-cyan-500/40 bg-transparent hover:bg-white/5 hover:text-cyan-400'}`}
-            >
-              <div className="absolute inset-[1px] border border-white/5 pointer-events-none" />
-              
-              <Share size={11} className={copiedLink ? 'hidden' : 'opacity-50 group-hover:opacity-100'} />
-              {copiedLink ? <Check size={13} className="text-cyan-400" animate={{ scale: [0.8, 1.2, 1] }} /> : null}
-              {copiedLink ? 'SENT_TO_CLIPBOARD' : 'BROADCAST_ACCESS_LINK'}
-              
-              {/* Tap Feedback Ripple */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileTap={{ opacity: [0, 0.4, 0] }}
-                transition={{ duration: 0.15 }}
-                className="absolute inset-0 bg-cyan-400 pointer-events-none"
-              />
-            </motion.button>
+            <AnimatePresence>
+              <motion.button
+                layout
+                whileTap={{ scale: 0.985 }}
+                onClick={() => handleCopy(`${window.location.origin}?room=${gameState.roomId}`, 'link')}
+                className={`relative w-full h-[60px] flex items-center justify-center gap-2.5 px-6 text-[12px] font-mono font-bold tracking-[0.25em] uppercase transition-all
+                  ${copiedLink 
+                    ? 'text-cyan-500 bg-cyan-950/40' 
+                    : 'text-cyan-600 bg-transparent hover:text-cyan-300 hover:bg-cyan-950/20'}
+                  ${canStart && !copiedLink ? 'opacity-50 hover:opacity-100' : ''}
+                `}
+              >
+                <Share size={20} className={copiedLink ? 'hidden' : 'opacity-70'} />
+                {copiedLink ? <Check size={20} className="text-cyan-400" /> : null}
+                <span className="mt-[2px]">{copiedLink ? 'COPIED_TO_CLIPBOARD' : 'SHARE_ACCESS_CODE'}</span>
+                
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileTap={{ opacity: [0, 0.15, 0] }}
+                  className="absolute inset-0 bg-cyan-400 pointer-events-none"
+                />
+              </motion.button>
+            </AnimatePresence>
           </div>
 
         </div>

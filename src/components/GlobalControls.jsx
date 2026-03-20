@@ -167,23 +167,25 @@ export default function GlobalControls({ gameState, playerId, onReset, onWipe, o
               )}
 
               <div className="flex gap-2">
-                <button 
+                <motion.button 
+                  whileTap={{ scale: 0.985 }}
                   onClick={() => setActiveModal(null)}
                   className="flex-1 py-3 border border-white/5 text-white/20 hover:text-white/40 hover:bg-white/5 transition-all text-[8.5px] font-mono font-bold uppercase tracking-widest rounded-sm"
                 >
                   Abort
-                </button>
-                <button 
+                </motion.button>
+                <motion.button 
+                  whileTap={{ scale: 0.985 }}
                   onClick={activeModal === 'wipe' ? handleWipe : handleReset}
                   disabled={activeModal === 'wipe' && modalInput !== 'ECLIPSE'}
                   className={`flex-1 py-3 font-mono font-black text-[8.5px] uppercase tracking-widest transition-all rounded-sm ${
                     activeModal === 'wipe' 
-                      ? 'bg-red-500 text-black hover:bg-red-400 disabled:opacity-20 disabled:grayscale' 
+                      ? 'bg-red-500 text-black shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
                       : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
                   {activeModal === 'wipe' ? 'Execute' : 'Proceed'}
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </div>
