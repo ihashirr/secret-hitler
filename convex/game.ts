@@ -590,10 +590,10 @@ export const getGameState = query({
                     visibleParty = p.party;
                 }
 
-                return {
                     ...p,
                     id: p.playerId, // Backward compatibility
                     hasVoted: p.vote !== undefined, // Backward compatibility
+                    lastVote: room.phase !== PHASES.VOTING ? p.vote : undefined,
                     role: visibleRole,
                     party: visibleParty,
                 };
