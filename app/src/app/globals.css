@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@layer theme {
+  :root {
+    color-scheme: dark;
+    --color-obsidian-950: #111111;
+    --color-obsidian-900: #1a1a1a;
+    --color-obsidian-800: #2a2a2a;
+    --color-paper-light: #f4eee0;
+    --color-paper-dark: #e8dcc4;
+    --color-folder-manila: #d4c098;
+    --color-ink-black: #2c2c2c;
+    --color-stamp-red: #c1272d;
+    --color-stamp-blue: #2b5c8f;
+    --color-gold-foil: #d4af37;
+    --color-grid-cyan: rgba(0, 240, 255, 0.2);
+    --font-sans: "Segoe UI", system-ui, sans-serif;
+    --font-mono: "Consolas", "SFMono-Regular", "Roboto Mono", monospace;
+    --font-serif: "Georgia", "Times New Roman", serif;
+  }
+}
+
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--color-obsidian-950);
+    color: var(--color-paper-light);
+    font-family: var(--font-sans);
+    overscroll-behavior: none;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    background-image:
+      radial-gradient(circle at top, rgba(0, 240, 255, 0.06), transparent 35%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%);
+  }
+}
+
+@layer utilities {
+  .tactical-panel {
+    background: rgba(3, 10, 15, 0.78);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  }
+
+  .neon-text-cyan {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.7), 0 0 20px rgba(0, 240, 255, 0.3);
+  }
+
+  .neon-text-crimson {
+    text-shadow: 0 0 10px rgba(255, 0, 60, 0.7), 0 0 20px rgba(255, 0, 60, 0.3);
+  }
+
+  .board-grid {
+    background-image:
+      linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: linear-gradient(to bottom, black 20%, transparent 100%);
+  }
+
+  .paper-grain {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.28) 0.4px, transparent 0.9px),
+      radial-gradient(circle at 80% 30%, rgba(0, 0, 0, 0.14) 0.5px, transparent 1px),
+      radial-gradient(circle at 40% 80%, rgba(0, 0, 0, 0.1) 0.4px, transparent 0.9px);
+    background-size: 18px 18px, 22px 22px, 26px 26px;
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
