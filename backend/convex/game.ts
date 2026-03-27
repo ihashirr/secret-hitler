@@ -797,6 +797,18 @@ export const getGameState = query({
     },
 });
 
+
+export const getGameLog = query({
+    args: { roomId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("gameLog")
+            .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
+            .order("desc")
+            .take(5);
+    },
+});
+
 // Internal non-exported logic helpers (In Convex, these are just TS functions called by mutations)
 
 async function startNextNomination(ctx: any, room: any, players: any[]) {

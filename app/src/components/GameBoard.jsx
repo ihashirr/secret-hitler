@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { PHASES, FASCIST_TO_WIN, LIBERAL_TO_WIN, MAX_ELECTION_TRACKER } from '../lib/constants';
-import { Shield, Skull, Check, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Skull, Check } from 'lucide-react';
 import GameOverlay from './GameOverlay';
 
 const getStableNumber = (seed, min, max) => {
@@ -18,65 +18,95 @@ const getAvatarId = (player) => {
   return getStableNumber(player.id || player.name || 'operative', 1, 10);
 };
 
-const getCardTilt = (playerId) => getStableNumber(playerId || 'card', -2, 2);
 const getVoteStampRotation = (playerId, vote) => getStableNumber(`${playerId}-${vote}`, -10, 10);
+
+const getTrackSlotMeta = (type, index) => {
+  if (type === 'LIBERAL') {
+    return index === LIBERAL_TO_WIN - 1 ? 'SECURE' : `0${index + 1}`;
+  }
+
+  if (index >= 2 && index <= 4) return 'ORDER';
+  if (index === FASCIST_TO_WIN - 1) return 'WIN';
+  return `0${index + 1}`;
+};
+
+const getPlayerGridCols = (count) => {
+  if (count <= 4) return 'grid-cols-2 sm:grid-cols-4';
+  if (count === 5) return 'grid-cols-3 sm:grid-cols-5';
+  if (count === 6) return 'grid-cols-3 sm:grid-cols-6';
+  if (count <= 8) return 'grid-cols-4 sm:grid-cols-4';
+  return 'grid-cols-5 sm:grid-cols-5';
+};
+
+const getPlayerCardSize = (count) => {
+  if (count >= 9) return 'h-[min(12.5vh,100px)] max-w-[82px] sm:h-[min(13.5vh,112px)] sm:max-w-[96px]';
+  if (count >= 7) return 'h-[min(13.5vh,108px)] max-w-[88px] sm:h-[min(14.5vh,118px)] sm:max-w-[104px]';
+  return 'h-[min(15vh,122px)] max-w-[100px] sm:h-[min(16vh,132px)] sm:max-w-[116px]';
+};
 
 export default function GameBoard({ gameState, playerId, onNominate, onVote, onDiscard, onEnact, onKill }) {
   const myActualId = gameState?.myPlayerId || playerId;
-  const isPresident = gameState.amIPresident || (myActualId === gameState.currentPresident);
+  const isPresident = gameState.amIPresident || myActualId === gameState.currentPresident;
 
   const canNominate = gameState.phase === PHASES.NOMINATION && isPresident;
   const canKill = gameState.phase === PHASES.EXECUTIVE_ACTION && isPresident;
-  
-  // Vote Reveal Sequence State
-  const [revealState, setRevealState] = React.useState(null); 
+
+  const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
-  const [showGameInfo, setShowGameInfo] = React.useState(false);
-  const [pendingSelection, setPendingSelection] = React.useState(null); // { id: string, type: 'NOMINATE' | 'KILL' }
+  const [pendingSelection, setPendingSelection] = React.useState(null);
   const prevPhaseRef = React.useRef(gameState.phase);
 
   React.useEffect(() => {
     setPendingSelection(null);
   }, [gameState.phase]);
 
-  // Vote Interception Logic
   React.useEffect(() => {
-    if (prevPhaseRef.current === PHASES.VOTING && gameState.phase !== PHASES.VOTING) {
-      if (!gameState.lastVotes) return;
-      
-      let ya = 0; let nein = 0;
-      Object.values(gameState.lastVotes).forEach(v => {
-        if (v === 'YA') ya++; else nein++;
+    let revealTimer;
+    let cleanupTimer;
+
+    if (prevPhaseRef.current === PHASES.VOTING && gameState.phase !== PHASES.VOTING && gameState.lastVotes) {
+      let ya = 0;
+      let nein = 0;
+
+      Object.values(gameState.lastVotes).forEach((vote) => {
+        if (vote === 'YA') ya += 1;
+        else nein += 1;
       });
-      
-      setRevealState({ 
-        result: ya > nein ? 'APPROVED' : 'REJECTED', 
+
+      setRevealState({
+        result: ya > nein ? 'APPROVED' : 'REJECTED',
         votes: gameState.lastVotes,
         ya,
-        nein
+        nein,
       });
-      
-      // Cinematic timing sequence
-      setRevealStage(0); // Dim screen
-      setTimeout(() => setRevealStage(1), 150); // Flash + Shake + Show Results
-      
-      // Cleanup after 4 seconds
-      setTimeout(() => {
-         setRevealState(null);
-         setRevealStage(0);
+
+      setRevealStage(0);
+      revealTimer = setTimeout(() => setRevealStage(1), 150);
+      cleanupTimer = setTimeout(() => {
+        setRevealState(null);
+        setRevealStage(0);
       }, 4000);
     }
+
     prevPhaseRef.current = gameState.phase;
-  }, [gameState.phase, gameState.players, gameState.lastVotes]);
+
+    return () => {
+      clearTimeout(revealTimer);
+      clearTimeout(cleanupTimer);
+    };
+  }, [gameState.phase, gameState.lastVotes]);
 
   const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
+  const playerCount = gameState.players.length;
+  const aliveCount = gameState.players.filter((player) => player.isAlive).length;
 
-  const handleNominate = (id) => { 
-    const player = gameState.players.find(p => p.id === id);
+  const handleNominate = (id) => {
+    const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'NOMINATE' });
   };
-  const handleKill = (id) => { 
-    const player = gameState.players.find(p => p.id === id);
+
+  const handleKill = (id) => {
+    const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'KILL' });
   };
 
@@ -89,257 +119,73 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
 
   const cancelSelection = () => setPendingSelection(null);
 
-  // Removed renderTurnHeader, renderRolesBox, and renderActionState as they are now handled by GameOverlay
-
   const renderTrack = (current, max, type) => {
     const isFascist = type === 'FASCIST';
-    // Muted, non-neon colors for the physical aesthetic
-    const activeColor = isFascist ? 'bg-[#c1272d] border border-[#ff4d4d]' : 'bg-[#2b5c8f] border border-[#5a9cff]';
-    const inactiveColor = isFascist ? 'border-2 border-dashed border-[#8a001d]/40 bg-[#8a001d]/5' : 'border-2 border-dashed border-[#005a7a]/40 bg-[#005a7a]/5';
-    const lineColor = isFascist ? 'border-t-2 border-dotted border-[#8a001d]/40' : 'border-t-2 border-dotted border-[#005a7a]/40';
+    const accentClass = isFascist
+      ? 'border-[#7c1221] bg-[linear-gradient(180deg,#2a090d_0%,#1a0608_100%)] text-[#ff7b7b]'
+      : 'border-[#8eb9e0] bg-[linear-gradient(180deg,#eef5fb_0%,#ddeaf7_100%)] text-[#2b5c8f]';
+    const inactiveClass = isFascist
+      ? 'border-[#5a1216]/70 bg-[#22090b] text-[#8c5053]'
+      : 'border-[#9ec0dd]/50 bg-[#f9fbfe] text-[#7c9cb8]';
+    const fillClass = isFascist
+      ? 'border-[#ff6b73] bg-[linear-gradient(180deg,#c1272d_0%,#82131a_100%)] text-white'
+      : 'border-[#87bfff] bg-[linear-gradient(180deg,#4b88c4_0%,#2b5c8f_100%)] text-white';
+    const summary = isFascist ? 'Orders at 3, 4, 5' : '5 to secure';
+    const Icon = isFascist ? Skull : Shield;
 
     return (
-      <div className="flex items-center w-full justify-between pb-2 relative px-1 sm:px-2 z-10">
-        {Array.from({ length: max }).map((_, i) => (
-          <React.Fragment key={i}>
-            <div className="relative flex flex-col items-center group/slot">
-              <div className={`w-6 h-8 sm:w-8 sm:h-11 flex-shrink-0 flex flex-col items-center justify-center transition-all duration-700 relative z-10 rounded-sm shadow-sm
-                ${i < current ? activeColor + ' shadow-md rounded-sm' : inactiveColor}`}
-              >
-                {i < current && (
-                  <div className="absolute inset-0 paper-grain opacity-10 mix-blend-multiply pointer-events-none" />
-                )}
-                
-                {i < current && (isFascist ? <Skull size={10} className="text-[#3a0a0a] opacity-80" /> : <Shield size={10} className="text-[#0a1a3a] opacity-80" />)}
-              </div>
-              
-              {/* Highlight flash when newly added */}
-              {i === current - 1 && (
-                <motion.div 
-                  initial={{ scale: 1.5, opacity: 1 }} 
-                  animate={{ scale: 1, opacity: 0 }} 
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className={`absolute inset-0 z-20 ${isFascist ? 'bg-[#ff4d4d]' : 'bg-[#5a9cff]'} rounded-sm pointer-events-none mix-blend-overlay`}
-                />
-              )}
-            </div>
-            {i < max - 1 && (
-              <div className={`flex-1 ${i < current - 1 ? (isFascist ? 'border-t-2 border-[#c1272d]' : 'border-t-2 border-[#2b5c8f]') : lineColor} transition-colors duration-700 mx-1 sm:mx-2 mt-4`} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    );
-  };
+      <div className={`relative overflow-hidden rounded-[22px] border p-3 shadow-[0_14px_32px_rgba(0,0,0,0.24)] sm:p-3.5 ${accentClass}`}>
+        <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
 
-  const renderPolicyTracks = () => {
-    // Dim the policy tracks massively during voting
-    const isDimmed = displayPhase === PHASES.VOTING;
-    const trackClasses = `flex flex-col gap-3 w-full shrink-0 px-4 max-w-[600px] mx-auto mt-2 transition-all duration-700 ${isDimmed ? 'opacity-40 grayscale-[0.5] scale-[0.98]' : 'opacity-100'}`;
-
-    return (
-      <div className={trackClasses}>
-        
-        {/* LIBERAL */}
-        <div className="relative w-full h-[60px] sm:h-[70px] bg-[var(--color-paper-light)] border-2 border-[#d4c098] overflow-hidden flex flex-col justify-end shadow-md rounded-sm">
-          <img src="/assets/board-liberal.png" className="absolute inset-x-0 bottom-0 w-full h-auto min-h-full object-cover object-center opacity-30 mix-blend-multiply pointer-events-none" alt="" />
-          <div className="absolute inset-0 paper-grain opacity-[0.08] pointer-events-none"></div>
-          
-          <div className="absolute top-1.5 left-2 z-10">
-            <span className="text-[8px] font-mono font-black text-[#2b5c8f] tracking-[0.2em] border border-[#2b5c8f]/30 px-1.5 py-0.5 bg-[#e8dcc4]/80 backdrop-blur-sm rounded-sm uppercase flex items-center gap-1">
-              [LIBERAL] {gameState.liberalPolicies}/{LIBERAL_TO_WIN}
-            </span>
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] opacity-80">
+              {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
+            </p>
+            <p className={`mt-1 text-[9px] font-mono uppercase tracking-[0.16em] ${isFascist ? 'text-red-100/70' : 'text-[#4c7093]'}`}>
+              {summary}
+            </p>
           </div>
-          
-          <div className="relative z-10 w-full px-2">
-            {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
+
+          <div className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-[0.2em] ${isFascist ? 'border-red-400/35 bg-red-950/35 text-red-200' : 'border-[#2b5c8f]/20 bg-white/65 text-[#2b5c8f]'}`}>
+            {current}/{max}
           </div>
         </div>
 
-        {/* FASCIST */}
-        <div className="relative w-full h-[60px] sm:h-[70px] bg-[#3a0f12] border-2 border-[#2a0a0a] overflow-hidden flex flex-col justify-end shadow-md rounded-sm">
-          <img src="/assets/board-fascist.png" className="absolute inset-x-0 bottom-0 w-full h-auto min-h-full object-cover object-center opacity-40 mix-blend-multiply pointer-events-none" alt="" />
-          <div className="absolute inset-0 paper-grain opacity-[0.1] pointer-events-none"></div>
-          
-          <div className="absolute top-1.5 left-2 z-10">
-            <span className="text-[8px] font-mono font-black text-[#ff4d4d] tracking-[0.2em] border border-[#ff4d4d]/30 px-1.5 py-0.5 bg-[#2a0a0a]/80 backdrop-blur-sm rounded-sm uppercase flex items-center gap-1">
-              [FASCIST] {gameState.fascistPolicies}/{FASCIST_TO_WIN}
-            </span>
-          </div>
-          
-          <div className="relative z-10 w-full px-2">
-            {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
-          </div>
-        </div>
-
-      </div>
-    );
-  };
-
-  const renderGameInfoLine = () => (
-    <div className="w-full max-w-[600px] mx-auto z-20 px-4 mb-2 relative">
-      <button 
-        onClick={() => setShowGameInfo(!showGameInfo)}
-        className="flex items-center justify-center gap-2 px-6 py-1.5 bg-[#d4c098] border-2 border-b-0 border-[#b09868] text-[#2c2c2c] hover:bg-[#e8dcc4] transition-all rounded-t-md shadow-sm group font-mono text-[9px] font-black uppercase tracking-widest mx-auto translate-y-[2px]"
-      >
-        <Info size={12} className="group-hover:text-[#2b5c8f] transition-colors" />
-        <span>CLASSIFIED INTEL</span>
-        {showGameInfo ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-      </button>
-
-      <AnimatePresence>
-        {showGameInfo && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-center w-full px-6 py-4 bg-[var(--color-paper-light)] border-2 border-[#d4c098] text-[10px] sm:text-[11px] font-mono font-black uppercase tracking-[0.2em] text-[#2c2c2c] shadow-lg relative rounded-sm overflow-hidden">
-              <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
-              
-              {/* Top Secret Stamp */}
-              <div className="absolute top-2 left-3 text-[#c1272d] text-[7px] border-2 border-[#c1272d] px-1 py-0.5 opacity-60 transform -rotate-3 mix-blend-multiply">
-                EYES ONLY
-              </div>
-
-              <div className="flex justify-center flex-1 gap-8 mt-4 sm:mt-0">
-                <span className="flex items-center">DECK: <strong className="text-[#2b5c8f] ml-2 text-base">{gameState.drawPileCount}</strong></span>
-                <span className="flex items-center">DISCARD: <strong className="text-[#c1272d] ml-2 text-base">{gameState.discardPileCount}</strong></span>
-              </div>
-              
-              <div className="flex items-center gap-3 mt-4 sm:mt-0 flex-1 justify-center sm:justify-end">
-                <span className="mr-1 text-[#8a001d]">CHAOS:</span>
-                <div className="flex gap-2">
-                  {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, i) => (
-                    <div key={i} className={`w-3.5 h-3.5 rounded-full border-2 ${i < gameState.electionTracker ? 'bg-[#c1272d] border-[#8a001d]' : 'border-[#d4c098] bg-[#e8dcc4]'} transition-all duration-500`} />
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
-  const renderPlayerGrid = () => {
-    const isVotingPhase = displayPhase === PHASES.VOTING;
-    const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
-
-    return (
-      <div className={`w-full max-w-[600px] mx-auto z-10 px-4 transition-all duration-500 pb-20`}>
-        
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 pb-6 place-content-start group/grid justify-center">
-          {gameState.players.map((p) => {
-            const isSelectTarget = p.id === playerId;
-            const pIsPresident = p.id === gameState.currentPresident;
-            const pIsChancellor = p.id === gameState.currentChancellor || p.id === gameState.nominatedChancellor;
-            let isSelectable = false;
-            if (displayPhase === PHASES.NOMINATION && canNominate && p.isAlive && !isSelectTarget) isSelectable = true;
-            if (displayPhase === PHASES.EXECUTIVE_ACTION && canKill && p.isAlive && !isSelectTarget) isSelectable = true;
-
-            const isPending = pendingSelection?.id === p.id;
-
-            // Voting Statuses
-            const showVoteState = isVotingPhase && p.isAlive;
-            const isRevealed = !!revealState;
-            const finalVote = isRevealed ? revealState.votes[p.id] : null;
-            
-            // Dim inactive players during legislative
-            const isInactiveLegislator = isLegislativePhase && !pIsPresident && !pIsChancellor;
+        <div className="relative z-10 mt-2 grid gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
+          {Array.from({ length: max }).map((_, index) => {
+            const isActive = index < current;
+            const slotMeta = getTrackSlotMeta(type, index);
 
             return (
-              <div key={p.id} className="relative flex flex-col items-center">
-                
-                {/* ROLE TAGS (Look like Dymo labels or gold plaques) */}
-                {(pIsPresident || pIsChancellor) && (
-                  <div className={`absolute -top-3 z-30 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest shadow-md rounded-sm
-                    ${pIsPresident ? 'bg-[#d4af37] text-white border border-[#b8952b]' : 'bg-[#e0e0e0] text-[#2c2c2c] border border-[#a0a0a0]'}
-                  `}>
-                    {pIsPresident ? 'PRESIDENT' : 'CHANCELLOR'}
-                  </div>
-                )}
+              <div
+                key={index}
+                className={`relative min-h-[34px] rounded-xl border px-1 py-1 transition-all duration-500 sm:min-h-[40px] ${isActive ? `${fillClass} shadow-sm` : inactiveClass}`}
+              >
+                <div className="absolute inset-0 rounded-xl paper-grain opacity-10 pointer-events-none" />
 
-                <motion.button
-                  whileHover={isSelectable ? { y: -5, rotateZ: isPending ? 0 : getCardTilt(p.id) } : {}}
-                  whileTap={isSelectable ? { scale: 0.95 } : {}}
-                  onClick={() => {
-                    if (!isSelectable) return;
-                    if (displayPhase === PHASES.NOMINATION) handleNominate(p.id);
-                    if (displayPhase === PHASES.EXECUTIVE_ACTION) handleKill(p.id);
-                  }}
-                  className={`relative flex flex-col items-center justify-between text-center p-2 h-28 sm:h-32 aspect-[3/4] transition-all duration-300 rounded-sm shadow-md group outline-none
-                    bg-[var(--color-paper-light)] border border-[#d4c098] overflow-hidden
-                    ${isInactiveLegislator ? 'opacity-40 grayscale-[0.5]' : ''}
-                    ${isSelectable ? 'cursor-pointer hover:shadow-xl hover:border-[#b09868] hover:bg-[#fff9ed] ring-2 ring-transparent hover:ring-[var(--color-stamp-blue)] hover:ring-offset-2 hover:ring-offset-obsidian-900 group-hover/grid:duration-500' : 'cursor-default'}
-                    ${!p.isAlive ? 'opacity-40 brightness-75 bg-[#d8d0c0]' : ''}
-                    
-                    ${isPending ? 'ring-4 ring-[var(--color-stamp-red)] z-30 scale-105 shadow-2xl !opacity-100' : ''}
-                    ${isRevealed && finalVote === 'YA' ? 'ring-4 ring-[#2b5c8f] scale-105 z-20 shadow-xl' : ''}
-                    ${isRevealed && finalVote === 'NEIN' ? 'ring-4 ring-[var(--color-stamp-red)] scale-105 z-20 shadow-xl' : ''}
-                  `}
-                >
-                  
-                  {/* Faux Photo / Avatar Silhouette */}
-                  <div className={`relative w-full aspect-[4/3] border border-[#d4c098] rounded-sm mb-1 mt-1 flex flex-col items-center justify-end overflow-hidden shadow-inner
-                    ${!p.isAlive ? 'bg-[#b8b0a0]' : 'bg-[#e8dcc4]'}`}>
-                      {p.isAlive ? (
-                         <>
-                           <img 
-                             src={`/assets/avatars/avatar_${getAvatarId(p)}.png`} 
-                             alt="Operative Profile" 
-                             className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-80 pointer-events-none filter sepia-[0.2] contrast-125 brightness-90"
-                           />
-                           <div className="absolute inset-0 paper-grain mix-blend-overlay opacity-30 pointer-events-none"></div>
-                         </>
-                      ) : (
-                         <Skull size={24} className="text-[#2c2c2c] mb-2 opacity-50 pointer-events-none z-10 relative" />
-                      )}
-                  </div>
-
-                  <span className={`font-serif text-[10px] sm:text-xs font-black tracking-tight truncate w-full mt-auto mb-1 
-                    ${!p.isAlive ? 'line-through text-[#6a6a6a]' : 'text-[#2c2c2c]'}`}>
-                    {p.name}
+                <div className="relative z-10 flex h-full flex-col items-center justify-between text-center">
+                  <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80 sm:text-[7px]">
+                    {slotMeta}
                   </span>
 
-                  {/* VOTE STATES (Stamps) */}
-                  {showVoteState && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      {isRevealed && finalVote === 'YA' && (
-                        <motion.div initial={{ scale: 3, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(p.id, 'YA') }} transition={{ type: "spring", stiffness: 300, damping: 15 }} 
-                                    className="text-xl sm:text-2xl font-black text-[#2b5c8f] border-4 border-[#2b5c8f] rounded-sm px-1 opacity-90 rotate-[-15deg] transform mix-blend-multiply flex items-center gap-1 font-mono uppercase tracking-widest">
-                          JA
-                        </motion.div>
-                      )}
-                      {isRevealed && finalVote === 'NEIN' && (
-                        <motion.div initial={{ scale: 3, opacity: 0, rotate: 20 }} animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(p.id, 'NEIN') }} transition={{ type: "spring", stiffness: 300, damping: 15 }} 
-                                    className="text-xl sm:text-2xl font-black text-[var(--color-stamp-red)] border-4 border-[var(--color-stamp-red)] rounded-sm px-1 opacity-90 rotate-[15deg] transform mix-blend-multiply font-mono uppercase tracking-widest">
-                          NEIN
-                        </motion.div>
-                      )}
-                      {!isRevealed && p.hasVoted && (
-                         <div className="absolute bottom-1 right-1 text-[8px] bg-[#d4c8b0] text-[#2c2c2c] px-1 font-bold border border-[#b8b0a0] rounded-sm shadow-sm flex items-center gap-0.5">
-                           <Check size={8}/> READY
-                         </div>
-                      )}
-                      {!isRevealed && !p.hasVoted && (
-                         <div className="absolute bottom-1 right-1 text-[7px] text-[#8a8a8a] flex items-center gap-0.5 animate-pulse">
-                           <div className="w-1.5 h-1.5 border border-[#8a8a8a] rounded-full animate-spin border-t-transparent"/> WAITING
-                         </div>
-                      )}
-                    </div>
+                  {isActive ? (
+                    <Icon size={10} className="sm:h-[12px] sm:w-[12px]" />
+                  ) : (
+                    <span className="text-[9px] font-mono font-black opacity-50 sm:text-[10px]">
+                      {index + 1}
+                    </span>
                   )}
-                  
-                  {isSelectable && displayPhase === PHASES.EXECUTIVE_ACTION && !isPending && (
-                    <span className="absolute inset-0 m-auto w-fit h-fit text-[10px] text-[var(--color-stamp-red)] font-black border-2 border-[var(--color-stamp-red)] px-2 py-0.5 transform rotate-[-12deg] opacity-0 group-hover:opacity-100 transition-all mix-blend-multiply">ELIMINATE</span>
-                  )}
+                </div>
 
-                  {isSelectable && displayPhase === PHASES.NOMINATION && !isPending && (
-                    <span className="absolute inset-0 m-auto w-fit h-fit text-[10px] text-[#2b5c8f] font-black border-2 border-[#2b5c8f] px-2 py-0.5 transform rotate-[-5deg] opacity-0 group-hover:opacity-100 transition-all mix-blend-multiply">NOMINATE</span>
-                  )}
-                </motion.button>
+                {index === current - 1 && (
+                  <motion.div
+                    initial={{ scale: 1.15, opacity: 0.55 }}
+                    animate={{ scale: 1, opacity: 0 }}
+                    transition={{ duration: 0.75, ease: 'easeOut' }}
+                    className={`absolute inset-0 rounded-xl pointer-events-none ${isFascist ? 'bg-red-400/50' : 'bg-cyan-300/50'}`}
+                  />
+                )}
               </div>
             );
           })}
@@ -348,47 +194,247 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
     );
   };
 
+  const renderBoardStage = () => {
+    const isDimmed = displayPhase === PHASES.VOTING;
+
+    return (
+      <div className={`mx-auto w-full max-w-[1120px] px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-100'}`}>
+        <div className="grid gap-2 md:grid-cols-2">
+          {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
+          {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
+        </div>
+
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="rounded-2xl border border-[#2b5c8f]/18 bg-[#162231]/80 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
+            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-cyan-200/70">Deck</p>
+            <p className="mt-1 text-lg font-serif font-black text-white sm:text-xl">{gameState.drawPileCount}</p>
+          </div>
+
+          <div className="rounded-2xl border border-[#c1272d]/18 bg-[#2a1718]/80 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
+            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-red-200/70">Discard</p>
+            <p className="mt-1 text-lg font-serif font-black text-white sm:text-xl">{gameState.discardPileCount}</p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
+            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-[#d4c098]/75">Chaos</p>
+            <div className="mt-2 flex justify-center gap-1">
+              {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
+                <div
+                  key={index}
+                  className={`h-2.5 w-2.5 rounded-full border transition-all duration-500 sm:h-3 sm:w-3 ${
+                    index < gameState.electionTracker
+                      ? 'border-[#8a001d] bg-[#c1272d] shadow-[0_0_10px_rgba(193,39,45,0.35)]'
+                      : 'border-[#d4c098]/30 bg-[#f4eee0]/8'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPlayerDock = () => {
+    const isVotingPhase = displayPhase === PHASES.VOTING;
+    const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
+    const gridColsClass = getPlayerGridCols(playerCount);
+    const playerCardSizeClass = getPlayerCardSize(playerCount);
+    const dockHint = canNominate
+      ? 'Nominate from the dock below'
+      : canKill
+        ? 'Choose one target from the dock'
+        : isVotingPhase
+          ? 'Read the table here. Vote on your own phone.'
+          : isLegislativePhase
+            ? 'Policy handoff in progress'
+            : 'Private phone table';
+
+    return (
+      <div className="mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 px-4">
+        <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4">
+          <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
+
+          <div className="relative z-10 grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/75">
+                  Operative Dock
+                </p>
+                <p className="mt-1 text-[9px] leading-relaxed text-white/55 sm:text-[10px]">
+                  {dockHint}
+                </p>
+              </div>
+
+              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.22em] text-white/70">
+                {aliveCount}/{playerCount} Live
+              </div>
+            </div>
+
+            <div className="relative z-10 flex min-h-0 items-center justify-center pt-3">
+              <div className={`grid w-full justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
+                {gameState.players.map((player) => {
+                  const isSelf = player.id === myActualId;
+                  const isSelectable =
+                    (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
+                    (displayPhase === PHASES.EXECUTIVE_ACTION && canKill && player.isAlive && !isSelf);
+                  const isPending = pendingSelection?.id === player.id;
+                  const playerIsPresident = player.id === gameState.currentPresident;
+                  const playerIsChancellor = player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
+                  const isInactiveLegislator = isLegislativePhase && !playerIsPresident && !playerIsChancellor;
+                  const showVoteState = isVotingPhase && player.isAlive;
+                  const isRevealed = Boolean(revealState);
+                  const finalVote = isRevealed ? revealState.votes[player.id] : null;
+
+                  return (
+                    <div key={player.id} className="relative flex w-full justify-center">
+                      <motion.button
+                        whileHover={isSelectable ? { y: -3 } : {}}
+                        whileTap={isSelectable ? { scale: 0.97 } : {}}
+                        onClick={() => {
+                          if (!isSelectable) return;
+                          if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
+                          if (displayPhase === PHASES.EXECUTIVE_ACTION) handleKill(player.id);
+                        }}
+                        className={`group relative flex w-full flex-col overflow-hidden rounded-[20px] border border-[#d4c098] bg-[var(--color-paper-light)] p-1.5 text-center shadow-md outline-none transition-all duration-300 sm:p-2 ${playerCardSizeClass}
+                          ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
+                          ${isSelectable ? 'cursor-pointer ring-1 ring-transparent hover:border-[#b09868] hover:bg-[#fff9ed] hover:shadow-xl hover:ring-[var(--color-stamp-blue)]' : 'cursor-default'}
+                          ${!player.isAlive ? 'bg-[#d8d0c0] opacity-45 brightness-75' : ''}
+                          ${isPending ? 'z-20 scale-[1.03] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
+                          ${isRevealed && finalVote === 'YA' ? 'ring-4 ring-[#2b5c8f] shadow-xl' : ''}
+                          ${isRevealed && finalVote === 'NEIN' ? 'ring-4 ring-[var(--color-stamp-red)] shadow-xl' : ''}
+                        `}
+                      >
+                        {(playerIsPresident || playerIsChancellor) && (
+                          <span className={`absolute left-1.5 top-1.5 z-10 rounded-full px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.2em] ${
+                            playerIsPresident ? 'bg-[#d4af37] text-white' : 'bg-[#d9d9d9] text-[#2c2c2c]'
+                          }`}>
+                            {playerIsPresident ? 'PRES' : 'CHAN'}
+                          </span>
+                        )}
+
+                        <div className={`relative flex h-[58%] w-full items-end justify-center overflow-hidden rounded-[10px] border border-[#d4c098] shadow-inner ${
+                          !player.isAlive ? 'bg-[#b8b0a0]' : 'bg-[#e8dcc4]'
+                        }`}>
+                          {player.isAlive ? (
+                            <>
+                              <img
+                                src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                                alt="Operative Profile"
+                                className="absolute inset-0 h-full w-full object-cover pointer-events-none opacity-80 mix-blend-multiply filter sepia-[0.2] contrast-125 brightness-90"
+                              />
+                              <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
+                            </>
+                          ) : (
+                            <Skull size={18} className="relative z-10 mb-2 text-[#2c2c2c] opacity-50 pointer-events-none" />
+                          )}
+                        </div>
+
+                        <span className={`mt-1 w-full truncate font-serif text-[9px] font-black tracking-tight sm:text-[10px] ${
+                          !player.isAlive ? 'text-[#6a6a6a] line-through' : 'text-[#2c2c2c]'
+                        }`}>
+                          {player.name}
+                        </span>
+
+                        {showVoteState && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            {isRevealed && finalVote === 'YA' && (
+                              <motion.div
+                                initial={{ scale: 2.5, opacity: 0, rotate: -20 }}
+                                animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                className="rounded-sm border-2 border-[#2b5c8f] px-1 text-xs font-black uppercase tracking-[0.2em] text-[#2b5c8f] opacity-90 mix-blend-multiply sm:text-sm"
+                              >
+                                JA
+                              </motion.div>
+                            )}
+
+                            {isRevealed && finalVote === 'NEIN' && (
+                              <motion.div
+                                initial={{ scale: 2.5, opacity: 0, rotate: 20 }}
+                                animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                className="rounded-sm border-2 border-[var(--color-stamp-red)] px-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--color-stamp-red)] opacity-90 mix-blend-multiply sm:text-sm"
+                              >
+                                NEIN
+                              </motion.div>
+                            )}
+
+                            {!isRevealed && player.hasVoted && (
+                              <div className="absolute right-1 bottom-1 flex items-center gap-0.5 rounded-sm border border-[#b8b0a0] bg-[#d4c8b0] px-1 text-[7px] font-bold text-[#2c2c2c] shadow-sm">
+                                <Check size={7} />
+                                OK
+                              </div>
+                            )}
+
+                            {!isRevealed && !player.hasVoted && (
+                              <div className="absolute right-1 bottom-1 flex items-center gap-0.5 text-[6px] text-[#8a8a8a] animate-pulse">
+                                <div className="h-1.5 w-1.5 rounded-full border border-[#8a8a8a] border-t-transparent animate-spin" />
+                                WAIT
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {isSelectable && displayPhase === PHASES.EXECUTIVE_ACTION && !isPending && (
+                          <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[var(--color-stamp-red)] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[var(--color-stamp-red)] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
+                            Eliminate
+                          </span>
+                        )}
+
+                        {isSelectable && displayPhase === PHASES.NOMINATION && !isPending && (
+                          <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[#2b5c8f] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[#2b5c8f] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
+                            Nominate
+                          </span>
+                        )}
+                      </motion.button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const boardDimmed = Boolean(revealState || pendingSelection);
 
   return (
-    <motion.div 
+    <motion.div
       key={`viewport-${displayPhase}`}
-      initial={{ opacity: 0, scale: 0.98, filter: 'brightness(1.5)' }}
-      animate={{ 
-        opacity: 1, 
-        scale: 1, 
+      initial={{ opacity: 0, scale: 0.98, filter: 'brightness(1.3)' }}
+      animate={{
+        opacity: 1,
+        scale: 1,
         filter: 'brightness(1)',
         x: revealStage === 1 ? [-8, 8, -4, 4, 0] : 0,
-        y: revealStage === 1 ? [-4, 4, -2, 2, 0] : 0
+        y: revealStage === 1 ? [-4, 4, -2, 2, 0] : 0,
       }}
-      transition={{ 
-        duration: revealStage === 1 ? 0.4 : 0.6, 
-        ease: "easeOut" 
+      transition={{
+        duration: revealStage === 1 ? 0.4 : 0.55,
+        ease: 'easeOut',
       }}
-      className="h-[100dvh] w-full flex flex-col overflow-hidden bg-obsidian-950 relative pt-[60px] sm:pt-16"
+      className="relative h-[100dvh] w-full overflow-hidden bg-obsidian-950 pt-[44px] sm:pt-[48px]"
     >
-      {/* Cinematic Overlays */}
       <div className={`absolute inset-0 z-50 pointer-events-none transition-all duration-300 ${revealStage === 0 && revealState ? 'bg-black/80' : 'bg-transparent'}`} />
-      
+
       {revealStage === 1 && revealState && (
-        <motion.div 
-          initial={{ opacity: 0.8 }} 
-          animate={{ opacity: 0 }} 
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className={`absolute inset-0 z-50 pointer-events-none ${revealState.result === 'APPROVED' ? 'bg-cyan-400' : 'bg-red-500'}`} 
+        <motion.div
+          initial={{ opacity: 0.8 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className={`absolute inset-0 z-50 pointer-events-none ${revealState.result === 'APPROVED' ? 'bg-cyan-400' : 'bg-red-500'}`}
         />
       )}
-      
-      {/* Background Grid */}
-      <div className={`fixed inset-0 z-0 board-grid opacity-5 pointer-events-none transition-all duration-1000 ${displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR ? 'opacity-2' : ''}`} />
-      
-      {/* Ambient background glow for phase personality */}
+
+      <div className={`fixed inset-0 z-0 board-grid pointer-events-none transition-all duration-1000 ${displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR ? 'opacity-[0.03]' : 'opacity-[0.05]'}`} />
       <div className={`absolute inset-0 z-0 pointer-events-none opacity-20 transition-all duration-1000 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] ${displayPhase === PHASES.VOTING ? 'from-cyan-900/40 via-transparent to-transparent' : displayPhase === PHASES.EXECUTIVE_ACTION ? 'from-red-900/40 via-transparent to-transparent' : 'from-transparent to-transparent'}`} />
 
-      {/* Main Overlay Driver */}
-      <GameOverlay 
-        gameState={gameState} 
-        playerId={playerId} 
+      <GameOverlay
+        gameState={gameState}
+        playerId={playerId}
         revealState={revealState}
         pendingSelection={pendingSelection}
         onConfirm={confirmSelection}
@@ -398,20 +444,9 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
         onEnact={onEnact}
       />
 
-      {/* TOP ZONE (Removed header, keep spacing if needed) */}
-      <div className="w-full shrink-0 h-4" />
-
-      {/* MIDDLE ZONE (Board Focus) */}
-      <div className={`w-full flex-1 min-h-0 flex flex-col justify-center relative z-10 py-2 transition-all duration-700 
-        ${boardDimmed ? 'opacity-40 blur-[1px]' : 'opacity-100'}`}>
-        {renderPolicyTracks()}
-      </div>
-
-      {/* BOTTOM ZONE (Players + Info) */}
-      <div className={`w-full shrink-0 flex flex-col justify-end relative z-10 pb-6 transition-all duration-700
-        ${boardDimmed ? 'opacity-100 scale-[1.02]' : 'opacity-80'}`}>
-        {renderGameInfoLine()}
-        {renderPlayerGrid()}
+      <div className={`relative z-10 grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 pb-3 pt-14 transition-all duration-700 sm:gap-3 sm:pb-4 sm:pt-16 ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
+        {renderBoardStage()}
+        {renderPlayerDock()}
       </div>
     </motion.div>
   );

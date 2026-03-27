@@ -10,6 +10,7 @@ import RoleReveal from '../components/RoleReveal';
 import GameBoard from '../components/GameBoard';
 import GameOver from '../components/GameOver';
 import GlobalControls from '../components/GlobalControls';
+import GhostLogs from '../components/GhostLogs';
 
 const STORAGE_KEYS = {
   roomId: 'eclipse_roomId',
@@ -58,7 +59,7 @@ export default function App() {
     }, 3000); // Check every 3 seconds
 
     return () => clearInterval(interval);
-  }, [roomId, gameState?.phase, playerId, gameState?.players]);
+  }, [roomId, gameState, playerId, processBots]);
 
   // Prevent hydration mismatch: render nothing until client-side state is ready
   if (!mounted) return null;
@@ -128,6 +129,8 @@ export default function App() {
         }}
         onExit={handleExit}
       />
+      
+      <GhostLogs roomId={roomId} />
       
       <div>
         {gameState.phase === PHASES.LOBBY && (
