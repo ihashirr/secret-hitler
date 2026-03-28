@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev ./app",
-    "build": "next build ./app",
-    "vercel-build": "next build ./app",
+    "build": "next build ./app && node scripts/sync-next-build.mjs",
+    "vercel-build": "npm run build",
     "start": "next start ./app",
     "lint": "eslint app/src backend/convex --config config/eslint.config.mjs"
   },
