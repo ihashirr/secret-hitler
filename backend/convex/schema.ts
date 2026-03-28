@@ -20,6 +20,17 @@ export default defineSchema({
     winner: v.optional(v.string()), // "LIBERAL" | "FASCIST"
     winReason: v.optional(v.string()),
     lastVotes: v.optional(v.record(v.string(), v.string())), // { playerId: "YA" | "NEIN" }
+    executivePower: v.optional(v.string()),
+    vetoRequested: v.optional(v.boolean()),
+    investigatedPlayerIds: v.optional(v.array(v.string())),
+    lastInvestigatedPlayerId: v.optional(v.string()),
+    lastInvestigationParty: v.optional(v.string()),
+    lastInvestigatedById: v.optional(v.string()),
+    lastPeekedPolicies: v.optional(v.array(v.string())),
+    lastPeekedById: v.optional(v.string()),
+    specialElectionCallerId: v.optional(v.string()),
+    chaosTriggered: v.optional(v.boolean()),
+    chaosPolicy: v.optional(v.string()),
   }).index("by_roomId", ["roomId"]),
 
   players: defineTable({

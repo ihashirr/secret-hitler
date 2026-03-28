@@ -1,48 +1,63 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { PHASES } from '../lib/constants';
 
 export default function GameOverlay({
   gameState,
   playerId,
+  directorState,
   revealState,
   pendingSelection,
   onConfirm,
   onCancel,
   onVote,
   onDiscard,
+  onRequestVeto,
+  onRespondVeto,
   onEnact,
+  onAcknowledgePeek,
 }) {
   const myActualId = gameState?.myPlayerId || playerId;
   const isPresident = gameState.amIPresident || myActualId === gameState.currentPresident;
   const isChancellor = gameState.amIChancellor || myActualId === gameState.currentChancellor;
   const me = gameState.players.find((player) => player.id === myActualId);
-  const currentPresident = gameState.players.find((player) => player.id === gameState.currentPresident);
-  const currentChancellor = gameState.players.find((player) => player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor);
+  const currentChancellor = gameState.players.find(
+    (player) => player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor
+  );
+  const primaryInstruction = directorState?.primaryInstruction;
 
-  let title = '';
-  let subtext = '';
+  let title = primaryInstruction?.title || '';
+  let subtext = primaryInstruction?.description || '';
   let isActive = false;
   let actionContent = null;
+  let privateAudience = 'This Device';
 
   const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
 
   if (pendingSelection) {
-    title = pendingSelection.type === 'NOMINATE' ? 'Confirm Nomination' : 'Confirm Elimination';
-    subtext = pendingSelection.type === 'NOMINATE'
-      ? `${pendingSelection.name} will become the proposed chancellor.`
-      : `${pendingSelection.name} will be removed from the table.`;
+    const pendingMeta = {
+      NOMINATE: {
+        title: 'Confirm Nomination',
+        description: `${pendingSelection.name} will become the proposed chancellor.`,
+      },
+      KILL: {
+        title: 'Confirm Elimination',
+        description: `${pendingSelection.name} will be removed from the table.`,
+      },
+      INVESTIGATE: {
+        title: 'Confirm Investigation',
+        description: `You will privately learn ${pendingSelection.name}'s party loyalty.`,
+      },
+      SPECIAL_ELECTION: {
+        title: 'Confirm Special Election',
+        description: `${pendingSelection.name} will take the presidency for the next round only.`,
+      },
+    };
+    title = pendingMeta[pendingSelection.type]?.title || 'Confirm Action';
+    subtext = pendingMeta[pendingSelection.type]?.description || '';
     isActive = true;
   } else {
     switch (displayPhase) {
       case PHASES.NOMINATION:
-        if (isPresident) {
-          title = 'Nominate a Chancellor';
-          subtext = 'Choose one eligible player from the dock below.';
-        } else {
-          title = 'President Choosing';
-          subtext = `${currentPresident?.name || 'The president'} is selecting the next chancellor.`;
-        }
         isActive = true;
         break;
 
@@ -51,110 +66,194 @@ export default function GameOverlay({
           title = 'Vote Result';
           subtext = `${revealState.ya} Ja • ${revealState.nein} Nein`;
           isActive = true;
-        } else if (!me?.hasVoted) {
+        } else if (me?.isAlive && !me?.hasVoted) {
           title = 'Vote in Private';
-          subtext = `Approve or reject ${currentChancellor?.name || 'the proposed government'} on your phone.`;
+          subtext = `Approve or reject ${currentChancellor?.name || 'the proposed government'} on this phone.`;
           isActive = true;
           actionContent = (
-            <div className="mt-4 flex items-center justify-center gap-4 sm:gap-6 pointer-events-auto">
+            <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-3">
               <button
+                type="button"
                 onClick={() => onVote(true)}
-                className="group relative transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] active:scale-95"
+                className="flex min-h-[112px] items-center justify-center rounded-[24px] border border-[#2b5c8f]/15 bg-white/70 p-3 shadow-sm transition-transform active:scale-[0.98]"
               >
-                <img src="/assets/vote-yes.png" alt="Ja" className="w-[72px] sm:w-[90px] drop-shadow-lg transition-all group-hover:drop-shadow-2xl" />
+                <img
+                  src="/assets/vote-yes.png"
+                  alt="Ja"
+                  loading="eager"
+                  decoding="async"
+                  className="w-full max-w-[96px]"
+                />
               </button>
               <button
+                type="button"
                 onClick={() => onVote(false)}
-                className="group relative transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] active:scale-95"
+                className="flex min-h-[112px] items-center justify-center rounded-[24px] border border-[#c1272d]/15 bg-white/70 p-3 shadow-sm transition-transform active:scale-[0.98]"
               >
-                <img src="/assets/vote-no.png" alt="Nein" className="w-[72px] sm:w-[90px] drop-shadow-lg transition-all group-hover:drop-shadow-2xl" />
+                <img
+                  src="/assets/vote-no.png"
+                  alt="Nein"
+                  loading="eager"
+                  decoding="async"
+                  className="w-full max-w-[96px]"
+                />
               </button>
             </div>
           );
         } else {
-          title = 'Awaiting Votes';
-          subtext = 'Hold while the rest of the table locks in.';
+          if (me && !me.isAlive) {
+            title = 'Observer Only';
+            subtext = 'You have been eliminated. Watch the table, but you do not vote anymore.';
+          }
           isActive = true;
         }
         break;
 
       case PHASES.LEGISLATIVE_PRESIDENT:
         if (isPresident) {
-          title = 'President Decision';
-          subtext = 'Discard one policy and pass the remaining two forward.';
+          title = 'Discard One Policy';
+          subtext = 'Select one policy to discard. The remaining two go to the Chancellor.';
           isActive = true;
+          privateAudience = 'President Only';
+
           if (gameState.drawnCards) {
             actionContent = (
-              <div className="mt-4 flex flex-wrap justify-center gap-4 sm:gap-5 pointer-events-auto group/cards">
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
                 {gameState.drawnCards.map((card, index) => (
                   <button
                     key={index}
+                    type="button"
                     onClick={() => onDiscard(index)}
-                    className="group relative transition-all duration-300 hover:-translate-y-2 hover:scale-[1.04] group-hover/cards:opacity-45 hover:!opacity-100"
+                    className="group flex flex-col items-center transition-transform active:scale-[0.98]"
                   >
                     <img
                       src={card === 'FASCIST' ? '/assets/policy-fascist.png' : '/assets/policy-liberal.png'}
-                      className="w-[68px] rounded-sm border border-[#2c2c2c]/10 drop-shadow-md sm:w-[82px]"
                       alt={card}
+                      loading="eager"
+                      decoding="async"
+                      className="w-[78px] rounded-2xl border border-[#2c2c2c]/10 shadow-md sm:w-[90px]"
                     />
-                    <div className="absolute inset-x-0 -bottom-6 opacity-0 transition-all text-[8px] font-black uppercase tracking-[0.2em] text-[#c1272d] group-hover:opacity-100 sm:text-[9px]">
+                    <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#8a001d]">
                       Discard
-                    </div>
+                    </span>
                   </button>
                 ))}
               </div>
             );
           }
         } else {
-          title = 'President Reviewing';
-          subtext = `${currentPresident?.name || 'The president'} is handling the first cut.`;
           isActive = true;
         }
         break;
 
       case PHASES.LEGISLATIVE_CHANCELLOR:
-        if (isChancellor) {
-          title = 'Chancellor Decision';
-          subtext = 'Choose the policy that will take effect this round.';
+        if (isPresident && gameState.vetoRequested) {
+          title = 'Respond To Veto';
+          subtext = 'Accept to discard both policies and advance the tracker, or reject and force the Chancellor to enact one.';
           isActive = true;
-          if (gameState.drawnCards) {
+          privateAudience = 'President Only';
+          actionContent = (
+            <div className="mt-4 grid w-full max-w-sm grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onRespondVeto(true)}
+                className="rounded-2xl border border-[#2b5c8f]/20 bg-[#2b5c8f] px-4 py-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#21476d] active:scale-[0.98]"
+              >
+                Accept Veto
+              </button>
+              <button
+                type="button"
+                onClick={() => onRespondVeto(false)}
+                className="rounded-2xl border border-[#c1272d]/20 bg-[#c1272d] px-4 py-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#9f1d22] active:scale-[0.98]"
+              >
+                Reject
+              </button>
+            </div>
+          );
+        } else if (isChancellor) {
+          title = gameState.vetoRequested ? 'Veto Requested' : 'Enact One Policy';
+          subtext = gameState.vetoRequested
+            ? 'Your veto request is pending the President response.'
+            : 'Select the one policy that will be enacted.';
+          isActive = true;
+          privateAudience = 'Chancellor Only';
+
+          if (gameState.drawnCards && !gameState.vetoRequested) {
             actionContent = (
-              <div className="mt-4 flex flex-wrap justify-center gap-4 sm:gap-5 pointer-events-auto group/cards">
-                {gameState.drawnCards.map((card, index) => (
+              <div className="mt-4 flex w-full max-w-md flex-col items-center gap-4">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {gameState.drawnCards.map((card, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => onEnact(index)}
+                      className="group flex flex-col items-center transition-transform active:scale-[0.98]"
+                    >
+                      <img
+                        src={card === 'FASCIST' ? '/assets/policy-fascist.png' : '/assets/policy-liberal.png'}
+                        alt={card}
+                        loading="eager"
+                        decoding="async"
+                        className="w-[82px] rounded-2xl border border-[#2c2c2c]/10 shadow-md sm:w-[96px]"
+                      />
+                      <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#2b5c8f]">
+                        Enact
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {gameState.vetoAvailable && !gameState.vetoRequested && (
                   <button
-                    key={index}
-                    onClick={() => onEnact(index)}
-                    className="group relative transition-all duration-300 hover:-translate-y-2 hover:scale-[1.04] group-hover/cards:opacity-45 hover:!opacity-100"
+                    type="button"
+                    onClick={onRequestVeto}
+                    className="rounded-2xl border border-[#8a001d]/20 bg-[#c1272d] px-5 py-3 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#9f1d22] active:scale-[0.98]"
                   >
-                    <img
-                      src={card === 'FASCIST' ? '/assets/policy-fascist.png' : '/assets/policy-liberal.png'}
-                      className="w-[72px] rounded-sm border border-[#2c2c2c]/10 drop-shadow-md sm:w-[90px]"
-                      alt={card}
-                    />
-                    <div className="absolute inset-x-0 -bottom-6 opacity-0 transition-all text-[8px] font-black uppercase tracking-[0.2em] text-[#2b5c8f] group-hover:opacity-100 sm:text-[9px]">
-                      Enact
-                    </div>
+                    Request Veto
                   </button>
-                ))}
+                )}
               </div>
             );
           }
         } else {
-          title = 'Chancellor Deciding';
-          subtext = `${currentChancellor?.name || 'The chancellor'} is making the final choice.`;
           isActive = true;
         }
         break;
 
       case PHASES.EXECUTIVE_ACTION:
-        if (isPresident) {
-          title = 'Executive Order';
-          subtext = 'Choose one living player to remove from the table.';
-        } else {
-          title = 'Order Incoming';
-          subtext = `${currentPresident?.name || 'The president'} is deciding who will be eliminated.`;
-        }
         isActive = true;
+        privateAudience = isPresident ? 'President Only' : 'Observers';
+        if (isPresident && gameState.executivePower === 'PEEK' && gameState.peekedPolicies?.length) {
+          title = 'Review Top Policies';
+          subtext = 'These are the next three policies in order. They stay in the deck.';
+          actionContent = (
+            <div className="mt-4 flex w-full max-w-md flex-col items-center gap-4">
+              <div className="flex flex-wrap justify-center gap-3">
+                {gameState.peekedPolicies.map((card, index) => (
+                  <div key={`${card}-${index}`} className="flex flex-col items-center">
+                    <img
+                      src={card === 'FASCIST' ? '/assets/policy-fascist.png' : '/assets/policy-liberal.png'}
+                      alt={card}
+                      loading="eager"
+                      decoding="async"
+                      className="w-[82px] rounded-2xl border border-[#2c2c2c]/10 shadow-md sm:w-[96px]"
+                    />
+                    <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#2b5c8f]">
+                      Top {index + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={onAcknowledgePeek}
+                className="rounded-2xl border border-[#2b5c8f]/20 bg-[#2b5c8f] px-5 py-3 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#21476d] active:scale-[0.98]"
+              >
+                Continue
+              </button>
+            </div>
+          );
+        }
         break;
 
       default:
@@ -162,62 +261,60 @@ export default function GameOverlay({
     }
   }
 
-  const [isDismissed, setIsDismissed] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsDismissed(false);
-  }, [title, displayPhase, pendingSelection]);
-
   if (!isActive) return null;
 
   const hasActionContent = Boolean(actionContent || pendingSelection);
-  const toneClass = pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
-    ? 'bg-[#c1272d]'
-    : displayPhase === PHASES.VOTING
-      ? 'bg-[#2b5c8f]'
-      : 'bg-[#d4c098]';
-  const toneBadgeClass = pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
-    ? 'border-[#c1272d]/25 bg-[#c1272d]/10 text-[#ffb2b5]'
-    : displayPhase === PHASES.VOTING
-      ? 'border-[#2b5c8f]/25 bg-[#2b5c8f]/10 text-cyan-100'
-      : 'border-[#d4c098]/20 bg-white/5 text-[#efe1c4]';
+  const suppressRevealBanner = Boolean(revealState) && !pendingSelection && !actionContent;
+  const suppressPassiveVotingBanner =
+    displayPhase === PHASES.VOTING &&
+    !revealState &&
+    !pendingSelection &&
+    !actionContent;
+  const toneClass =
+    pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
+      ? 'bg-[#c1272d]'
+      : displayPhase === PHASES.VOTING
+        ? 'bg-[#2b5c8f]'
+        : 'bg-[#d4c098]';
+  const toneBadgeClass =
+    pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
+      ? 'border-[#c1272d]/25 bg-[#c1272d]/10 text-[#ffb2b5]'
+      : displayPhase === PHASES.VOTING
+        ? 'border-[#2b5c8f]/25 bg-[#2b5c8f]/10 text-cyan-100'
+        : 'border-[#d4c098]/20 bg-white/5 text-[#efe1c4]';
 
   return (
     <AnimatePresence>
-      {!hasActionContent && !isDismissed && (
+      {!hasActionContent && !suppressPassiveVotingBanner && !suppressRevealBanner && (
         <motion.div
           key={`banner-${title}`}
-          initial={{ y: -48, opacity: 0 }}
+          initial={{ y: -24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -48, opacity: 0 }}
+          exit={{ y: -24, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          className="fixed inset-x-0 top-[44px] z-[100] flex justify-center px-3 pointer-events-none sm:top-[48px] sm:px-4"
+          className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+66px)] z-[100] flex justify-center px-3 pointer-events-none"
         >
-          <div className="pointer-events-auto relative w-full max-w-[920px] overflow-hidden rounded-[22px] border border-[#d4c098]/18 bg-[rgba(15,12,11,0.94)] shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-md">
+          <div className="relative w-full max-w-[520px] overflow-hidden rounded-[18px] border border-[#d4c098]/18 bg-[rgba(15,12,11,0.94)] shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-md">
             <div className={`absolute inset-y-0 left-0 w-1 ${toneClass}`} />
             <div className="absolute inset-0 paper-grain opacity-[0.08] pointer-events-none" />
 
-            <button
-              onClick={() => setIsDismissed(true)}
-              className="absolute top-2.5 right-2.5 rounded-full p-1 text-white/35 transition-colors hover:bg-white/5 hover:text-white/70"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-            </button>
-
-            <div className="relative z-10 px-4 py-3 pr-11 sm:px-5 sm:py-3.5 sm:pr-12">
+            <div className="relative z-10 px-4 py-2.5 sm:px-5 sm:py-3">
               <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.24em] sm:text-[9px]">
-                <span className={`rounded-full border px-2 py-0.5 ${toneBadgeClass}`}>
+                <motion.span
+                  animate={displayPhase === PHASES.VOTING ? { opacity: [0.6, 1, 0.6] } : { opacity: 1 }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                  className={`rounded-full border px-2 py-0.5 ${toneBadgeClass}`}
+                >
                   Live Briefing
-                </span>
-                <span className="text-white/35">Mobile-first private play</span>
+                </motion.span>
               </div>
 
-              <h2 className="mt-2 text-[12px] font-serif font-black uppercase tracking-[0.14em] text-[#f4eee0] sm:text-[14px]">
+              <h2 className="mt-1.5 text-[12px] font-serif font-black uppercase tracking-[0.14em] text-[#f4eee0] sm:text-[14px]">
                 {title}
               </h2>
 
               {subtext && (
-                <p className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#d4c8b0] sm:text-[11px]">
+                <p className="mt-1 text-[10px] leading-relaxed text-[#d4c8b0] sm:text-[11px]">
                   {subtext}
                 </p>
               )}
@@ -226,24 +323,7 @@ export default function GameOverlay({
         </motion.div>
       )}
 
-      {!hasActionContent && isDismissed && (
-        <motion.div
-          key="minimized-banner"
-          initial={{ y: -24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -24, opacity: 0 }}
-          className="fixed inset-x-0 top-[44px] z-[100] flex justify-center px-3 pointer-events-none sm:top-[48px] sm:px-4"
-        >
-          <button
-            onClick={() => setIsDismissed(false)}
-            className="pointer-events-auto rounded-full border border-[#d4c098]/20 bg-[rgba(15,12,11,0.92)] px-4 py-2 text-[9px] font-mono font-black uppercase tracking-[0.22em] text-[#efe1c4] shadow-lg transition-colors hover:bg-[rgba(24,20,18,0.98)]"
-          >
-            Show Briefing
-          </button>
-        </motion.div>
-      )}
-
-      {hasActionContent && !isDismissed && (
+      {hasActionContent && (
         <motion.div
           key={`desk-${displayPhase}`}
           initial={{ y: '100%' }}
@@ -252,24 +332,16 @@ export default function GameOverlay({
           transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
-          <div className="pointer-events-auto relative w-full max-w-[920px] overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(1.4rem+env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto relative w-full max-w-[760px] overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(1.4rem+env(safe-area-inset-bottom))]">
             <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
-
-            <button
-              onClick={() => setIsDismissed(true)}
-              className="absolute top-3 right-3 z-20 rounded-full bg-black/5 p-1.5 text-[#2c2c2c]/55 transition-colors hover:bg-black/10 hover:text-[#2c2c2c]"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-            </button>
-
             <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 rounded-full bg-black/10" />
 
-            <div className="relative z-10 pr-10">
+            <div className="relative z-10">
               <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
                 <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
                   Action Desk
                 </span>
-                <span className="text-[#7a6b57]">Private on this device</span>
+                <span className="text-[#7a6b57]">Private Channel — {privateAudience}</span>
               </div>
 
               <h2 className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]">
@@ -290,39 +362,24 @@ export default function GameOverlay({
             )}
 
             {pendingSelection && (
-              <div className="relative z-10 mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-center">
+              <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={onConfirm}
-                  className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98] sm:min-w-[170px]"
+                  className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
                 >
                   Confirm
                 </button>
                 <button
+                  type="button"
                   onClick={onCancel}
-                  className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98] sm:min-w-[170px]"
+                  className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
                 >
                   Cancel
                 </button>
               </div>
             )}
           </div>
-        </motion.div>
-      )}
-
-      {hasActionContent && isDismissed && (
-        <motion.div
-          key="minimized-desk"
-          initial={{ y: 28, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 28, opacity: 0 }}
-          className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
-        >
-          <button
-            onClick={() => setIsDismissed(false)}
-            className="pointer-events-auto rounded-t-2xl border border-b-0 border-[#4a4a4a] bg-[#161616] px-6 py-2.5 text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white shadow-[0_-10px_24px_rgba(0,0,0,0.4)] transition-colors hover:bg-[#202020]"
-          >
-            Reopen Desk
-          </button>
         </motion.div>
       )}
     </AnimatePresence>

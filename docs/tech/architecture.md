@@ -8,9 +8,12 @@
 ## Frontend
 - Framework: Next.js 16 with React 19
 - Entry point: `app/src/app/page.jsx`
+- Phase router: `app/src/phases/PhaseRouter.jsx`
+- Phase config: `app/src/phases/config.js`
 - Global shell: `app/src/app/layout.jsx`
 - Styling: Tailwind 4 plus a small set of custom utilities in `app/src/app/globals.css`
-- Game UI is split across `Splash`, `Lobby`, `RoleReveal`, `GameBoard`, `GameOverlay`, `GameOver`, and `GlobalControls`
+- Progressive phase views live under `app/src/phases/views/`
+- UI primitives remain split across `Splash`, `Lobby`, `RoleReveal`, `GameBoard`, `GameOverlay`, `GameOver`, and `GlobalControls`
 
 ## Backend
 - `backend/convex/game.ts` contains room lifecycle, voting, policy flow, executions, and the sanitized game-state query
@@ -19,7 +22,7 @@
 
 ## State model
 - Convex is the source of truth for game state
-- The browser stores `eclipse_roomId`, `eclipse_playerId`, and `eclipse_playerName` in `sessionStorage`
+- The browser stores `eclipse_roomId` and `eclipse_playerId` in `sessionStorage`
 - `getGameState` only exposes sensitive role data to the correct caller
 
 ## Current cleanup constraints

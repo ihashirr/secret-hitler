@@ -9,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="antialiased font-sans uppercase">
+      <body className="antialiased font-sans">
         <ConvexClientProvider>
           {children}
         </ConvexClientProvider>

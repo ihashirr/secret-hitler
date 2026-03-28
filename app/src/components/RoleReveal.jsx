@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ROLES, FACTIONS } from '../lib/constants';
 import { Shield, Skull, Eye, EyeOff } from 'lucide-react';
@@ -56,8 +56,9 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
     return false;
   });
   
-  const me = gameState.players.find(p => p.id === playerId);
-  const visibleTeammates = gameState.players.filter(p => p.id !== playerId && p.role !== null);
+  const myActualId = gameState?.myPlayerId || playerId;
+  const me = gameState.players.find(p => p.id === myActualId);
+  const visibleTeammates = gameState.players.filter((candidate) => candidate.id !== myActualId && Boolean(candidate.role));
 
   const roleTitle = me?.role === ROLES.LIBERAL ? 'Liberal' : me?.role === ROLES.FASCIST ? 'Fascist' : me?.role === ROLES.HITLER ? 'Hitler' : 'Unknown';
   const directiveText =
@@ -75,30 +76,36 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
 
   // Sequence Master Timeline
   useEffect(() => {
+    const timers = [];
+
     if (state === REVEAL_STATES.AUTH_TAP) {
-      setTimeout(() => setState(REVEAL_STATES.DECRYPTING), 150);
+      timers.push(window.setTimeout(() => setState(REVEAL_STATES.DECRYPTING), 150));
     } else if (state === REVEAL_STATES.DECRYPTING) {
       const decryptTime = (roleTitle.length * 40) + 300; // time to spell + ramp glow
-      setTimeout(() => setState(REVEAL_STATES.DETAILS), decryptTime);
+      timers.push(window.setTimeout(() => setState(REVEAL_STATES.DETAILS), decryptTime));
     } else if (state === REVEAL_STATES.DETAILS) {
-      setTimeout(() => setState(REVEAL_STATES.OPERATIVES), 300);
+      timers.push(window.setTimeout(() => setState(REVEAL_STATES.OPERATIVES), 300));
     } else if (state === REVEAL_STATES.OPERATIVES) {
       const operativesTime = visibleTeammates.length * 40;
-      setTimeout(() => setState(REVEAL_STATES.CONFIRMED), operativesTime + 200);
+      timers.push(window.setTimeout(() => setState(REVEAL_STATES.CONFIRMED), operativesTime + 200));
     } else if (state === REVEAL_STATES.CONFIRMED) {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(`revealed_${gameState.roomId}`, 'true');
       }
     }
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
   }, [state, roleTitle.length, visibleTeammates.length, gameState.roomId]);
 
   const handleAuthTap = () => {
     if (state === REVEAL_STATES.IDLE) setState(REVEAL_STATES.AUTH_TAP);
   };
   
-  if (me?.isReady) {
+    if (me?.isReady) {
     return (
-      <div className="h-[100dvh] w-full flex items-center justify-center p-4 pt-14 text-center">
+      <div className="min-h-[100svh] w-full flex items-center justify-center p-4 pt-[calc(4.5rem+env(safe-area-inset-top))] text-center">
         <div className="tactical-panel p-6 sm:p-8 text-center border-cyan-500/30 w-full max-w-sm">
           <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 animate-spin mx-auto mb-6 transform rotate-45" />
           <h2 className="text-lg sm:text-xl font-mono text-cyan-400 mb-2 uppercase tracking-[0.2em]">Room Is Synchronizing</h2>
@@ -113,7 +120,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const showColors = state === REVEAL_STATES.DETAILS || state === REVEAL_STATES.OPERATIVES || state === REVEAL_STATES.CONFIRMED;
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col px-4 sm:px-6 pb-4 sm:pb-6 pt-20 bg-obsidian-900 overflow-hidden relative">
+    <div className="min-h-[100svh] w-full flex flex-col px-4 sm:px-6 pb-4 sm:pb-6 pt-[calc(4.75rem+env(safe-area-inset-top))] bg-obsidian-900 overflow-hidden relative">
       
       {/* Background Grid Zoom Animation on Transition */}
       <motion.div 

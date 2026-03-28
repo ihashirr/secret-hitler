@@ -1,103 +1,293 @@
-import React from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from 'convex/react';
 import { motion } from 'framer-motion';
+import { api } from '../../../backend/convex/_generated/api';
 import { FACTIONS, ROLES } from '../lib/constants';
-import { Shield, Skull, Crown } from 'lucide-react';
+import { buildGameDebrief, getDebriefTagMeta } from '../engine/debriefEngine';
+import { ArrowLeft, Crown, Shield, Skull } from 'lucide-react';
 
-export default function GameOver({ gameState, playerId }) {
-  const me = gameState.players.find(p => p.id === playerId);
-  const isHost = me?.isHost;
+const typeText = (fullText, onUpdate, delay, step = 28) => {
+  const timers = [];
 
+  for (let index = 1; index <= fullText.length; index += 1) {
+    timers.push(window.setTimeout(() => onUpdate(fullText.slice(0, index)), delay + index * step));
+  }
+
+  return timers;
+};
+
+export default function GameOver({ gameState, playerId, onReplay }) {
+  const myActualId = gameState?.myPlayerId || playerId;
+  const me = gameState.players.find((player) => player.id === myActualId);
   const isLiberalWin = gameState.winner === FACTIONS.LIBERAL;
-  const themeClass = isLiberalWin
-    ? 'bg-cyan-950/80 shadow-[inset_0_0_100px_rgba(0,240,255,0.2)]'
-    : 'bg-red-950/80 shadow-[inset_0_0_100px_rgba(255,0,60,0.2)]';
-  const textColor = isLiberalWin ? 'text-cyan-400 neon-text-cyan' : 'text-red-500 neon-text-crimson';
+  const winnerTitle = isLiberalWin ? 'REPUBLIC SECURED' : 'REGIME ASCENDANT';
+  const logs = useQuery(api.game.getGameLog, gameState?.roomId ? { roomId: gameState.roomId } : 'skip');
+  const [typedTitle, setTypedTitle] = useState('');
+  const [typedReason, setTypedReason] = useState('');
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const debrief = useMemo(() => buildGameDebrief(gameState, logs || []), [gameState, logs]);
+
+  useEffect(() => {
+    const timers = [];
+    const titleTimers = typeText(winnerTitle, setTypedTitle, 220, 34);
+    const titleDuration = 220 + winnerTitle.length * 34;
+    const reasonTimers = typeText(gameState.winReason || '', setTypedReason, titleDuration + 260, 18);
+    const revealStart = titleDuration + 260 + (gameState.winReason?.length || 0) * 18 + 360;
+
+    timers.push(...titleTimers, ...reasonTimers);
+
+    gameState.players.forEach((_, index) => {
+      timers.push(
+        window.setTimeout(() => {
+          setRevealedCount(index + 1);
+        }, revealStart + index * 130),
+      );
+    });
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [gameState.players, gameState.winReason, winnerTitle]);
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col p-4 sm:p-6 pt-16 sm:pt-14 relative overflow-hidden bg-obsidian-900">
-      <div className={`absolute inset-0 z-0 ${themeClass} backdrop-blur-sm`} />
+    <div className="relative min-h-[100svh] overflow-hidden bg-obsidian-950 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))] sm:px-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={`absolute inset-0 ${
+          isLiberalWin
+            ? 'bg-[radial-gradient(circle_at_top,_rgba(43,92,143,0.34),_rgba(5,10,16,0.96)_58%)]'
+            : 'bg-[radial-gradient(circle_at_top,_rgba(193,39,45,0.38),_rgba(15,4,5,0.98)_58%)]'
+        }`}
+      />
+      <motion.div
+        animate={{ backgroundPosition: ['0% 0%', '100% 25%', '0% 100%'] }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage: isLiberalWin
+            ? 'linear-gradient(135deg, rgba(43,92,143,0.42), rgba(0,0,0,0) 45%, rgba(43,92,143,0.14))'
+            : 'linear-gradient(135deg, rgba(193,39,45,0.48), rgba(0,0,0,0) 45%, rgba(193,39,45,0.18))',
+          backgroundSize: '180% 180%',
+        }}
+      />
+      <div className="absolute inset-0 board-grid opacity-[0.06]" />
 
-      <div className="z-10 flex flex-col items-center w-full max-w-md mx-auto flex-1">
-        {/* Win Banner */}
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', bounce: 0.5, duration: 0.8 }}
-          className="text-center mb-6 w-full"
-        >
-          {isLiberalWin ? (
-            <Shield size={64} className="text-cyan-400 mx-auto mb-4 drop-shadow-[0_0_30px_rgba(0,240,255,1)]" />
-          ) : (
-            <Skull size={64} className="text-red-500 mx-auto mb-4 drop-shadow-[0_0_30px_rgba(255,0,60,1)]" />
-          )}
-          <h1 className={`text-3xl sm:text-5xl font-sans font-black tracking-widest uppercase ${textColor}`}>
-            {isLiberalWin ? 'Republic Secured' : 'Regime Ascendant'}
-          </h1>
-          <div className="mt-4 inline-block bg-black/60 p-3 sm:p-4 border-l-4 border-cyan-500/50 relative">
-            <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-white/30" />
-            <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-white/30" />
-            <p className="text-white/80 font-mono text-xs sm:text-sm uppercase tracking-widest text-left">
-              {'>'} DEBRIEF: <br />
-              <span className={isLiberalWin ? 'text-cyan-300' : 'text-red-300'}>{gameState.winReason}</span>
-            </p>
-          </div>
-          <p className="mt-4 text-center text-[11px] leading-relaxed text-cyan-100/55 normal-case tracking-[0.08em] max-w-xs mx-auto">
-            The full match flow is tuned for phones, so the room can reset and hand private information cleanly from one round to the next.
-          </p>
-        </motion.div>
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-5rem)] w-full max-w-md flex-col">
+        <section className="rounded-[30px] border border-white/10 bg-black/35 px-5 py-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{
+              scale: 1,
+              opacity: 1,
+            }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="mx-auto flex w-full flex-col items-center"
+          >
+            <motion.div
+              animate={{
+                scale: [1, 1.05, 1],
+                filter: isLiberalWin
+                  ? ['drop-shadow(0 0 10px rgba(103,232,249,0.35))', 'drop-shadow(0 0 28px rgba(103,232,249,0.8))', 'drop-shadow(0 0 10px rgba(103,232,249,0.35))']
+                  : ['drop-shadow(0 0 10px rgba(248,113,113,0.35))', 'drop-shadow(0 0 28px rgba(248,113,113,0.8))', 'drop-shadow(0 0 10px rgba(248,113,113,0.35))'],
+              }}
+              transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+              className="mb-5"
+            >
+              {isLiberalWin ? (
+                <Shield size={70} className="text-cyan-300" />
+              ) : (
+                <Skull size={70} className="text-red-400" />
+              )}
+            </motion.div>
 
-        {/* Player Debriefing */}
-        <div className="w-full tactical-panel p-4 sm:p-6 mb-6 flex-1 overflow-y-auto border border-cyan-500/20 relative min-h-0">
-          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-500/50" />
-          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-500/50" />
-          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-500/50" />
-          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-500/50" />
+            <h1
+              className={`min-h-[3.6rem] text-3xl font-black uppercase tracking-[0.18em] sm:min-h-[4.2rem] sm:text-4xl ${
+                isLiberalWin ? 'text-cyan-300' : 'text-red-400'
+              }`}
+            >
+              {typedTitle}
+              {typedTitle.length < winnerTitle.length && <span className="animate-pulse text-white/60">|</span>}
+            </h1>
 
-          <h3 className="text-left font-mono text-white/50 mb-4 tracking-[0.2em] text-[10px] sm:text-xs uppercase border-b border-cyan-500/20 pb-2">
-            {'>'} FULL_DEBRIEFING_LOG
-          </h3>
-          <div className="flex flex-col gap-2">
-            {gameState.players.map(p => (
-              <div key={p.id} className="p-2.5 sm:p-3 flex items-center justify-between border-b border-white/5 bg-black/40">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`h-7 w-7 sm:h-8 sm:w-8 shrink-0 flex items-center justify-center border font-mono font-bold
-                    ${p.role === ROLES.HITLER ? 'bg-red-950 border-red-500 text-red-500' :
-                      p.role === ROLES.FASCIST ? 'bg-red-900/40 border-red-500/50 text-red-400' :
-                      'bg-cyan-900/40 border-cyan-500/50 text-cyan-400'}`}
+            <div
+              className={`mt-4 w-full rounded-[22px] border px-4 py-4 text-left ${
+                isLiberalWin
+                  ? 'border-cyan-400/22 bg-cyan-950/25'
+                  : 'border-red-500/20 bg-red-950/30'
+              }`}
+            >
+              <p className="text-[10px] font-mono font-black uppercase tracking-[0.26em] text-white/55">
+                Final Debrief
+              </p>
+              <p className="mt-3 min-h-[2.75rem] text-sm font-mono uppercase tracking-[0.12em] text-white/85">
+                {typedReason}
+                {typedReason.length < (gameState.winReason || '').length && (
+                  <span className="animate-pulse text-white/45">|</span>
+                )}
+              </p>
+            </div>
+
+            <div className="mt-5 grid w-full grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={onReplay}
+                className={`flex h-12 items-center justify-center gap-2 rounded-2xl text-[11px] font-mono font-black uppercase tracking-[0.18em] transition-colors ${
+                  isLiberalWin
+                    ? 'bg-cyan-300 text-black hover:bg-cyan-200'
+                    : 'bg-red-500 text-white hover:bg-red-400'
+                }`}
+              >
+                <ArrowLeft size={16} />
+                Replay Game
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBreakdown((value) => !value)}
+                className="flex h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white/75 transition-colors hover:bg-white/[0.08]"
+              >
+                {showBreakdown ? 'Back To Outcome' : 'View Breakdown'}
+              </button>
+            </div>
+          </motion.div>
+        </section>
+
+        {!showBreakdown ? (
+          <section className="mt-4 space-y-4">
+            <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
+                Final Events
+              </p>
+              <div className="mt-3 grid gap-2">
+                {debrief.recentEvents.map((event, index) => (
+                  <motion.div
+                    key={`${event}-${index}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 + index * 0.12 }}
+                    className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3 text-sm leading-relaxed text-white/72"
                   >
-                    {p.role === ROLES.HITLER ? <Crown size={13} /> :
-                     p.role === ROLES.FASCIST ? <Skull size={13} /> : <Shield size={13} />}
+                    {event}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
+                System Analysis
+              </p>
+              <div className="mt-3 grid gap-2">
+                {debrief.systemAnalysis.map((note, index) => (
+                  <div key={`${note}-${index}`} className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-sm leading-relaxed text-white/65">{note}</p>
                   </div>
-                  <span className={`font-mono text-xs sm:text-sm uppercase tracking-wider truncate text-white ${!p.isAlive ? 'line-through opacity-50 text-red-500' : ''}`}>
-                    {p.name}
-                  </span>
-                </div>
-                <span className={`shrink-0 ml-2 text-[9px] sm:text-[10px] uppercase font-mono tracking-widest px-1.5 py-0.5 border
-                    ${p.role === ROLES.HITLER ? 'text-red-500 border-red-500/40 bg-red-950' :
-                      p.role === ROLES.FASCIST ? 'text-red-400 border-red-500/20 bg-red-900/20' :
-                      'text-cyan-400 border-cyan-500/20 bg-cyan-900/20'}`}
-                >
-                  [{p.role === ROLES.HITLER ? 'Hitler' : p.role === ROLES.FASCIST ? 'Fascist' : 'Liberal'}]
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+            <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
+                  Revealing Roles
+                </p>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/65">
+                  {Math.min(revealedCount, gameState.players.length)}/{gameState.players.length}
                 </span>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Actions */}
-        {isHost ? (
-          <motion.button
-            whileTap={{ scale: 0.985 }}
-            onClick={() => window.location.reload()}
-            className="w-full h-[64px] bg-cyan-400 text-black font-mono font-black uppercase tracking-[0.3em] text-xs sm:text-sm shadow-[0_0_20px_rgba(0,240,255,0.3)] flex items-center justify-center"
-          >
-            {'>'} RETURN TO BRIEFING ROOM
-          </motion.button>
-        ) : (
-          <div className="text-center text-cyan-500/50 text-xs font-mono uppercase tracking-[0.2em] animate-pulse">
-            Waiting for the host to reopen the room...
-          </div>
+              <div className="mt-3 grid gap-2">
+                {gameState.players.slice(0, revealedCount).map((player, index) => {
+                  const tag = getDebriefTagMeta(player, gameState, debrief.chronologicalLogs);
+
+                  return (
+                    <motion.div
+                      key={player.id}
+                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="rounded-[20px] border border-white/10 bg-black/35 px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                                player.role === ROLES.HITLER
+                                  ? 'border-red-400/30 bg-red-500/10 text-red-100'
+                                  : player.role === ROLES.FASCIST
+                                    ? 'border-red-400/20 bg-red-500/8 text-red-200'
+                                    : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'
+                              }`}
+                            >
+                              {player.role === ROLES.HITLER ? (
+                                <Crown size={14} />
+                              ) : player.role === ROLES.FASCIST ? (
+                                <Skull size={14} />
+                              ) : (
+                                <Shield size={14} />
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <p className={`truncate text-sm font-black uppercase tracking-[0.08em] text-white ${!player.isAlive ? 'opacity-55 line-through' : ''}`}>
+                                {player.name}
+                              </p>
+                              <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.18em] text-white/45">
+                                {player.role}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${tag.className}`}>
+                          {tag.label}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+
+                {revealedCount < gameState.players.length && (
+                  <div className="rounded-[20px] border border-dashed border-white/10 bg-white/[0.02] px-4 py-4">
+                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/45">
+                      Decrypting next role...
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
+                Recent Match Log
+              </p>
+              <div className="mt-3 grid gap-2">
+                {debrief.chronologicalLogs.length ? (
+                  debrief.chronologicalLogs.map((entry, index) => (
+                    <div key={`${entry}-${index}`} className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
+                      <p className="text-sm leading-relaxed text-white/62">{entry}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-sm leading-relaxed text-white/50">
+                      No extra log data was captured for the final turns.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         )}
+
+        <div className="mt-4 pb-2 text-center">
+          <p className="text-[11px] font-mono font-black uppercase tracking-[0.2em] text-white/35">
+            {me?.isHost ? 'Host controls remain in the top bar if you want a full room reset.' : 'Replay Game returns this device to the home screen.'}
+          </p>
+        </div>
       </div>
     </div>
   );

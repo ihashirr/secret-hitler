@@ -31,12 +31,22 @@
     color: var(--color-paper-light);
     font-family: var(--font-sans);
     overscroll-behavior: none;
-    overflow: hidden;
-    user-select: none;
+    overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
     background-image:
       radial-gradient(circle at top, rgba(0, 240, 255, 0.06), transparent 35%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    touch-action: manipulation;
   }
 }
 
@@ -70,10 +80,6 @@
       radial-gradient(circle at 80% 30%, rgba(0, 0, 0, 0.14) 0.5px, transparent 1px),
       radial-gradient(circle at 40% 80%, rgba(0, 0, 0, 0.1) 0.4px, transparent 0.9px);
     background-size: 18px 18px, 22px 22px, 26px 26px;
-  }
-
-  .text-glow-cyan {
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
   }
 }
 

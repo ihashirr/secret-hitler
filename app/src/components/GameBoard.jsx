@@ -1,7 +1,12 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { PHASES, FASCIST_TO_WIN, LIBERAL_TO_WIN, MAX_ELECTION_TRACKER } from '../lib/constants';
-import { Shield, Skull, Check } from 'lucide-react';
+import {
+  EXECUTIVE_POWERS,
+  FASCIST_TO_WIN,
+  LIBERAL_TO_WIN,
+  MAX_ELECTION_TRACKER,
+  PHASES,
+} from '../lib/constants';
+import { Shield, Skull } from 'lucide-react';
 import GameOverlay from './GameOverlay';
 
 const getStableNumber = (seed, min, max) => {
@@ -39,26 +44,161 @@ const getPlayerGridCols = (count) => {
 };
 
 const getPlayerCardSize = (count) => {
-  if (count >= 9) return 'h-[min(12.5vh,100px)] max-w-[82px] sm:h-[min(13.5vh,112px)] sm:max-w-[96px]';
-  if (count >= 7) return 'h-[min(13.5vh,108px)] max-w-[88px] sm:h-[min(14.5vh,118px)] sm:max-w-[104px]';
-  return 'h-[min(15vh,122px)] max-w-[100px] sm:h-[min(16vh,132px)] sm:max-w-[116px]';
+  if (count >= 9) return 'h-[min(11.5vh,92px)] max-w-[78px] sm:h-[min(13vh,108px)] sm:max-w-[92px]';
+  if (count >= 7) return 'h-[min(12.5vh,102px)] max-w-[84px] sm:h-[min(14vh,116px)] sm:max-w-[100px]';
+  return 'h-[min(14vh,116px)] max-w-[96px] sm:h-[min(15vh,128px)] sm:max-w-[112px]';
 };
 
-export default function GameBoard({ gameState, playerId, onNominate, onVote, onDiscard, onEnact, onKill }) {
+const getVotingPlayerCardSize = (count) => {
+  if (count >= 9) return 'min-h-[104px] max-w-[72px] sm:min-h-[112px] sm:max-w-[78px]';
+  if (count >= 7) return 'min-h-[110px] max-w-[78px] sm:min-h-[118px] sm:max-w-[86px]';
+  return 'min-h-[116px] max-w-[84px] sm:min-h-[126px] sm:max-w-[92px]';
+};
+
+const getVotingStatusMeta = (player, isRevealed, finalVote) => {
+  if (!player.isAlive) {
+    return {
+      label: 'Observer',
+      className: 'text-white/40',
+      dotClassName: 'bg-white/20',
+    };
+  }
+
+  if (isRevealed) {
+    if (finalVote === 'YA') {
+      return {
+        label: 'Ja',
+        className: 'text-cyan-100',
+        dotClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.45)]',
+      };
+    }
+
+    if (finalVote === 'NEIN') {
+      return {
+        label: 'Nein',
+        className: 'text-red-100',
+        dotClassName: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.45)]',
+      };
+    }
+  }
+
+  if (player.hasVoted) {
+    return {
+      label: 'Voted',
+      className: 'text-cyan-100',
+      dotClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.35)]',
+    };
+  }
+
+  return {
+    label: 'Waiting',
+    className: 'text-white/55',
+    dotClassName: 'bg-white/25',
+  };
+};
+
+const getVotingGroups = (players) => {
+  const voted = players.filter((player) => player.isAlive && player.hasVoted);
+  const waiting = players.filter((player) => player.isAlive && !player.hasVoted);
+  const observers = players.filter((player) => !player.isAlive);
+
+  return [
+    { key: 'voted', label: 'Voted', players: voted },
+    { key: 'waiting', label: 'Waiting', players: waiting },
+    { key: 'observers', label: 'Observers', players: observers },
+  ].filter((group) => group.players.length);
+};
+
+const getVoteRevealGroups = (players, votes = {}) => {
+  const jaPlayers = players.filter((player) => player.isAlive && votes[player.id] === 'YA');
+  const neinPlayers = players.filter((player) => player.isAlive && votes[player.id] === 'NEIN');
+  const observers = players.filter((player) => !player.isAlive);
+
+  return [
+    { key: 'YA', label: 'Ja', players: jaPlayers, tone: 'ja' },
+    { key: 'NEIN', label: 'Nein', players: neinPlayers, tone: 'nein' },
+    { key: 'OBSERVERS', label: 'Observers', players: observers, tone: 'observer' },
+  ].filter((group) => group.players.length);
+};
+
+export default function GameBoard({
+  gameState,
+  playerId,
+  directorState,
+  onNominate,
+  onVote,
+  onDiscard,
+  onRequestVeto,
+  onRespondVeto,
+  onEnact,
+  onInvestigate,
+  onSpecialElection,
+  onAcknowledgePeek,
+  onKill,
+}) {
   const myActualId = gameState?.myPlayerId || playerId;
+  const me = gameState.players.find((player) => player.id === myActualId);
   const isPresident = gameState.amIPresident || myActualId === gameState.currentPresident;
+  const isChancellor = gameState.amIChancellor || myActualId === gameState.currentChancellor;
+  const executivePower = gameState.executivePower;
 
   const canNominate = gameState.phase === PHASES.NOMINATION && isPresident;
-  const canKill = gameState.phase === PHASES.EXECUTIVE_ACTION && isPresident;
+  const canExecutiveTarget =
+    gameState.phase === PHASES.EXECUTIVE_ACTION &&
+    isPresident &&
+    [
+      EXECUTIVE_POWERS.INVESTIGATE,
+      EXECUTIVE_POWERS.SPECIAL_ELECTION,
+      EXECUTIVE_POWERS.EXECUTION,
+    ].includes(executivePower);
 
   const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
   const [pendingSelection, setPendingSelection] = React.useState(null);
+  const [recentVoteIds, setRecentVoteIds] = React.useState([]);
+  const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
+  const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
   const prevPhaseRef = React.useRef(gameState.phase);
+  const prevVoteStateRef = React.useRef({});
+  const voteStateReadyRef = React.useRef(false);
 
   React.useEffect(() => {
     setPendingSelection(null);
   }, [gameState.phase]);
+
+  React.useEffect(() => {
+    const nextVoteState = gameState.players.reduce((accumulator, player) => {
+      accumulator[player.id] = Boolean(player.hasVoted);
+      return accumulator;
+    }, {});
+
+    if (!voteStateReadyRef.current) {
+      voteStateReadyRef.current = true;
+      prevVoteStateRef.current = nextVoteState;
+      return undefined;
+    }
+
+    if (gameState.phase !== PHASES.VOTING) {
+      prevVoteStateRef.current = nextVoteState;
+      return undefined;
+    }
+
+    const justVotedIds = gameState.players
+      .filter((player) => player.isAlive && player.hasVoted && !prevVoteStateRef.current[player.id])
+      .map((player) => player.id);
+
+    prevVoteStateRef.current = nextVoteState;
+
+    if (!justVotedIds.length) return undefined;
+
+    setRecentVoteIds((current) => Array.from(new Set([...current, ...justVotedIds])));
+
+    const timer = window.setTimeout(() => {
+      setRecentVoteIds((current) => current.filter((id) => !justVotedIds.includes(id)));
+    }, 650);
+
+    return () => window.clearTimeout(timer);
+  }, [gameState.phase, gameState.players]);
 
   React.useEffect(() => {
     let revealTimer;
@@ -96,9 +236,85 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
     };
   }, [gameState.phase, gameState.lastVotes]);
 
-  const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
+  React.useEffect(() => {
+    if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
+      setRevealedVoteIds([]);
+      setRevealedVoteTotals({ YA: 0, NEIN: 0 });
+      return undefined;
+    }
+
+    const orderedPlayers = [...gameState.players]
+      .filter((player) => player.isAlive && revealState.votes[player.id])
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+
+    setRevealedVoteIds([]);
+    setRevealedVoteTotals({ YA: 0, NEIN: 0 });
+
+    const timers = orderedPlayers.map((player, index) =>
+      window.setTimeout(() => {
+        const vote = revealState.votes[player.id];
+        setRevealedVoteIds((current) => (current.includes(player.id) ? current : [...current, player.id]));
+        setRevealedVoteTotals((current) => ({
+          ...current,
+          [vote]: (current[vote] || 0) + 1,
+        }));
+      }, 220 + index * 120),
+    );
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [gameState.phase, gameState.players, revealState]);
+
+  const viewerHasImmediateAction =
+    canNominate ||
+    ['VOTE', 'DISCARD_POLICY', 'ENACT_POLICY', 'RESPOND_VETO', 'PEEK_POLICIES', 'INVESTIGATE', 'SPECIAL_ELECTION', 'EXECUTION'].includes(directorState?.currentAction) ||
+    (gameState.phase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && gameState.drawnCards?.length > 0) ||
+    (gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && isChancellor && gameState.drawnCards?.length > 0);
+
+  const showVoteReveal =
+    Boolean(revealState) &&
+    gameState.phase !== PHASES.VOTING &&
+    !viewerHasImmediateAction;
+  const isVoteRevealPhase = showVoteReveal;
+  const displayPhase = showVoteReveal ? PHASES.VOTING : gameState.phase;
   const playerCount = gameState.players.length;
   const aliveCount = gameState.players.filter((player) => player.isAlive).length;
+  const votedCount = gameState.players.filter((player) => player.isAlive && player.hasVoted).length;
+  const voteResponsesRemaining = Math.max(0, aliveCount - votedCount);
+  const voteMajority = Math.floor(aliveCount / 2) + 1;
+  const voteProgressPercent = aliveCount ? (votedCount / aliveCount) * 100 : 0;
+  const waitingPlayersLabel =
+    voteResponsesRemaining === 0
+      ? 'All responses received'
+      : `${voteResponsesRemaining} player${voteResponsesRemaining === 1 ? '' : 's'} remaining`;
+  const revealIsApproved = revealState?.result === 'APPROVED';
+  const revealProgressTotal = revealedVoteTotals.YA + revealedVoteTotals.NEIN;
+  const revealJaPercent = revealProgressTotal ? (revealedVoteTotals.YA / revealProgressTotal) * 100 : 0;
+  const revealNeinPercent = revealProgressTotal ? (revealedVoteTotals.NEIN / revealProgressTotal) * 100 : 0;
+  const revealOutcomeTitle = revealIsApproved ? 'Government Elected' : 'Vote Failed';
+  const revealNextStep =
+    revealIsApproved
+      ? gameState.phase === PHASES.GAME_OVER
+        ? 'Hitler took office. The match ends here.'
+        : gameState.phase === PHASES.LEGISLATIVE_PRESIDENT
+          ? 'President is selecting which policies move forward.'
+          : gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR
+            ? 'Chancellor is deciding the final policy.'
+            : 'The government moves into the legislative session.'
+      : gameState.chaosTriggered && gameState.chaosPolicy
+        ? `Chaos auto-enacted a ${gameState.chaosPolicy.toLowerCase()} policy.`
+        : `Election tracker advances to ${gameState.electionTracker}/${MAX_ELECTION_TRACKER}.`;
+  const voteStatusTitle = showVoteReveal
+    ? 'Vote Result'
+    : directorState?.primaryInstruction?.title ||
+      (me?.isAlive === false ? 'Observer Only' : me?.hasVoted ? 'Vote Locked' : 'Vote In Private');
+  const voteStatusCopy = showVoteReveal
+    ? `${revealState?.ya || 0} Ja • ${revealState?.nein || 0} Nein`
+    : directorState?.primaryInstruction?.description ||
+      (me?.isAlive === false
+        ? 'You have been eliminated. Watch the table, but you do not vote anymore.'
+        : me?.hasVoted
+          ? 'Your vote is in. Waiting for the rest of the table.'
+          : 'Cast your vote on this device now.');
 
   const handleNominate = (id) => {
     const player = gameState.players.find((candidate) => candidate.id === id);
@@ -110,10 +326,22 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
     setPendingSelection({ id, name: player?.name, type: 'KILL' });
   };
 
+  const handleInvestigate = (id) => {
+    const player = gameState.players.find((candidate) => candidate.id === id);
+    setPendingSelection({ id, name: player?.name, type: 'INVESTIGATE' });
+  };
+
+  const handleSpecialElection = (id) => {
+    const player = gameState.players.find((candidate) => candidate.id === id);
+    setPendingSelection({ id, name: player?.name, type: 'SPECIAL_ELECTION' });
+  };
+
   const confirmSelection = () => {
     if (!pendingSelection) return;
     if (pendingSelection.type === 'NOMINATE') onNominate(pendingSelection.id);
     if (pendingSelection.type === 'KILL') onKill(pendingSelection.id);
+    if (pendingSelection.type === 'INVESTIGATE') onInvestigate(pendingSelection.id);
+    if (pendingSelection.type === 'SPECIAL_ELECTION') onSpecialElection(pendingSelection.id);
     setPendingSelection(null);
   };
 
@@ -121,38 +349,37 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
 
   const renderTrack = (current, max, type) => {
     const isFascist = type === 'FASCIST';
-    const accentClass = isFascist
-      ? 'border-[#7c1221] bg-[linear-gradient(180deg,#2a090d_0%,#1a0608_100%)] text-[#ff7b7b]'
-      : 'border-[#8eb9e0] bg-[linear-gradient(180deg,#eef5fb_0%,#ddeaf7_100%)] text-[#2b5c8f]';
-    const inactiveClass = isFascist
-      ? 'border-[#5a1216]/70 bg-[#22090b] text-[#8c5053]'
-      : 'border-[#9ec0dd]/50 bg-[#f9fbfe] text-[#7c9cb8]';
     const fillClass = isFascist
-      ? 'border-[#ff6b73] bg-[linear-gradient(180deg,#c1272d_0%,#82131a_100%)] text-white'
-      : 'border-[#87bfff] bg-[linear-gradient(180deg,#4b88c4_0%,#2b5c8f_100%)] text-white';
-    const summary = isFascist ? 'Orders at 3, 4, 5' : '5 to secure';
+      ? 'border-red-400/35 bg-[linear-gradient(180deg,#c1272d_0%,#701118_100%)] text-red-50'
+      : 'border-cyan-300/30 bg-[linear-gradient(180deg,#4b88c4_0%,#234a72_100%)] text-cyan-50';
+    const inactiveClass = isFascist
+      ? 'border-red-950 bg-[#15080a] text-red-200/18'
+      : 'border-cyan-950 bg-[#0b141d] text-cyan-100/18';
+    const accentTextClass = isFascist ? 'text-red-100/82' : 'text-cyan-100/82';
+    const summary = isFascist ? 'powers at 3, 4, 5' : '5 to secure';
     const Icon = isFascist ? Skull : Shield;
 
     return (
-      <div className={`relative overflow-hidden rounded-[22px] border p-3 shadow-[0_14px_32px_rgba(0,0,0,0.24)] sm:p-3.5 ${accentClass}`}>
-        <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
-
-        <div className="relative z-10 flex items-center justify-between gap-3">
+      <div className="rounded-[14px] border border-white/6 bg-black/18 px-3 py-2">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] opacity-80">
+            <p className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}>
               {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
             </p>
-            <p className={`mt-1 text-[9px] font-mono uppercase tracking-[0.16em] ${isFascist ? 'text-red-100/70' : 'text-[#4c7093]'}`}>
+            <p className="mt-1 text-[9px] font-mono uppercase tracking-[0.16em] text-white/28">
               {summary}
             </p>
           </div>
 
-          <div className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-[0.2em] ${isFascist ? 'border-red-400/35 bg-red-950/35 text-red-200' : 'border-[#2b5c8f]/20 bg-white/65 text-[#2b5c8f]'}`}>
-            {current}/{max}
+          <div className="flex items-center gap-2">
+            <Icon size={12} className={accentTextClass} />
+            <span className={`text-[11px] font-mono font-black uppercase tracking-[0.18em] ${accentTextClass}`}>
+              {current}/{max}
+            </span>
           </div>
         </div>
 
-        <div className="relative z-10 mt-2 grid gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
+        <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
           {Array.from({ length: max }).map((_, index) => {
             const isActive = index < current;
             const slotMeta = getTrackSlotMeta(type, index);
@@ -160,19 +387,17 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
             return (
               <div
                 key={index}
-                className={`relative min-h-[34px] rounded-xl border px-1 py-1 transition-all duration-500 sm:min-h-[40px] ${isActive ? `${fillClass} shadow-sm` : inactiveClass}`}
+                className={`relative min-h-[30px] border px-1 py-1 transition-all duration-500 sm:min-h-[34px] ${isActive ? `${fillClass} shadow-[0_8px_18px_rgba(0,0,0,0.18)]` : inactiveClass}`}
               >
-                <div className="absolute inset-0 rounded-xl paper-grain opacity-10 pointer-events-none" />
-
                 <div className="relative z-10 flex h-full flex-col items-center justify-between text-center">
-                  <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80 sm:text-[7px]">
+                  <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80">
                     {slotMeta}
                   </span>
 
                   {isActive ? (
-                    <Icon size={10} className="sm:h-[12px] sm:w-[12px]" />
+                    <Icon size={9} />
                   ) : (
-                    <span className="text-[9px] font-mono font-black opacity-50 sm:text-[10px]">
+                    <span className="text-[9px] font-mono font-black opacity-38">
                       {index + 1}
                     </span>
                   )}
@@ -183,7 +408,7 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
                     initial={{ scale: 1.15, opacity: 0.55 }}
                     animate={{ scale: 1, opacity: 0 }}
                     transition={{ duration: 0.75, ease: 'easeOut' }}
-                    className={`absolute inset-0 rounded-xl pointer-events-none ${isFascist ? 'bg-red-400/50' : 'bg-cyan-300/50'}`}
+                    className={`absolute inset-0 pointer-events-none ${isFascist ? 'bg-red-400/40' : 'bg-cyan-300/40'}`}
                   />
                 )}
               </div>
@@ -195,41 +420,213 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
   };
 
   const renderBoardStage = () => {
+    if (showVoteReveal) {
+      return (
+        <div className="mx-auto w-full max-w-[1120px] px-4">
+          <div
+            className={`rounded-[30px] border px-4 py-4 shadow-[0_28px_64px_rgba(0,0,0,0.42)] ${
+              revealIsApproved
+                ? 'border-cyan-300/22 bg-[linear-gradient(180deg,rgba(8,17,24,0.98)_0%,rgba(8,13,19,0.96)_100%)]'
+                : 'border-red-400/22 bg-[linear-gradient(180deg,rgba(25,8,10,0.98)_0%,rgba(15,8,9,0.96)_100%)]'
+            }`}
+          >
+            <div className="text-center">
+              <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.26em] text-white/65">
+                Vote Result
+              </span>
+              <motion.h2
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className={`mt-3 text-xl font-black uppercase tracking-[0.14em] sm:text-2xl ${
+                  revealIsApproved ? 'text-cyan-100' : 'text-red-100'
+                }`}
+              >
+                {revealOutcomeTitle}
+              </motion.h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/62">
+                {revealNextStep}
+              </p>
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-white/8 bg-black/22 px-4 py-4">
+              <div className="relative h-4 overflow-hidden rounded-full bg-white/8">
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${revealJaPercent}%` }}
+                  transition={{ type: 'spring', stiffness: 160, damping: 24 }}
+                  className="absolute inset-y-0 left-0 bg-[linear-gradient(90deg,#36d7ff_0%,#87bfff_100%)]"
+                />
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${revealNeinPercent}%` }}
+                  transition={{ type: 'spring', stiffness: 160, damping: 24 }}
+                  className="absolute inset-y-0 right-0 bg-[linear-gradient(90deg,#f87171_0%,#c1272d_100%)]"
+                />
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-mono font-black uppercase tracking-[0.16em]">
+                <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/8 px-3 py-2 text-cyan-100">
+                  <span className="block text-[9px] tracking-[0.22em] text-cyan-100/60">Ja</span>
+                  <span className="mt-1 block text-lg">{revealedVoteTotals.YA}</span>
+                </div>
+                <div className="rounded-2xl border border-red-400/16 bg-red-500/8 px-3 py-2 text-red-100">
+                  <span className="block text-[9px] tracking-[0.22em] text-red-100/60">Nein</span>
+                  <span className="mt-1 block text-lg">{revealedVoteTotals.NEIN}</span>
+                </div>
+              </div>
+
+              <p className="mt-3 text-center text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
+                {revealProgressTotal < aliveCount ? `Revealing votes ${revealProgressTotal}/${aliveCount}` : revealNextStep}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (displayPhase === PHASES.VOTING && !showVoteReveal) {
+      return (
+        <div className="mx-auto w-full max-w-[1120px] px-4">
+          <div className="rounded-[28px] border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(10,15,21,0.98)_0%,rgba(11,17,23,0.94)_100%)] px-4 py-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <motion.span
+                  animate={{ opacity: [0.55, 1, 0.55] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2.5 py-1 text-[8px] font-mono font-black uppercase tracking-[0.26em] text-cyan-100"
+                >
+                  Live Briefing
+                </motion.span>
+                <h2 className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl">
+                  {voteStatusTitle}
+                </h2>
+                <p className="mt-1 max-w-[40rem] text-sm leading-relaxed text-white/62">
+                  {voteStatusCopy}
+                </p>
+
+                {!showVoteReveal && (
+                  <div className="mt-3 flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/52">
+                    <span>{waitingPlayersLabel}</span>
+                    {voteResponsesRemaining > 0 && (
+                      <div className="flex items-center gap-1">
+                        {[0, 1, 2].map((index) => (
+                          <motion.span
+                            key={index}
+                            animate={{ opacity: [0.25, 1, 0.25] }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut', delay: index * 0.18 }}
+                            className="h-1.5 w-1.5 rounded-full bg-cyan-200/75"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            <div className="mt-4">
+              <div className="text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48">
+                Vote Progress
+              </div>
+              <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-white/8">
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${voteProgressPercent}%` }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 28 }}
+                  className="relative h-full rounded-full bg-[linear-gradient(90deg,#36d7ff_0%,#87bfff_100%)]"
+                >
+                  {voteResponsesRemaining > 0 && (
+                    <motion.div
+                      animate={{ opacity: [0.35, 0.9, 0.35] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0)_100%)]"
+                    />
+                  )}
+                </motion.div>
+                <div
+                  className="absolute inset-y-0 w-px bg-white/20"
+                  style={{ left: `${Math.min(100, Math.max(0, (voteMajority / Math.max(1, aliveCount)) * 100))}%` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/65">
+                  {waitingPlayersLabel}
+                </span>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/38">
+                  Pass threshold: {voteMajority} JA
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="inline-flex min-w-max items-center gap-2 rounded-[18px] border border-white/8 bg-black/28 px-3 py-2 shadow-[0_12px_28px_rgba(0,0,0,0.18)] whitespace-nowrap text-[10px] font-mono font-black uppercase tracking-[0.16em] sm:gap-3 sm:text-[11px]">
+              <span className="text-cyan-100">LIB {gameState.liberalPolicies}/{LIBERAL_TO_WIN}</span>
+              <span className="text-white/18">|</span>
+              <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
+              <span className="text-white/18">|</span>
+              <span className="text-white/72">DECK {gameState.drawPileCount}</span>
+              <span className="text-white/18">|</span>
+              <span className="text-white/72">DISC {gameState.discardPileCount}</span>
+              <span className="text-white/18">|</span>
+              <span className="flex items-center gap-1.5 text-white/72">
+                <span>CHAOS</span>
+                <span className="flex items-center gap-1">
+                  {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
+                    <span
+                      key={index}
+                      className={`h-2 w-2 rounded-full ${
+                        index < gameState.electionTracker
+                          ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.35)]'
+                          : 'bg-white/18'
+                      }`}
+                    />
+                  ))}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const isDimmed = displayPhase === PHASES.VOTING;
 
     return (
-      <div className={`mx-auto w-full max-w-[1120px] px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-100'}`}>
-        <div className="grid gap-2 md:grid-cols-2">
-          {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
-          {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
+      <div className={`mx-auto w-full max-w-[1120px] px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.84]'}`}>
+        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="inline-flex min-w-max items-center gap-2 border border-white/6 bg-black/22 px-3 py-2 text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/68 shadow-[0_12px_24px_rgba(0,0,0,0.16)] sm:gap-3 sm:text-[11px]">
+            <span className="text-cyan-100">LIB {gameState.liberalPolicies}/{LIBERAL_TO_WIN}</span>
+            <span className="text-white/16">|</span>
+            <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
+            <span className="text-white/16">|</span>
+            <span>DECK {gameState.drawPileCount}</span>
+            <span className="text-white/16">|</span>
+            <span>DISC {gameState.discardPileCount}</span>
+            <span className="text-white/16">|</span>
+            <span className="flex items-center gap-1.5">
+              <span>CHAOS</span>
+              <span className="flex items-center gap-1">
+                {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
+                  <span
+                    key={index}
+                    className={`h-2 w-2 ${
+                      index < gameState.electionTracker
+                        ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.35)]'
+                        : 'bg-white/16'
+                    }`}
+                  />
+                ))}
+              </span>
+            </span>
+          </div>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <div className="rounded-2xl border border-[#2b5c8f]/18 bg-[#162231]/80 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
-            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-cyan-200/70">Deck</p>
-            <p className="mt-1 text-lg font-serif font-black text-white sm:text-xl">{gameState.drawPileCount}</p>
-          </div>
-
-          <div className="rounded-2xl border border-[#c1272d]/18 bg-[#2a1718]/80 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
-            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-red-200/70">Discard</p>
-            <p className="mt-1 text-lg font-serif font-black text-white sm:text-xl">{gameState.discardPileCount}</p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-2 py-2.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.18)]">
-            <p className="text-[7px] font-mono font-black uppercase tracking-[0.25em] text-[#d4c098]/75">Chaos</p>
-            <div className="mt-2 flex justify-center gap-1">
-              {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-2.5 w-2.5 rounded-full border transition-all duration-500 sm:h-3 sm:w-3 ${
-                    index < gameState.electionTracker
-                      ? 'border-[#8a001d] bg-[#c1272d] shadow-[0_0_10px_rgba(193,39,45,0.35)]'
-                      : 'border-[#d4c098]/30 bg-[#f4eee0]/8'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
+          {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
         </div>
       </div>
     );
@@ -239,159 +636,282 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
     const isVotingPhase = displayPhase === PHASES.VOTING;
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
     const gridColsClass = getPlayerGridCols(playerCount);
-    const playerCardSizeClass = getPlayerCardSize(playerCount);
+    const playerCardSizeClass = isVotingPhase ? getVotingPlayerCardSize(playerCount) : getPlayerCardSize(playerCount);
+    const votingGroups = isVotingPhase
+      ? showVoteReveal
+        ? getVoteRevealGroups(gameState.players, revealState?.votes)
+        : getVotingGroups(gameState.players)
+      : [];
+    const executiveLabel =
+      executivePower === EXECUTIVE_POWERS.INVESTIGATE
+        ? 'Select one player to investigate'
+        : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+          ? 'Choose the next president'
+          : executivePower === EXECUTIVE_POWERS.EXECUTION
+            ? 'Choose one target from the dock'
+            : 'Executive action in progress';
     const dockHint = canNominate
       ? 'Nominate from the dock below'
-      : canKill
-        ? 'Choose one target from the dock'
+      : canExecutiveTarget
+        ? executiveLabel
         : isVotingPhase
-          ? 'Read the table here. Vote on your own phone.'
+          ? null
           : isLegislativePhase
             ? 'Policy handoff in progress'
             : 'Private phone table';
+    const dockTitle = 'Players';
+    const dockBadgeLabel = isVotingPhase ? null : `${aliveCount}/${playerCount} Live`;
+    const dockWrapperClass = isVoteRevealPhase
+      ? 'mx-auto w-full max-w-[1120px] px-4'
+      : 'mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 px-4';
+    const dockPanelClass = isVoteRevealPhase
+      ? 'relative w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4'
+      : 'relative h-full min-h-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4';
+    const dockBodyClass = isVoteRevealPhase
+      ? 'relative z-10 pt-3'
+      : 'relative z-10 min-h-0 overflow-y-auto pt-3';
 
     return (
-      <div className="mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 px-4">
-        <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4">
+      <div className={dockWrapperClass}>
+        <div className={dockPanelClass}>
           <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
 
           <div className="relative z-10 grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/75">
-                  Operative Dock
+                  {dockTitle}
                 </p>
-                <p className="mt-1 text-[9px] leading-relaxed text-white/55 sm:text-[10px]">
-                  {dockHint}
-                </p>
+                {dockHint && (
+                  <p className="mt-1 text-[9px] leading-relaxed text-white/55 sm:text-[10px]">
+                    {dockHint}
+                  </p>
+                )}
               </div>
 
-              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.22em] text-white/70">
-                {aliveCount}/{playerCount} Live
-              </div>
+              {dockBadgeLabel && (
+                <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.22em] text-white/70">
+                  {dockBadgeLabel}
+                </div>
+              )}
             </div>
 
-            <div className="relative z-10 flex min-h-0 items-center justify-center pt-3">
-              <div className={`grid w-full justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
-                {gameState.players.map((player) => {
-                  const isSelf = player.id === myActualId;
-                  const isSelectable =
-                    (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
-                    (displayPhase === PHASES.EXECUTIVE_ACTION && canKill && player.isAlive && !isSelf);
-                  const isPending = pendingSelection?.id === player.id;
-                  const playerIsPresident = player.id === gameState.currentPresident;
-                  const playerIsChancellor = player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
-                  const isInactiveLegislator = isLegislativePhase && !playerIsPresident && !playerIsChancellor;
-                  const showVoteState = isVotingPhase && player.isAlive;
-                  const isRevealed = Boolean(revealState);
-                  const finalVote = isRevealed ? revealState.votes[player.id] : null;
+            <div className={dockBodyClass}>
+              {isVotingPhase ? (
+                <div className="space-y-4">
+                  {votingGroups.map((group) => (
+                    <div key={group.key}>
+                      {(() => {
+                        const visibleGroupPlayers = showVoteReveal
+                          ? group.key === 'OBSERVERS'
+                            ? group.players
+                            : group.players.filter((player) => revealedVoteIds.includes(player.id))
+                          : group.players;
+                        if (showVoteReveal && visibleGroupPlayers.length === 0) {
+                          return null;
+                        }
+                        const groupCount = visibleGroupPlayers.length;
+                        const groupToneClass =
+                          group.tone === 'ja'
+                            ? 'text-cyan-100/78'
+                            : group.tone === 'nein'
+                              ? 'text-red-100/78'
+                              : 'text-white/40';
 
-                  return (
-                    <div key={player.id} className="relative flex w-full justify-center">
-                      <motion.button
-                        whileHover={isSelectable ? { y: -3 } : {}}
-                        whileTap={isSelectable ? { scale: 0.97 } : {}}
-                        onClick={() => {
-                          if (!isSelectable) return;
-                          if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
-                          if (displayPhase === PHASES.EXECUTIVE_ACTION) handleKill(player.id);
-                        }}
-                        className={`group relative flex w-full flex-col overflow-hidden rounded-[20px] border border-[#d4c098] bg-[var(--color-paper-light)] p-1.5 text-center shadow-md outline-none transition-all duration-300 sm:p-2 ${playerCardSizeClass}
-                          ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
-                          ${isSelectable ? 'cursor-pointer ring-1 ring-transparent hover:border-[#b09868] hover:bg-[#fff9ed] hover:shadow-xl hover:ring-[var(--color-stamp-blue)]' : 'cursor-default'}
-                          ${!player.isAlive ? 'bg-[#d8d0c0] opacity-45 brightness-75' : ''}
-                          ${isPending ? 'z-20 scale-[1.03] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
-                          ${isRevealed && finalVote === 'YA' ? 'ring-4 ring-[#2b5c8f] shadow-xl' : ''}
-                          ${isRevealed && finalVote === 'NEIN' ? 'ring-4 ring-[var(--color-stamp-red)] shadow-xl' : ''}
-                        `}
-                      >
-                        {(playerIsPresident || playerIsChancellor) && (
-                          <span className={`absolute left-1.5 top-1.5 z-10 rounded-full px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.2em] ${
-                            playerIsPresident ? 'bg-[#d4af37] text-white' : 'bg-[#d9d9d9] text-[#2c2c2c]'
-                          }`}>
-                            {playerIsPresident ? 'PRES' : 'CHAN'}
-                          </span>
-                        )}
-
-                        <div className={`relative flex h-[58%] w-full items-end justify-center overflow-hidden rounded-[10px] border border-[#d4c098] shadow-inner ${
-                          !player.isAlive ? 'bg-[#b8b0a0]' : 'bg-[#e8dcc4]'
-                        }`}>
-                          {player.isAlive ? (
-                            <>
-                              <img
-                                src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
-                                alt="Operative Profile"
-                                className="absolute inset-0 h-full w-full object-cover pointer-events-none opacity-80 mix-blend-multiply filter sepia-[0.2] contrast-125 brightness-90"
-                              />
-                              <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
-                            </>
-                          ) : (
-                            <Skull size={18} className="relative z-10 mb-2 text-[#2c2c2c] opacity-50 pointer-events-none" />
-                          )}
-                        </div>
-
-                        <span className={`mt-1 w-full truncate font-serif text-[9px] font-black tracking-tight sm:text-[10px] ${
-                          !player.isAlive ? 'text-[#6a6a6a] line-through' : 'text-[#2c2c2c]'
-                        }`}>
-                          {player.name}
+                        return (
+                          <>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className={`text-[8px] font-mono font-black uppercase tracking-[0.24em] ${groupToneClass}`}>
+                          {group.label}{showVoteReveal && group.key !== 'OBSERVERS' ? ` (${groupCount})` : ''}
                         </span>
+                        <span className="h-px flex-1 bg-white/8" />
+                      </div>
 
-                        {showVoteState && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            {isRevealed && finalVote === 'YA' && (
-                              <motion.div
-                                initial={{ scale: 2.5, opacity: 0, rotate: -20 }}
-                                animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                                className="rounded-sm border-2 border-[#2b5c8f] px-1 text-xs font-black uppercase tracking-[0.2em] text-[#2b5c8f] opacity-90 mix-blend-multiply sm:text-sm"
+                      <div className="flex flex-wrap items-start gap-2 sm:gap-3">
+                        {visibleGroupPlayers.map((player) => {
+                          const isSelf = player.id === myActualId;
+                          const isRevealed = showVoteReveal;
+                          const finalVote = isRevealed ? revealState.votes[player.id] : null;
+                          const voteStatus = getVotingStatusMeta(player, isRevealed, finalVote);
+                          const justVoted = recentVoteIds.includes(player.id);
+
+                          return (
+                            <motion.div
+                              key={player.id}
+                              layout
+                              initial={showVoteReveal ? { opacity: 0, y: 12, scale: 0.92 } : false}
+                              animate={showVoteReveal ? { opacity: 1, y: 0, scale: 1 } : justVoted ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+                              transition={{ duration: showVoteReveal ? 0.28 : 0.45, ease: 'easeOut' }}
+                              className="relative"
+                            >
+                              <div
+                                className={`relative flex w-full flex-col items-center overflow-hidden rounded-[20px] border bg-[linear-gradient(180deg,rgba(17,19,22,0.98)_0%,rgba(10,11,13,0.96)_100%)] p-2 text-center transition-all duration-300 ${playerCardSizeClass}
+                                  ${!player.isAlive ? 'opacity-45' : ''}
+                                  ${isRevealed && finalVote === 'YA' ? 'ring-4 ring-[#2b5c8f] shadow-xl' : ''}
+                                  ${isRevealed && finalVote === 'NEIN' ? 'ring-4 ring-[var(--color-stamp-red)] shadow-xl' : ''}
+                                  ${justVoted ? 'border-cyan-300/40 shadow-[0_0_0_1px_rgba(103,232,249,0.28),0_0_26px_rgba(103,232,249,0.18)]' : ''}
+                                  ${isSelf ? 'border-cyan-300/28 shadow-[0_0_0_1px_rgba(103,232,249,0.2),0_16px_32px_rgba(0,0,0,0.25)]' : 'border-white/8 shadow-[0_12px_24px_rgba(0,0,0,0.22)]'}
+                                `}
                               >
-                                JA
-                              </motion.div>
-                            )}
+                                <div className={`relative mx-auto flex h-14 w-14 items-end justify-center overflow-hidden rounded-[18px] border ${
+                                  player.isAlive ? 'border-white/10 bg-white/[0.06]' : 'border-white/8 bg-white/[0.04]'
+                                }`}>
+                                  {player.isAlive ? (
+                                    <img
+                                      src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                                      alt="Operative Profile"
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 h-full w-full object-cover opacity-78"
+                                    />
+                                  ) : (
+                                    <Skull size={18} className="text-white/35" />
+                                  )}
+                                </div>
 
-                            {isRevealed && finalVote === 'NEIN' && (
-                              <motion.div
-                                initial={{ scale: 2.5, opacity: 0, rotate: 20 }}
-                                animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                                className="rounded-sm border-2 border-[var(--color-stamp-red)] px-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--color-stamp-red)] opacity-90 mix-blend-multiply sm:text-sm"
-                              >
-                                NEIN
-                              </motion.div>
-                            )}
+                                <span className={`mt-2 w-full truncate text-[10px] font-black uppercase tracking-[0.08em] ${
+                                  player.isAlive ? 'text-white' : 'text-white/40 line-through'
+                                }`}>
+                                  {player.name}
+                                </span>
 
-                            {!isRevealed && player.hasVoted && (
-                              <div className="absolute right-1 bottom-1 flex items-center gap-0.5 rounded-sm border border-[#b8b0a0] bg-[#d4c8b0] px-1 text-[7px] font-bold text-[#2c2c2c] shadow-sm">
-                                <Check size={7} />
-                                OK
+                                <div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] font-mono font-black uppercase tracking-[0.16em]">
+                                  <motion.span
+                                    animate={!isRevealed && player.isAlive && !player.hasVoted ? { opacity: [0.4, 1, 0.4] } : { opacity: 1 }}
+                                    transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                                    className={`h-2 w-2 rounded-full ${voteStatus.dotClassName}`}
+                                  />
+                                  <span className={voteStatus.className}>{voteStatus.label}</span>
+                                </div>
+
+                                {player.isAlive && (
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    {isRevealed && finalVote === 'YA' && (
+                                      <motion.div
+                                        initial={{ scale: 2.5, opacity: 0, rotate: -20 }}
+                                        animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
+                                        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                        className="rounded-sm border-2 border-[#2b5c8f] px-1 text-xs font-black uppercase tracking-[0.2em] text-[#2b5c8f] opacity-90 mix-blend-multiply sm:text-sm"
+                                      >
+                                        JA
+                                      </motion.div>
+                                    )}
+
+                                    {isRevealed && finalVote === 'NEIN' && (
+                                      <motion.div
+                                        initial={{ scale: 2.5, opacity: 0, rotate: 20 }}
+                                        animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
+                                        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                        className="rounded-sm border-2 border-[var(--color-stamp-red)] px-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--color-stamp-red)] opacity-90 mix-blend-multiply sm:text-sm"
+                                      >
+                                        NEIN
+                                      </motion.div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`grid w-full content-start justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
+                  {gameState.players.map((player) => {
+                    const isSelf = player.id === myActualId;
+                    const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
+                    const isSelectable =
+                      (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
+                      (displayPhase === PHASES.EXECUTIVE_ACTION &&
+                        canExecutiveTarget &&
+                        player.isAlive &&
+                        !isSelf &&
+                        !(executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated));
+                    const isPending = pendingSelection?.id === player.id;
+                    const playerIsPresident = player.id === gameState.currentPresident;
+                    const playerIsChancellor = player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
+                    const isInactiveLegislator = isLegislativePhase && !playerIsPresident && !playerIsChancellor;
 
-                            {!isRevealed && !player.hasVoted && (
-                              <div className="absolute right-1 bottom-1 flex items-center gap-0.5 text-[6px] text-[#8a8a8a] animate-pulse">
-                                <div className="h-1.5 w-1.5 rounded-full border border-[#8a8a8a] border-t-transparent animate-spin" />
-                                WAIT
-                              </div>
+                    return (
+                      <div key={player.id} className="relative flex w-full justify-center">
+                        <motion.button
+                          layout
+                          whileHover={isSelectable ? { y: -3 } : {}}
+                          whileTap={isSelectable ? { scale: 0.97 } : {}}
+                          onClick={() => {
+                            if (!isSelectable) return;
+                            if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
+                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.EXECUTION) handleKill(player.id);
+                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE) handleInvestigate(player.id);
+                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
+                          }}
+                          className={`group relative flex w-full flex-col overflow-hidden rounded-[20px] border border-[#d4c098] bg-[var(--color-paper-light)] p-1.5 text-center shadow-md outline-none transition-all duration-300 sm:p-2 ${playerCardSizeClass}
+                            ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
+                            ${isSelectable ? 'cursor-pointer ring-1 ring-transparent hover:border-[#b09868] hover:bg-[#fff9ed] hover:shadow-xl hover:ring-[var(--color-stamp-blue)]' : 'cursor-default'}
+                            ${!player.isAlive ? 'bg-[#d8d0c0] opacity-45 brightness-75' : ''}
+                            ${displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated ? 'opacity-45 grayscale-[0.3]' : ''}
+                            ${isPending ? 'z-20 scale-[1.03] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
+                          `}
+                        >
+                          {(playerIsPresident || playerIsChancellor) && (
+                            <span className={`absolute left-1.5 top-1.5 z-10 rounded-full px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.2em] ${
+                              playerIsPresident ? 'bg-[#d4af37] text-white' : 'bg-[#d9d9d9] text-[#2c2c2c]'
+                            }`}>
+                              {playerIsPresident ? 'PRES' : 'CHAN'}
+                            </span>
+                          )}
+
+                          <div className={`relative flex h-[58%] w-full items-end justify-center overflow-hidden rounded-[10px] border border-[#d4c098] shadow-inner ${
+                            !player.isAlive ? 'bg-[#b8b0a0]' : 'bg-[#e8dcc4]'
+                          }`}>
+                            {player.isAlive ? (
+                              <>
+                                <img
+                                  src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                                  alt="Operative Profile"
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="absolute inset-0 h-full w-full object-cover pointer-events-none opacity-80 mix-blend-multiply filter sepia-[0.2] contrast-125 brightness-90"
+                                />
+                                <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
+                              </>
+                            ) : (
+                              <Skull size={18} className="relative z-10 mb-2 text-[#2c2c2c] opacity-50 pointer-events-none" />
                             )}
                           </div>
-                        )}
 
-                        {isSelectable && displayPhase === PHASES.EXECUTIVE_ACTION && !isPending && (
-                          <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[var(--color-stamp-red)] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[var(--color-stamp-red)] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
-                            Eliminate
+                          <span className={`mt-1 w-full truncate font-serif text-[9px] font-black tracking-tight sm:text-[10px] ${
+                            !player.isAlive ? 'text-[#6a6a6a] line-through' : 'text-[#2c2c2c]'
+                          }`}>
+                            {player.name}
                           </span>
-                        )}
 
-                        {isSelectable && displayPhase === PHASES.NOMINATION && !isPending && (
-                          <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[#2b5c8f] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[#2b5c8f] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
-                            Nominate
-                          </span>
-                        )}
-                      </motion.button>
-                    </div>
-                  );
-                })}
-              </div>
+                          {isSelectable && displayPhase === PHASES.EXECUTIVE_ACTION && !isPending && (
+                            <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[var(--color-stamp-red)] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[var(--color-stamp-red)] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
+                              {executivePower === EXECUTIVE_POWERS.INVESTIGATE
+                                ? 'Investigate'
+                                : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+                                  ? 'Elect'
+                                  : 'Eliminate'}
+                            </span>
+                          )}
+
+                          {isSelectable && displayPhase === PHASES.NOMINATION && !isPending && (
+                            <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[#2b5c8f] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[#2b5c8f] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
+                              Nominate
+                            </span>
+                          )}
+                        </motion.button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -399,7 +919,8 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
     );
   };
 
-  const boardDimmed = Boolean(revealState || pendingSelection);
+  const boardDimmed = Boolean(pendingSelection);
+  const boardContentTopClass = isVoteRevealPhase ? 'pt-4 sm:pt-5' : 'pt-16 sm:pt-20';
 
   return (
     <motion.div
@@ -416,11 +937,11 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
         duration: revealStage === 1 ? 0.4 : 0.55,
         ease: 'easeOut',
       }}
-      className="relative h-[100dvh] w-full overflow-hidden bg-obsidian-950 pt-[44px] sm:pt-[48px]"
+      className="relative h-[100svh] w-full overflow-hidden bg-obsidian-950 pt-[calc(env(safe-area-inset-top)+56px)]"
     >
-      <div className={`absolute inset-0 z-50 pointer-events-none transition-all duration-300 ${revealStage === 0 && revealState ? 'bg-black/80' : 'bg-transparent'}`} />
+      <div className={`absolute inset-0 z-50 pointer-events-none transition-all duration-300 ${revealStage === 0 && showVoteReveal ? 'bg-black/80' : 'bg-transparent'}`} />
 
-      {revealStage === 1 && revealState && (
+      {revealStage === 1 && showVoteReveal && (
         <motion.div
           initial={{ opacity: 0.8 }}
           animate={{ opacity: 0 }}
@@ -435,16 +956,20 @@ export default function GameBoard({ gameState, playerId, onNominate, onVote, onD
       <GameOverlay
         gameState={gameState}
         playerId={playerId}
-        revealState={revealState}
+        directorState={directorState}
+        revealState={showVoteReveal ? revealState : null}
         pendingSelection={pendingSelection}
         onConfirm={confirmSelection}
         onCancel={cancelSelection}
         onVote={onVote}
         onDiscard={onDiscard}
+        onRequestVeto={onRequestVeto}
+        onRespondVeto={onRespondVeto}
         onEnact={onEnact}
+        onAcknowledgePeek={onAcknowledgePeek}
       />
 
-      <div className={`relative z-10 grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 pb-3 pt-14 transition-all duration-700 sm:gap-3 sm:pb-4 sm:pt-16 ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
+      <div className={`relative z-10 grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 pb-3 transition-all duration-700 sm:gap-3 sm:pb-4 ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         {renderBoardStage()}
         {renderPlayerDock()}
       </div>
