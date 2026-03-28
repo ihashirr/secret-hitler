@@ -7,12 +7,12 @@
 
 ## Frontend
 - Framework: Next.js 16 with React 19
-- Entry point: `app/src/app/page.jsx`
-- Phase router: `app/src/phases/PhaseRouter.jsx`
-- Phase config: `app/src/phases/config.js`
-- Global shell: `app/src/app/layout.jsx`
-- Styling: Tailwind 4 plus a small set of custom utilities in `app/src/app/globals.css`
-- Progressive phase views live under `app/src/phases/views/`
+- Entry point: `src/app/page.jsx`
+- Phase router: `src/phases/PhaseRouter.jsx`
+- Phase config: `src/phases/config.js`
+- Global shell: `src/app/layout.jsx`
+- Styling: Tailwind 4 plus a small set of custom utilities in `src/app/globals.css`
+- Progressive phase views live under `src/phases/views/`
 - UI primitives remain split across `Splash`, `Lobby`, `RoleReveal`, `GameBoard`, `GameOverlay`, `GameOver`, and `GlobalControls`
 
 ## Backend

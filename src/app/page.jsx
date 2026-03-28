@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../backend/convex/_generated/api";
+import { api } from "../../backend/convex/_generated/api";
 import GlobalControls from '../components/GlobalControls';
 import StageInfoButton from '../components/StageInfoButton';
 import StageInfoOverlay from '../components/StageInfoOverlay';

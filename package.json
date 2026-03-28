@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "cd app && next dev",
-    "build": "cd app && next build && cd .. && node scripts/sync-next-build.mjs",
+    "dev": "next dev",
+    "build": "next build",
     "vercel-build": "npm run build",
-    "start": "cd app && next start",
-    "lint": "eslint app/src backend/convex --config config/eslint.config.mjs"
+    "start": "next start",
+    "lint": "eslint src backend/convex --config config/eslint.config.mjs"
   },
   "dependencies": {
     "convex": "^1.33.1",

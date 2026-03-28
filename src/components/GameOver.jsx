@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { motion } from 'framer-motion';
-import { api } from '../../../backend/convex/_generated/api';
+import { api } from '../../backend/convex/_generated/api';
 import { FACTIONS, ROLES } from '../lib/constants';
 import { buildGameDebrief, getDebriefTagMeta } from '../engine/debriefEngine';
 import { ArrowLeft, Bot, Crown, Shield, Skull } from 'lucide-react';

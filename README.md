@@ -18,7 +18,7 @@ Mobile-first Secret Hitler clone built with Next.js and Convex.
 - `npm run dev`: runs the Next.js app from `app/`
 - `npm run build`: production build for the app
 - `npm run start`: starts the built app
-- `npm run lint`: lints `app/src` and `backend/convex`
+- `npm run lint`: lints `src` and `backend/convex`
 
 ## Notes
 - Session state is stored in `sessionStorage` so reloads keep the same room/player pair.
