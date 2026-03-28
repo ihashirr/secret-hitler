@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, Crown, Share2, Users } from 'lucide-react';
+import { Bot, Check, Copy, Crown, Share2, Users } from 'lucide-react';
+import { triggerHaptic } from '../lib/haptics';
 
 const getStableNumber = (seed, min, max) => {
   let hash = 0;
@@ -54,6 +55,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
   const handleCopy = async (value, type) => {
     try {
       await copyText(value);
+      triggerHaptic('light');
       setCopyState(type);
     } catch {
       setCopyState(null);
@@ -151,7 +153,8 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
                         </span>
                       )}
                       {player.isBot && (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono font-black uppercase tracking-[0.14em] text-white/55">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/25 bg-amber-400/12 px-2 py-0.5 text-[9px] font-mono font-black uppercase tracking-[0.14em] text-amber-100">
+                          <Bot size={10} />
                           Bot
                         </span>
                       )}
@@ -192,7 +195,10 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
             <div className="grid gap-2">
               <button
                 type="button"
-                onClick={onAddBot}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onAddBot();
+                }}
                 disabled={!canAddBot}
                 className={`flex h-12 items-center justify-center rounded-2xl border text-[11px] font-mono font-black uppercase tracking-[0.22em] transition-colors ${
                   canAddBot
@@ -204,7 +210,10 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
               </button>
               <button
                 type="button"
-                onClick={onStart}
+                onClick={() => {
+                  triggerHaptic('confirm');
+                  onStart();
+                }}
                 disabled={!canStart}
                 className={`flex h-14 items-center justify-center rounded-2xl text-sm font-mono font-black uppercase tracking-[0.28em] transition-all ${
                   canStart

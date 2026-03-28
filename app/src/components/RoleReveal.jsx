@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ROLES, FACTIONS } from '../lib/constants';
-import { Shield, Skull, Eye, EyeOff } from 'lucide-react';
+import { Bot, Shield, Skull, Eye, EyeOff } from 'lucide-react';
 
 const REVEAL_STATES = {
   IDLE: 'IDLE',
@@ -242,7 +242,15 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                              transition={{ delay: index * 0.04, type: "spring", stiffness: 300, damping: 20 }}
                              className="flex justify-between items-center bg-black/40 px-3 py-2 border-l-2 border-red-500/40 text-[10px] font-mono"
                            >
-                             <span className="text-white/90 truncate font-bold">{t.name}</span>
+                             <div className="flex min-w-0 items-center gap-2">
+                               <span className="truncate font-bold text-white/90">{t.name}</span>
+                               {t.isBot && (
+                                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-amber-100">
+                                   <Bot size={9} />
+                                   Bot
+                                 </span>
+                               )}
+                             </div>
                              <span className="shrink-0 ml-2 font-black text-red-500">[{t.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}]</span>
                            </motion.div>
                         ))}

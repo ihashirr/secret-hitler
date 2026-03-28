@@ -31,6 +31,7 @@ export default defineSchema({
     specialElectionCallerId: v.optional(v.string()),
     chaosTriggered: v.optional(v.boolean()),
     chaosPolicy: v.optional(v.string()),
+    botThinkAt: v.optional(v.number()),
   }).index("by_roomId", ["roomId"]),
 
   players: defineTable({

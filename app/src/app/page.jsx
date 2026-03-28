@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../backend/convex/_generated/api";
-import { PHASES } from '../lib/constants.js';
 import GlobalControls from '../components/GlobalControls';
 import StageInfoButton from '../components/StageInfoButton';
 import StageInfoOverlay from '../components/StageInfoOverlay';
@@ -54,21 +53,6 @@ export default function App() {
   const completePolicyPeek = useMutation(api.game.completePolicyPeek);
   const killPlayer = useMutation(api.game.killPlayer);
   const addBot = useMutation(api.game.addBot);
-  const processBots = useMutation(api.game.processBots);
-
-  // Bot Automation Loop (Host only)
-  useEffect(() => {
-    if (!roomId || !gameState || gameState.phase === PHASES.LOBBY || gameState.phase === PHASES.GAME_OVER) return;
-    
-    const me = gameState.players.find(p => p.id === playerId);
-    if (!me?.isHost) return;
-
-    const interval = setInterval(() => {
-      processBots({ roomId });
-    }, 3000); // Check every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [roomId, gameState, playerId, processBots]);
 
   // Prevent hydration mismatch: render nothing until client-side state is ready
   if (!mounted) return null;
@@ -144,7 +128,7 @@ export default function App() {
         actions={{
           onConnect: handleConnect,
           onStart: () => startGame({ roomId }),
-          onAddBot: () => addBot({ roomId }),
+          onAddBot: () => addBot({ roomId, playerId }),
           onReplay: handleExit,
           onReady: () => toggleReady({ roomId, playerId }),
           onNominate: (id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id }),

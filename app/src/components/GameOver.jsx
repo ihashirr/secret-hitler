@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { api } from '../../../backend/convex/_generated/api';
 import { FACTIONS, ROLES } from '../lib/constants';
 import { buildGameDebrief, getDebriefTagMeta } from '../engine/debriefEngine';
-import { ArrowLeft, Crown, Shield, Skull } from 'lucide-react';
+import { ArrowLeft, Bot, Crown, Shield, Skull } from 'lucide-react';
 
 const typeText = (fullText, onUpdate, delay, step = 28) => {
   const timers = [];
@@ -232,9 +232,17 @@ export default function GameOver({ gameState, playerId, onReplay }) {
                               )}
                             </span>
                             <div className="min-w-0">
-                              <p className={`truncate text-sm font-black uppercase tracking-[0.08em] text-white ${!player.isAlive ? 'opacity-55 line-through' : ''}`}>
-                                {player.name}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className={`truncate text-sm font-black uppercase tracking-[0.08em] text-white ${!player.isAlive ? 'opacity-55 line-through' : ''}`}>
+                                  {player.name}
+                                </p>
+                                {player.isBot && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-0.5 text-[8px] font-mono font-black uppercase tracking-[0.14em] text-amber-100">
+                                    <Bot size={10} />
+                                    Bot
+                                  </span>
+                                )}
+                              </div>
                               <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.18em] text-white/45">
                                 {player.role}
                               </p>

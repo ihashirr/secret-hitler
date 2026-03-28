@@ -1,6 +1,7 @@
 // Force Sync - Restructured Project
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 // Constants (Redefined for Convex environment compatibility)
 const PHASES = {
@@ -33,6 +34,33 @@ const ROLE_COUNTS: Record<number, Record<string, number>> = {
   9: { [ROLES.LIBERAL]: 5, [ROLES.FASCIST]: 3, [ROLES.HITLER]: 1 },
   10: { [ROLES.LIBERAL]: 6, [ROLES.FASCIST]: 3, [ROLES.HITLER]: 1 },
 };
+const BOT_THINK_DELAYS_MS = {
+  FAST_MIN: 450,
+  FAST_MAX: 1100,
+  DEFAULT_MIN: 900,
+  DEFAULT_MAX: 1800,
+  SLOW_MIN: 1200,
+  SLOW_MAX: 2400,
+};
+
+function getBotThinkDelayMs(room: any) {
+  let min = BOT_THINK_DELAYS_MS.DEFAULT_MIN;
+  let max = BOT_THINK_DELAYS_MS.DEFAULT_MAX;
+
+  if (room.phase === PHASES.VOTING || room.phase === PHASES.ROLE_REVEAL) {
+    min = BOT_THINK_DELAYS_MS.FAST_MIN;
+    max = BOT_THINK_DELAYS_MS.FAST_MAX;
+  } else if (
+    room.phase === PHASES.LEGISLATIVE_PRESIDENT ||
+    room.phase === PHASES.LEGISLATIVE_CHANCELLOR ||
+    room.phase === PHASES.EXECUTIVE_ACTION
+  ) {
+    min = BOT_THINK_DELAYS_MS.SLOW_MIN;
+    max = BOT_THINK_DELAYS_MS.SLOW_MAX;
+  }
+
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
 
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array];
@@ -200,23 +228,408 @@ async function setRoomState(ctx: any, room: any, players: any[], patch: any) {
   return nextRoom;
 }
 
+async function startVotingSession(ctx: any, room: any, players: any[], chancellorId: string) {
+  await clearVotes(ctx, players);
+  const votingRoom = await setRoomState(ctx, room, players, {
+    nominatedChancellorId: chancellorId,
+    currentChancellorId: undefined,
+    phase: PHASES.VOTING,
+    lastVotes: undefined,
+    chaosTriggered: false,
+    chaosPolicy: undefined,
+    botThinkAt: undefined,
+  });
+
+  await logSystem(ctx.db, room.roomId, "President nominated someone as Chancellor.");
+  return votingRoom;
+}
+
+async function passPoliciesToChancellor(ctx: any, room: any, players: any[], discardedIndex: number) {
+  if (discardedIndex < 0 || discardedIndex >= room.drawnCards.length) return null;
+
+  const drawn = [...room.drawnCards];
+  const discarded = drawn.splice(discardedIndex, 1)[0];
+
+  return setRoomState(ctx, room, players, {
+    drawnCards: drawn,
+    discardPile: [...room.discardPile, discarded],
+    phase: PHASES.LEGISLATIVE_CHANCELLOR,
+    vetoRequested: undefined,
+    botThinkAt: undefined,
+  });
+}
+
+async function openVetoRequest(ctx: any, room: any, players: any[]) {
+  const vetoRoom = await setRoomState(ctx, room, players, {
+    vetoRequested: true,
+    botThinkAt: undefined,
+  });
+  await logSystem(ctx.db, room.roomId, "Chancellor requested a veto.");
+  return vetoRoom;
+}
+
+async function resolveVetoDecision(ctx: any, room: any, players: any[], accept: boolean) {
+  if (!accept) {
+    await setRoomState(ctx, room, players, { vetoRequested: undefined });
+    await logSystem(ctx.db, room.roomId, "President rejected the veto request.");
+    return room;
+  }
+
+  const vetoRoom = await setRoomState(ctx, room, players, {
+    discardPile: [...room.discardPile, ...room.drawnCards],
+    drawnCards: [],
+    previousPresidentId: room.currentPresidentId,
+    previousChancellorId: room.currentChancellorId,
+    vetoRequested: undefined,
+    botThinkAt: undefined,
+  });
+
+  await logSystem(ctx.db, room.roomId, "Government veto accepted.");
+  await advanceElectionTracker(ctx, vetoRoom, players, "Government was inactive after veto.");
+  return vetoRoom;
+}
+
+async function resolveExecution(ctx: any, room: any, players: any[], targetPlayerId: string) {
+  const target = getPlayerById(players, targetPlayerId);
+  if (!target || !target.isAlive || target.playerId === room.currentPresidentId) return false;
+
+  await ctx.db.patch(target._id, { isAlive: false });
+  await logSystem(ctx.db, room.roomId, `${target.name} has been executed.`);
+
+  const refreshedPlayers = await getPlayersByRoomId(ctx, room.roomId);
+
+  if (target.role === ROLES.HITLER) {
+    await finishGame(ctx, room, refreshedPlayers, FACTIONS.LIBERAL, "Hitler was executed!");
+    return true;
+  }
+
+  const refreshedRoom = await getRoomByRoomId(ctx, room.roomId);
+  if (refreshedRoom) {
+    await startNextNomination(ctx, refreshedRoom, refreshedPlayers);
+  }
+
+  return true;
+}
+
+async function resolveInvestigation(ctx: any, room: any, players: any[], presidentId: string, targetPlayerId: string) {
+  const target = getPlayerById(players, targetPlayerId);
+  const investigatedPlayerIds = room.investigatedPlayerIds || [];
+
+  if (!target || !target.isAlive || target.playerId === presidentId) return false;
+  if (investigatedPlayerIds.includes(target.playerId)) return false;
+
+  const investigationRoom = await setRoomState(ctx, room, players, {
+    investigatedPlayerIds: [...investigatedPlayerIds, target.playerId],
+    lastInvestigatedPlayerId: target.playerId,
+    lastInvestigationParty: getFactionForRole(target.role),
+    lastInvestigatedById: presidentId,
+    executivePower: undefined,
+    botThinkAt: undefined,
+  });
+
+  await logSystem(ctx.db, room.roomId, `President investigated ${target.name}'s party loyalty.`);
+  await startNextNomination(ctx, investigationRoom, players);
+  return true;
+}
+
+async function beginSpecialElection(ctx: any, room: any, players: any[], presidentId: string, targetPlayerId: string) {
+  const target = getPlayerById(players, targetPlayerId);
+  if (!target || !target.isAlive || target.playerId === presidentId) return false;
+
+  await clearVotes(ctx, players);
+  await setRoomState(ctx, room, players, {
+    phase: PHASES.NOMINATION,
+    currentPresidentId: target.playerId,
+    currentChancellorId: undefined,
+    nominatedChancellorId: undefined,
+    executivePower: undefined,
+    specialElectionCallerId: presidentId,
+    chaosTriggered: false,
+    chaosPolicy: undefined,
+    botThinkAt: undefined,
+  });
+
+  await logSystem(ctx.db, room.roomId, `President called a special election for ${target.name}.`);
+  return true;
+}
+
+function getBotVote(bot: any, room: any, currentPresident: any, nominatedChancellor: any) {
+  const hitlerWouldWin =
+    room.fascistPolicies >= 3 &&
+    nominatedChancellor?.role === ROLES.HITLER;
+
+  if (hitlerWouldWin && (bot.role === ROLES.FASCIST || bot.role === ROLES.HITLER)) {
+    return VOTES.YA;
+  }
+
+  const protectsHitlerWin = hitlerWouldWin && bot.role !== ROLES.FASCIST && bot.role !== ROLES.HITLER;
+  if (protectsHitlerWin) {
+    return VOTES.NEIN;
+  }
+
+  let approvalScore = 0;
+
+  if (isFascistSidePlayer(bot)) {
+    approvalScore += isFascistSidePlayer(currentPresident) ? 0.95 : -0.15;
+    approvalScore += isFascistSidePlayer(nominatedChancellor) ? 1.35 : -0.8;
+    if (room.electionTracker === 2) approvalScore += 0.25;
+    if (room.fascistPolicies >= 4 && isFascistSidePlayer(nominatedChancellor)) approvalScore += 0.45;
+  } else {
+    approvalScore += currentPresident?.role === ROLES.LIBERAL ? 1.0 : -0.95;
+    approvalScore += nominatedChancellor?.role === ROLES.LIBERAL ? 1.15 : -1.2;
+    if (room.electionTracker === 2) approvalScore += 0.9;
+    if (room.fascistPolicies >= 4 && isFascistSidePlayer(nominatedChancellor)) approvalScore -= 0.8;
+    if (
+      room.liberalPolicies >= 4 &&
+      currentPresident?.role === ROLES.LIBERAL &&
+      nominatedChancellor?.role === ROLES.LIBERAL
+    ) {
+      approvalScore += 0.6;
+    }
+  }
+
+  approvalScore += Math.random() * 1.1 - 0.55;
+  return approvalScore >= 0 ? VOTES.YA : VOTES.NEIN;
+}
+
+function roomNeedsBotStep(room: any, players: any[]) {
+  if (!room || room.status !== "ACTIVE") return false;
+  if (room.phase === PHASES.LOBBY || room.phase === PHASES.GAME_OVER) return false;
+
+  const alivePlayers = getAlivePlayers(players);
+  const aliveBots = alivePlayers.filter((player) => player.isBot);
+  if (!aliveBots.length) return false;
+
+  if (room.phase === PHASES.ROLE_REVEAL) {
+    return aliveBots.some((bot) => !bot.isReady);
+  }
+
+  if (room.phase === PHASES.NOMINATION) {
+    return Boolean(getPlayerById(players, room.currentPresidentId)?.isBot);
+  }
+
+  if (room.phase === PHASES.VOTING) {
+    return aliveBots.some((bot) => bot.vote === undefined);
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
+    return Boolean(getPlayerById(players, room.currentPresidentId)?.isBot && room.drawnCards.length);
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
+    if (room.vetoRequested) {
+      return Boolean(getPlayerById(players, room.currentPresidentId)?.isBot);
+    }
+
+    return Boolean(getPlayerById(players, room.currentChancellorId)?.isBot && room.drawnCards.length);
+  }
+
+  if (room.phase === PHASES.EXECUTIVE_ACTION) {
+    return Boolean(getPlayerById(players, room.currentPresidentId)?.isBot && room.executivePower);
+  }
+
+  return false;
+}
+
+async function resolveSingleBotStep(ctx: any, room: any, players: any[]) {
+  const bots = getAlivePlayers(players).filter((player) => player.isBot);
+  if (bots.length === 0) return false;
+
+  if (room.phase === PHASES.ROLE_REVEAL) {
+    const nextBot = bots.find((bot) => !bot.isReady);
+    if (!nextBot) return false;
+
+    await ctx.db.patch(nextBot._id, { isReady: true });
+
+    const playersNow = await getPlayersByRoomId(ctx, room.roomId);
+    if (playersNow.every((player) => player.isReady)) {
+      await setRoomState(ctx, room, playersNow, {
+        phase: PHASES.NOMINATION,
+        nominatedChancellorId: undefined,
+        currentChancellorId: undefined,
+        botThinkAt: undefined,
+      });
+      await logSystem(ctx.db, room.roomId, "All operatives confirmed. Beginning mission.");
+    }
+    return true;
+  }
+
+  if (room.phase === PHASES.NOMINATION) {
+    const president = getPlayerById(players, room.currentPresidentId);
+    if (!president?.isBot) return false;
+
+    const pick = getBotNominationTarget(room, players);
+    if (!pick) return false;
+
+    await startVotingSession(ctx, room, players, pick.playerId);
+    return true;
+  }
+
+  if (room.phase === PHASES.VOTING) {
+    const nextBotVoter = bots.find((bot) => bot.vote === undefined);
+    if (!nextBotVoter) return false;
+
+    const currentPresident = getPlayerById(players, room.currentPresidentId);
+    const nominatedChancellor = getPlayerById(players, room.nominatedChancellorId);
+    const vote = getBotVote(nextBotVoter, room, currentPresident, nominatedChancellor);
+    await ctx.db.patch(nextBotVoter._id, { vote });
+
+    const refreshedPlayers = await getPlayersByRoomId(ctx, room.roomId);
+    const alivePlayers = getAlivePlayers(refreshedPlayers);
+    const allVotesIn = alivePlayers.every((player) => player.vote === VOTES.YA || player.vote === VOTES.NEIN);
+
+    if (allVotesIn) {
+      const finalVotes = alivePlayers.reduce<Record<string, string>>((accumulator, player) => {
+        accumulator[player.playerId] = normalizeVote(player.vote || VOTES.NEIN);
+        return accumulator;
+      }, {});
+
+      const refreshedRoom = await getRoomByRoomId(ctx, room.roomId);
+      if (refreshedRoom) {
+        await tallyVotes(ctx, refreshedRoom, refreshedPlayers, finalVotes);
+      }
+    }
+
+    return true;
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
+    const president = getPlayerById(players, room.currentPresidentId);
+    if (!president?.isBot || room.drawnCards.length === 0) return false;
+
+    await passPoliciesToChancellor(
+      ctx,
+      room,
+      players,
+      chooseBotPresidentDiscardIndex(president, room),
+    );
+    return true;
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
+    const president = getPlayerById(players, room.currentPresidentId);
+    const chancellor = getPlayerById(players, room.currentChancellorId);
+
+    if (room.vetoRequested && president?.isBot) {
+      await resolveVetoDecision(ctx, room, players, shouldBotAcceptVeto(president, room));
+      return true;
+    }
+
+    if (!chancellor?.isBot || room.vetoRequested) return false;
+
+    if (shouldBotRequestVeto(chancellor, room)) {
+      await openVetoRequest(ctx, room, players);
+      return true;
+    }
+
+    if (!room.drawnCards.length) return false;
+
+    const drawn = [...room.drawnCards];
+    const enacted = drawn.splice(chooseBotEnactIndex(chancellor, room), 1)[0];
+    await applyEnactedPolicy(ctx, room, players, enacted, {
+      source: "LEGISLATIVE",
+      discardCards: drawn,
+    });
+    return true;
+  }
+
+  if (room.phase !== PHASES.EXECUTIVE_ACTION) return false;
+
+  const president = getPlayerById(players, room.currentPresidentId);
+  if (!president?.isBot) return false;
+
+  if (room.executivePower === EXECUTIVE_POWERS.PEEK) {
+    await startNextNomination(ctx, room, players, { executivePower: undefined });
+    return true;
+  }
+
+  if (room.executivePower === EXECUTIVE_POWERS.INVESTIGATE) {
+    const target =
+      getBotInvestigationTarget(president, room, players) ||
+      getRandomLivingTarget(players, president.playerId);
+
+    if (!target) return false;
+
+    return resolveInvestigation(ctx, room, players, president.playerId, target.playerId);
+  }
+
+  if (room.executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) {
+    const target =
+      getBotSpecialElectionTarget(president, room, players) ||
+      getRandomLivingTarget(players, president.playerId);
+    if (!target) return false;
+
+    return beginSpecialElection(ctx, room, players, president.playerId, target.playerId);
+  }
+
+  if (room.executivePower === EXECUTIVE_POWERS.EXECUTION) {
+    const target =
+      getBotExecutionTarget(president, room, players) ||
+      getRandomLivingTarget(players, president.playerId);
+    if (!target) return false;
+
+    return resolveExecution(ctx, room, players, target.playerId);
+  }
+
+  return false;
+}
+
+async function resolveBotsIfNeeded(ctx: any, roomId: string) {
+  const room = await getRoomByRoomId(ctx, roomId);
+  if (!room) return;
+
+  const players = await getPlayersByRoomId(ctx, roomId);
+  const needsBotStep = roomNeedsBotStep(room, players);
+
+  if (!needsBotStep) {
+    if (room.botThinkAt !== undefined) {
+      await ctx.db.patch(room._id, { botThinkAt: undefined });
+    }
+    return;
+  }
+
+  if (room.botThinkAt !== undefined) {
+    return;
+  }
+
+  const delayMs = getBotThinkDelayMs(room);
+  const scheduledAt = Date.now() + delayMs + Math.floor(Math.random() * 17);
+
+  await ctx.db.patch(room._id, { botThinkAt: scheduledAt });
+  await ctx.scheduler.runAfter(delayMs, internal.game.runScheduledBotStep, {
+    roomId,
+    scheduledAt,
+  });
+}
+
 // Mutations
 
 export const addBot = mutation({
-  args: { roomId: v.string() },
+  args: { roomId: v.string(), playerId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const BOT_NAMES = ["CYPHER", "SPECTRE", "GHOST", "ECHO", "VOID", "NOVA", "ORBIT", "VECTOR", "ZETA", "PULSE"];
     const name = `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]}_${Math.floor(Math.random() * 999).toString().padStart(3, '0')}`;
-    const playerId = `bot_${Math.random().toString(36).slice(2, 11)}`;
+    const botPlayerId = `bot_${Math.random().toString(36).slice(2, 11)}`;
     const avatarId = Math.floor(Math.random() * 10) + 1;
+    const identity = await ctx.auth.getUserIdentity();
+    const room = await getRoomByRoomId(ctx, args.roomId);
+    if (!room || room.phase !== PHASES.LOBBY) {
+      return { success: false, error: "Bots can only be added in the lobby" };
+    }
 
     const players = await getPlayersByRoomId(ctx, args.roomId);
+    const callerId = identity?.subject || args.playerId;
+    const caller = callerId ? getPlayerById(players, callerId) : null;
+
+    if (!caller?.isHost) {
+      return { success: false, error: "Only the host can add bots" };
+    }
 
     if (players.length >= 10) return { success: false, error: "Room full" };
 
     await ctx.db.insert("players", {
         roomId: args.roomId,
-        playerId: playerId,
+        playerId: botPlayerId,
         name: name,
         isAlive: true,
         isPresident: false,
@@ -305,10 +718,13 @@ export const toggleReady = mutation({
                     phase: PHASES.NOMINATION,
                     nominatedChancellorId: undefined,
                     currentChancellorId: undefined,
+                    botThinkAt: undefined,
                 });
                 await logSystem(ctx.db, args.roomId, "All operatives confirmed. Beginning mission.");
             }
         }
+
+        await resolveBotsIfNeeded(ctx, args.roomId);
 
         return { success: true };
     }
@@ -326,12 +742,14 @@ export const leaveRoom = mutation({
         if (player.isHost) {
             const others = await getPlayersByRoomId(ctx, args.roomId);
             if (others.length > 0) {
-                const nextHost = others.find((candidate) => candidate.playerId !== args.playerId);
+                const nextHost = others.find((candidate) => !candidate.isBot);
                 if (nextHost) {
                     await ctx.db.patch(nextHost._id, { isHost: true });
                 }
             }
         }
+
+        await resolveBotsIfNeeded(ctx, args.roomId);
         return { success: true };
     }
 });
@@ -382,7 +800,7 @@ export const startGame = mutation({
             role: roles[i].role,
             party: roles[i].party,
             isAlive: true,
-            isReady: shuffledPlayers[i].isBot ? true : false,
+            isReady: false,
             isPresident: false,
             isChancellor: false,
             vote: undefined,
@@ -426,9 +844,11 @@ export const startGame = mutation({
         specialElectionCallerId: undefined,
         chaosTriggered: false,
         chaosPolicy: undefined,
+        botThinkAt: undefined,
     });
 
     await logSystem(ctx.db, args.roomId, "The game has begun.");
+    await resolveBotsIfNeeded(ctx, args.roomId);
     return { success: true };
   },
 });
@@ -447,17 +867,8 @@ export const nominateChancellor = mutation({
       return { success: false, error: "Term limit" };
     }
 
-    await clearVotes(ctx, players);
-    await setRoomState(ctx, room, players, {
-        nominatedChancellorId: args.chancellorId,
-        currentChancellorId: undefined,
-        phase: PHASES.VOTING,
-        lastVotes: undefined,
-        chaosTriggered: false,
-        chaosPolicy: undefined,
-    });
-
-    await logSystem(ctx.db, args.roomId, `President nominated someone as Chancellor.`);
+    await startVotingSession(ctx, room, players, args.chancellorId);
+    await resolveBotsIfNeeded(ctx, args.roomId);
     return { success: true };
   },
 });
@@ -494,6 +905,7 @@ export const castVote = mutation({
     }, {});
 
     await tallyVotes(ctx, room, players, finalVotes);
+    await resolveBotsIfNeeded(ctx, args.roomId);
 
     return { success: true };
   },
@@ -511,16 +923,9 @@ export const presidentDrawPolicies = mutation({
       return { success: false, error: "Invalid discard" };
     }
 
-    const drawn = [...room.drawnCards];
-    const discarded = drawn.splice(args.discardedIndex, 1)[0];
-
     const players = await getPlayersByRoomId(ctx, args.roomId);
-    await setRoomState(ctx, room, players, {
-        drawnCards: drawn,
-        discardPile: [...room.discardPile, discarded],
-        phase: PHASES.LEGISLATIVE_CHANCELLOR,
-        vetoRequested: undefined,
-    });
+    await passPoliciesToChancellor(ctx, room, players, args.discardedIndex);
+    await resolveBotsIfNeeded(ctx, args.roomId);
 
     return { success: true };
   },
@@ -540,8 +945,8 @@ export const requestVeto = mutation({
     if (room.vetoRequested) return { success: true };
 
     const players = await getPlayersByRoomId(ctx, args.roomId);
-    await setRoomState(ctx, room, players, { vetoRequested: true });
-    await logSystem(ctx.db, args.roomId, "Chancellor requested a veto.");
+    await openVetoRequest(ctx, room, players);
+    await resolveBotsIfNeeded(ctx, args.roomId);
     return { success: true };
   },
 });
@@ -558,22 +963,8 @@ export const respondVeto = mutation({
     }
 
     const players = await getPlayersByRoomId(ctx, args.roomId);
-    if (!args.accept) {
-      await setRoomState(ctx, room, players, { vetoRequested: undefined });
-      await logSystem(ctx.db, args.roomId, "President rejected the veto request.");
-      return { success: true };
-    }
-
-    const vetoRoom = await setRoomState(ctx, room, players, {
-      discardPile: [...room.discardPile, ...room.drawnCards],
-      drawnCards: [],
-      previousPresidentId: room.currentPresidentId,
-      previousChancellorId: room.currentChancellorId,
-      vetoRequested: undefined,
-    });
-
-    await logSystem(ctx.db, args.roomId, "Government veto accepted.");
-    await advanceElectionTracker(ctx, vetoRoom, players, "Government was inactive after veto.");
+    await resolveVetoDecision(ctx, room, players, args.accept);
+    await resolveBotsIfNeeded(ctx, args.roomId);
     return { success: true };
   },
 });
@@ -601,6 +992,7 @@ export const chancellorEnactPolicy = mutation({
       source: "LEGISLATIVE",
       discardCards: drawn,
     });
+    await resolveBotsIfNeeded(ctx, args.roomId);
 
     return { success: true };
   },
@@ -614,22 +1006,10 @@ export const killPlayer = mutation({
         if (room.currentPresidentId !== args.presidentId || room.executivePower !== EXECUTIVE_POWERS.EXECUTION) {
             return { success: false, error: "Invalid executive action" };
         }
-
-        const player = await getPlayerInRoom(ctx, args.roomId, args.targetPlayerId);
-        
-        if (!player || !player.isAlive || player.playerId === args.presidentId) return { success: false };
-
-        await ctx.db.patch(player._id, { isAlive: false });
-        await logSystem(ctx.db, args.roomId, `${player.name} has been executed.`);
-
         const players = await getPlayersByRoomId(ctx, args.roomId);
-
-        if (player.role === ROLES.HITLER) {
-            await finishGame(ctx, room, players, FACTIONS.LIBERAL, "Hitler was executed!");
-        } else {
-            const refreshedRoom = await getRoomByRoomId(ctx, args.roomId);
-            await startNextNomination(ctx, refreshedRoom, players);
-        }
+        const resolved = await resolveExecution(ctx, room, players, args.targetPlayerId);
+        if (!resolved) return { success: false };
+        await resolveBotsIfNeeded(ctx, args.roomId);
 
         return { success: true };
     }
@@ -646,26 +1026,16 @@ export const investigateLoyalty = mutation({
 
         const players = await getPlayersByRoomId(ctx, args.roomId);
         const target = getPlayerById(players, args.targetPlayerId);
-        const investigatedPlayerIds = room.investigatedPlayerIds || [];
-
         if (!target || !target.isAlive || target.playerId === args.presidentId) {
             return { success: false, error: "Invalid target" };
         }
 
-        if (investigatedPlayerIds.includes(target.playerId)) {
+        const resolved = await resolveInvestigation(ctx, room, players, args.presidentId, args.targetPlayerId);
+        if (!resolved) {
             return { success: false, error: "Already investigated" };
         }
 
-        const investigationRoom = await setRoomState(ctx, room, players, {
-            investigatedPlayerIds: [...investigatedPlayerIds, target.playerId],
-            lastInvestigatedPlayerId: target.playerId,
-            lastInvestigationParty: getFactionForRole(target.role),
-            lastInvestigatedById: args.presidentId,
-            executivePower: undefined,
-        });
-
-        await logSystem(ctx.db, args.roomId, `President investigated ${target.name}'s party loyalty.`);
-        await startNextNomination(ctx, investigationRoom, players);
+        await resolveBotsIfNeeded(ctx, args.roomId);
         return { success: true };
     }
 });
@@ -681,24 +1051,12 @@ export const callSpecialElection = mutation({
 
         const players = await getPlayersByRoomId(ctx, args.roomId);
         const target = getPlayerById(players, args.targetPlayerId);
-
         if (!target || !target.isAlive || target.playerId === args.presidentId) {
             return { success: false, error: "Invalid target" };
         }
 
-        await clearVotes(ctx, players);
-        await setRoomState(ctx, room, players, {
-            phase: PHASES.NOMINATION,
-            currentPresidentId: target.playerId,
-            currentChancellorId: undefined,
-            nominatedChancellorId: undefined,
-            executivePower: undefined,
-            specialElectionCallerId: room.currentPresidentId,
-            chaosTriggered: false,
-            chaosPolicy: undefined,
-        });
-
-        await logSystem(ctx.db, args.roomId, `President called a special election for ${target.name}.`);
+        await beginSpecialElection(ctx, room, players, args.presidentId, args.targetPlayerId);
+        await resolveBotsIfNeeded(ctx, args.roomId);
         return { success: true };
     }
 });
@@ -714,6 +1072,7 @@ export const completePolicyPeek = mutation({
 
         const players = await getPlayersByRoomId(ctx, args.roomId);
         await startNextNomination(ctx, room, players, { executivePower: undefined });
+        await resolveBotsIfNeeded(ctx, args.roomId);
         return { success: true };
     }
 });
@@ -732,217 +1091,270 @@ export const wipeAllData = mutation({
     }
 });
 
+function isFascistSidePlayer(player: any) {
+  return player?.role === ROLES.FASCIST || player?.role === ROLES.HITLER;
+}
+
+function pickRandomItem<T>(items: T[]) {
+  if (items.length === 0) return null;
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function pickWeightedPlayer(players: any[], getWeight: (player: any) => number) {
+  const weightedPlayers = players
+    .map((player) => ({
+      player,
+      weight: Math.max(0.05, getWeight(player)),
+    }))
+    .filter((entry) => entry.weight > 0);
+
+  if (!weightedPlayers.length) return pickRandomItem(players);
+
+  const totalWeight = weightedPlayers.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const entry of weightedPlayers) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.player;
+  }
+
+  return weightedPlayers[weightedPlayers.length - 1]?.player || pickRandomItem(players);
+}
+
+function getPolicyBuckets(cards: string[]) {
+  const liberalIndices: number[] = [];
+  const fascistIndices: number[] = [];
+
+  cards.forEach((card, index) => {
+    if (card === CARD_TYPES.LIBERAL) {
+      liberalIndices.push(index);
+    } else {
+      fascistIndices.push(index);
+    }
+  });
+
+  return { liberalIndices, fascistIndices };
+}
+
 function getBotNominationTarget(room: any, players: any[]) {
-  const presidentId = room.currentPresidentId;
-  const eligibleIds = getEligibleChancellorIds(room, players, presidentId);
+  const president = getPlayerById(players, room.currentPresidentId);
+  const eligibleIds = getEligibleChancellorIds(room, players, room.currentPresidentId);
   const eligiblePlayers = players.filter((player) => eligibleIds.includes(player.playerId));
   if (eligiblePlayers.length === 0) return null;
-  return eligiblePlayers[Math.floor(Math.random() * eligiblePlayers.length)];
+
+  return pickWeightedPlayer(eligiblePlayers, (candidate) => {
+    let score = 1;
+
+    if (isFascistSidePlayer(president)) {
+      if (room.fascistPolicies >= 3 && candidate.role === ROLES.HITLER) {
+        score += 14;
+      } else if (isFascistSidePlayer(candidate)) {
+        score += 8;
+      } else {
+        score += 2.5;
+      }
+
+      if (room.electionTracker === 2 && !isFascistSidePlayer(candidate)) {
+        score += 0.75;
+      }
+    } else {
+      if (candidate.role === ROLES.LIBERAL) {
+        score += 8;
+      } else if (candidate.role === ROLES.FASCIST) {
+        score += 1.7;
+      } else {
+        score += room.fascistPolicies >= 3 ? 0.3 : 1.2;
+      }
+
+      if (room.electionTracker === 2 && candidate.role === ROLES.LIBERAL) {
+        score += 1.5;
+      }
+    }
+
+    score *= candidate.isBot ? 0.92 : 1.08;
+    return score + Math.random() * 0.75;
+  });
 }
 
 function getRandomLivingTarget(players: any[], excludePlayerId?: string) {
   const eligiblePlayers = players.filter(
     (player) => player.isAlive && player.playerId !== excludePlayerId,
   );
-  if (eligiblePlayers.length === 0) return null;
-  return eligiblePlayers[Math.floor(Math.random() * eligiblePlayers.length)];
+  return pickRandomItem(eligiblePlayers);
 }
 
-export const processBots = mutation({
-  args: { roomId: v.string() },
+function chooseBotPresidentDiscardIndex(president: any, room: any) {
+  const { liberalIndices, fascistIndices } = getPolicyBuckets(room.drawnCards || []);
+
+  if (president?.role === ROLES.LIBERAL) {
+    return fascistIndices[0] ?? liberalIndices[0] ?? 0;
+  }
+
+  if (!liberalIndices.length) return fascistIndices[0] ?? 0;
+  if (!fascistIndices.length) return liberalIndices[0] ?? 0;
+  if (room.fascistPolicies >= 5 || room.liberalPolicies >= 4) return liberalIndices[0];
+
+  if (fascistIndices.length >= 2) {
+    return Math.random() > 0.12 ? liberalIndices[0] : fascistIndices[0];
+  }
+
+  return Math.random() > 0.22 ? liberalIndices[0] : fascistIndices[0];
+}
+
+function chooseBotEnactIndex(chancellor: any, room: any) {
+  const { liberalIndices, fascistIndices } = getPolicyBuckets(room.drawnCards || []);
+
+  if (chancellor?.role === ROLES.LIBERAL) {
+    return liberalIndices[0] ?? fascistIndices[0] ?? 0;
+  }
+
+  if (!fascistIndices.length) return liberalIndices[0] ?? 0;
+  if (!liberalIndices.length) return fascistIndices[0] ?? 0;
+  if (room.fascistPolicies >= 5 || room.liberalPolicies >= 4) return fascistIndices[0];
+
+  return Math.random() > 0.18 ? fascistIndices[0] : liberalIndices[0];
+}
+
+function shouldBotRequestVeto(chancellor: any, room: any) {
+  if (room.fascistPolicies < 5 || (room.drawnCards || []).length < 2) return false;
+
+  const { liberalIndices, fascistIndices } = getPolicyBuckets(room.drawnCards);
+
+  if (chancellor?.role === ROLES.LIBERAL) {
+    return fascistIndices.length === room.drawnCards.length;
+  }
+
+  if (liberalIndices.length === room.drawnCards.length) {
+    return Math.random() > 0.25;
+  }
+
+  return false;
+}
+
+function shouldBotAcceptVeto(president: any, room: any) {
+  if ((room.drawnCards || []).length < 2) return false;
+
+  const { liberalIndices, fascistIndices } = getPolicyBuckets(room.drawnCards);
+
+  if (president?.role === ROLES.LIBERAL) {
+    return fascistIndices.length === room.drawnCards.length;
+  }
+
+  return liberalIndices.length === room.drawnCards.length;
+}
+
+function getBotInvestigationTarget(president: any, room: any, players: any[]) {
+  const investigatedPlayerIds = room.investigatedPlayerIds || [];
+  const eligibleTargets = players.filter(
+    (player) =>
+      player.isAlive &&
+      player.playerId !== president.playerId &&
+      !investigatedPlayerIds.includes(player.playerId),
+  );
+
+  return pickWeightedPlayer(eligibleTargets, (candidate) => {
+    let score = 1;
+
+    if (isFascistSidePlayer(president)) {
+      score += candidate.role === ROLES.LIBERAL ? 3.5 : 1.2;
+    } else {
+      score += isFascistSidePlayer(candidate) ? 4.2 : 1.4;
+    }
+
+    if (!candidate.isBot) score += 1;
+    return score + Math.random() * 0.4;
+  });
+}
+
+function getBotSpecialElectionTarget(president: any, room: any, players: any[]) {
+  const eligibleTargets = players.filter(
+    (player) => player.isAlive && player.playerId !== president.playerId,
+  );
+
+  return pickWeightedPlayer(eligibleTargets, (candidate) => {
+    let score = 1;
+
+    if (isFascistSidePlayer(president)) {
+      if (room.fascistPolicies >= 3 && candidate.role === ROLES.HITLER) {
+        score += 10;
+      } else if (isFascistSidePlayer(candidate)) {
+        score += 5;
+      } else {
+        score += 1.5;
+      }
+    } else {
+      score += candidate.role === ROLES.LIBERAL ? 5 : 1.2;
+    }
+
+    if (!candidate.isBot) score += 0.6;
+    return score + Math.random() * 0.4;
+  });
+}
+
+function getBotExecutionTarget(president: any, room: any, players: any[]) {
+  const eligibleTargets = players.filter(
+    (player) => player.isAlive && player.playerId !== president.playerId,
+  );
+
+  return pickWeightedPlayer(eligibleTargets, (candidate) => {
+    let score = 1;
+
+    if (isFascistSidePlayer(president)) {
+      score += candidate.role === ROLES.LIBERAL ? 6 : 1;
+    } else if (candidate.role === ROLES.HITLER) {
+      score += room.fascistPolicies >= 4 ? 9 : 6;
+    } else if (candidate.role === ROLES.FASCIST) {
+      score += 6;
+    } else {
+      score += 1;
+    }
+
+    if (!candidate.isBot) score += 0.5;
+    return score + Math.random() * 0.5;
+  });
+}
+
+export const runScheduledBotStep = internalMutation({
+  args: { roomId: v.string(), scheduledAt: v.number() },
   handler: async (ctx, args) => {
     const room = await getRoomByRoomId(ctx, args.roomId);
-    if (!room || room.status !== "ACTIVE" || room.phase === PHASES.GAME_OVER) return { success: false };
+    if (!room) return { success: false, reason: "ROOM_MISSING" };
+
+    if (room.botThinkAt !== args.scheduledAt) {
+      return { success: false, reason: "STALE_SCHEDULE" };
+    }
 
     const players = await getPlayersByRoomId(ctx, args.roomId);
-
-    const bots = players.filter(p => p.isBot && p.isAlive);
-    if (bots.length === 0) return { success: true };
-
-    if (room.phase === PHASES.ROLE_REVEAL) {
-        const unreadyBot = bots.find(b => !b.isReady);
-        if (unreadyBot) {
-            await ctx.db.patch(unreadyBot._id, { isReady: true });
-            const playersNow = await getPlayersByRoomId(ctx, args.roomId);
-            if (playersNow.every(p => p.isReady)) {
-                await setRoomState(ctx, room, playersNow, {
-                  phase: PHASES.NOMINATION,
-                  nominatedChancellorId: undefined,
-                  currentChancellorId: undefined,
-                });
-            }
-            return { success: true, acted: "BOT_READY_SYNC" };
-        }
+    if (!roomNeedsBotStep(room, players)) {
+      await ctx.db.patch(room._id, { botThinkAt: undefined });
+      return { success: false, reason: "NO_BOT_STEP" };
     }
 
-    if (room.phase === PHASES.NOMINATION) {
-        const president = getPlayerById(players, room.currentPresidentId);
-        if (president?.isBot) {
-            const pick = getBotNominationTarget(room, players);
-            if (pick) {
-                await clearVotes(ctx, players);
-                await setRoomState(ctx, room, players, {
-                  nominatedChancellorId: pick.playerId,
-                  currentChancellorId: undefined,
-                  phase: PHASES.VOTING,
-                  lastVotes: undefined,
-                });
-                return { success: true, acted: "BOT_NOMINATION" };
-            }
-        }
+    await ctx.db.patch(room._id, { botThinkAt: undefined });
+
+    const acted = await resolveSingleBotStep(ctx, room, players);
+    if (!acted) {
+      return { success: false, reason: "BOT_IDLE" };
     }
 
-    if (room.phase === PHASES.VOTING) {
-        const botToVote = bots.find(b => b.vote === undefined);
-        if (botToVote) {
-            const nominatedChancellor = getPlayerById(players, room.nominatedChancellorId);
-            const hitlerRisk =
-              room.fascistPolicies >= 3 &&
-              nominatedChancellor?.role === ROLES.HITLER &&
-              botToVote.role !== ROLES.FASCIST;
-            const vote = hitlerRisk ? VOTES.NEIN : Math.random() > 0.4 ? VOTES.YA : VOTES.NEIN;
-            await ctx.db.patch(botToVote._id, { vote });
-            
-            const refreshedPlayers = await getPlayersByRoomId(ctx, args.roomId);
-            const alivePlayers = getAlivePlayers(refreshedPlayers);
-            const votesReceived = alivePlayers.filter(p => p.vote !== undefined);
-            
-            if (votesReceived.length === alivePlayers.length) {
-                const finalVotes = alivePlayers.reduce<Record<string, string>>((accumulator, player) => {
-                    accumulator[player.playerId] = normalizeVote(player.vote || VOTES.NEIN);
-                    return accumulator;
-                }, {});
+    await resolveBotsIfNeeded(ctx, args.roomId);
+    return { success: true };
+  },
+});
 
-                const refreshedRoom = await getRoomByRoomId(ctx, args.roomId);
-                await tallyVotes(ctx, refreshedRoom, refreshedPlayers, finalVotes);
-            }
-            return { success: true, acted: botToVote.name };
-        }
+export const processBots = mutation({
+  args: { roomId: v.string(), playerId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const players = await getPlayersByRoomId(ctx, args.roomId);
+    const identity = await ctx.auth.getUserIdentity();
+    const callerId = identity?.subject || args.playerId;
+    const caller = callerId ? getPlayerById(players, callerId) : null;
+
+    if (!caller?.isHost) {
+      return { success: false, error: "Only the host can manually trigger bots" };
     }
 
-    if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
-        const president = getPlayerById(players, room.currentPresidentId);
-        if (president?.isBot) {
-            const drawn = [...room.drawnCards];
-            const discarded = drawn.splice(Math.floor(Math.random() * 3), 1)[0];
-            await setRoomState(ctx, room, players, {
-              drawnCards: drawn,
-              discardPile: [...room.discardPile, discarded],
-              phase: PHASES.LEGISLATIVE_CHANCELLOR,
-              vetoRequested: undefined,
-            });
-            return { success: true, acted: "BOT_LEGISLATIVE_PRESIDENT" };
-        }
-    }
-
-    if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
-        const chancellor = getPlayerById(players, room.currentChancellorId);
-        const president = getPlayerById(players, room.currentPresidentId);
-
-        if (room.vetoRequested && president?.isBot) {
-            const accept = Math.random() > 0.45;
-            if (!accept) {
-                await setRoomState(ctx, room, players, { vetoRequested: undefined });
-                await logSystem(ctx.db, args.roomId, "President rejected the veto request.");
-            } else {
-                const vetoRoom = await setRoomState(ctx, room, players, {
-                  discardPile: [...room.discardPile, ...room.drawnCards],
-                  drawnCards: [],
-                  previousPresidentId: room.currentPresidentId,
-                  previousChancellorId: room.currentChancellorId,
-                  vetoRequested: undefined,
-                });
-                await logSystem(ctx.db, args.roomId, "Government veto accepted.");
-                await advanceElectionTracker(ctx, vetoRoom, players, "Government was inactive after veto.");
-            }
-            return { success: true, acted: "BOT_VETO_RESPONSE" };
-        }
-
-        if (chancellor?.isBot && !room.vetoRequested) {
-            if (room.fascistPolicies >= 5 && Math.random() > 0.7) {
-                await setRoomState(ctx, room, players, { vetoRequested: true });
-                await logSystem(ctx.db, args.roomId, "Chancellor requested a veto.");
-                return { success: true, acted: "BOT_VETO_REQUEST" };
-            }
-
-            const drawn = [...room.drawnCards];
-            const enacted = drawn.splice(Math.floor(Math.random() * drawn.length), 1)[0];
-            await applyEnactedPolicy(ctx, room, players, enacted, {
-              source: "LEGISLATIVE",
-              discardCards: drawn,
-            });
-            return { success: true, acted: "BOT_LEGISLATIVE_CHANCELLOR" };
-        }
-    }
-
-    if (room.phase === PHASES.EXECUTIVE_ACTION) {
-        const president = getPlayerById(players, room.currentPresidentId);
-        if (president?.isBot) {
-            if (room.executivePower === EXECUTIVE_POWERS.PEEK) {
-                await startNextNomination(ctx, room, players, { executivePower: undefined });
-                return { success: true, acted: "BOT_POLICY_PEEK" };
-            }
-
-            if (room.executivePower === EXECUTIVE_POWERS.INVESTIGATE) {
-                const investigatedPlayerIds = room.investigatedPlayerIds || [];
-                const eligibleTargets = players.filter((player) =>
-                  player.isAlive &&
-                  player.playerId !== president.playerId &&
-                  !investigatedPlayerIds.includes(player.playerId)
-                );
-                const target =
-                  eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)] ||
-                  getRandomLivingTarget(players, president.playerId);
-
-                if (target) {
-                    const investigationRoom = await setRoomState(ctx, room, players, {
-                      investigatedPlayerIds: [...investigatedPlayerIds, target.playerId],
-                      lastInvestigatedPlayerId: target.playerId,
-                      lastInvestigationParty: getFactionForRole(target.role),
-                      lastInvestigatedById: president.playerId,
-                      executivePower: undefined,
-                    });
-                    await logSystem(ctx.db, args.roomId, `President investigated ${target.name}'s party loyalty.`);
-                    await startNextNomination(ctx, investigationRoom, players);
-                    return { success: true, acted: "BOT_INVESTIGATION" };
-                }
-            }
-
-            if (room.executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) {
-                const target = getRandomLivingTarget(players, president.playerId);
-                if (target) {
-                    await clearVotes(ctx, players);
-                    await setRoomState(ctx, room, players, {
-                      phase: PHASES.NOMINATION,
-                      currentPresidentId: target.playerId,
-                      currentChancellorId: undefined,
-                      nominatedChancellorId: undefined,
-                      executivePower: undefined,
-                      specialElectionCallerId: president.playerId,
-                    });
-                    await logSystem(ctx.db, args.roomId, `President called a special election for ${target.name}.`);
-                    return { success: true, acted: "BOT_SPECIAL_ELECTION" };
-                }
-            }
-
-            if (room.executivePower === EXECUTIVE_POWERS.EXECUTION) {
-                const target = getRandomLivingTarget(players, president.playerId);
-                if (target) {
-                    await ctx.db.patch(target._id, { isAlive: false });
-                    await logSystem(ctx.db, args.roomId, `${target.name} has been executed.`);
-                    if (target.role === ROLES.HITLER) {
-                        await finishGame(ctx, room, players, FACTIONS.LIBERAL, "Hitler was executed!");
-                    } else {
-                        const refreshedPlayers = await getPlayersByRoomId(ctx, args.roomId);
-                        const refreshedRoom = await getRoomByRoomId(ctx, args.roomId);
-                        await startNextNomination(ctx, refreshedRoom, refreshedPlayers);
-                    }
-                    return { success: true, acted: "BOT_EXECUTION" };
-                }
-            }
-        }
-    }
-
+    await resolveBotsIfNeeded(ctx, args.roomId);
     return { success: true };
   },
 });
@@ -987,6 +1399,7 @@ export const getGameState = query({
             currentPresident: room.currentPresidentId,
             currentChancellor: room.currentChancellorId,
             nominatedChancellor: room.nominatedChancellorId,
+            botThinkAt: undefined,
             lastPeekedPolicies: undefined,
             lastPeekedById: undefined,
             lastInvestigatedPlayerId: undefined,
@@ -1086,6 +1499,7 @@ async function startNextNomination(ctx: any, room: any, players: any[], extraPat
     chaosTriggered: false,
     chaosPolicy: undefined,
     specialElectionCallerId: undefined,
+    botThinkAt: undefined,
     ...extraPatch,
   });
 
@@ -1103,6 +1517,7 @@ async function finishGame(ctx: any, room: any, players: any[], winner: string, w
     vetoRequested: undefined,
     chaosTriggered: false,
     chaosPolicy: undefined,
+    botThinkAt: undefined,
   });
 }
 
@@ -1140,6 +1555,7 @@ async function beginLegislativeSession(
     vetoRequested: undefined,
     chaosTriggered: false,
     chaosPolicy: undefined,
+    botThinkAt: undefined,
   });
 
   await logSystem(ctx.db, room.roomId, `Election passed (${yesVotes}-${noVotes}). Legislative session starting.`);
@@ -1251,6 +1667,7 @@ async function applyEnactedPolicy(
     discardPile: [...room.discardPile, ...discardCards],
     drawnCards: [],
     vetoRequested: undefined,
+    botThinkAt: undefined,
   };
 
   if (options.source === "LEGISLATIVE") {

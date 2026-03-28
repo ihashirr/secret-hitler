@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PHASES } from '../lib/constants';
+import { triggerHaptic } from '../lib/haptics';
 
 export default function GameOverlay({
   gameState,
@@ -24,6 +26,34 @@ export default function GameOverlay({
     (player) => player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor
   );
   const primaryInstruction = directorState?.primaryInstruction;
+  const currentBallotKey = `${gameState.phase}:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || gameState.currentChancellor || 'none'}`;
+  const [pendingVote, setPendingVote] = useState(null);
+  const activePendingVote =
+    pendingVote?.ballotKey === currentBallotKey &&
+    gameState.phase === PHASES.VOTING &&
+    !revealState &&
+    !me?.hasVoted
+      ? pendingVote.vote
+      : null;
+
+  const handleVoteSelection = async (approve) => {
+    if (activePendingVote || me?.hasVoted) return;
+
+    const vote = approve ? 'YA' : 'NEIN';
+    triggerHaptic('selection');
+    setPendingVote({ ballotKey: currentBallotKey, vote });
+
+    try {
+      await onVote(approve);
+    } catch {
+      setPendingVote(null);
+    }
+  };
+
+  const runWithHaptic = (action, kind = 'selection') => () => {
+    triggerHaptic(kind);
+    return action();
+  };
 
   let title = primaryInstruction?.title || '';
   let subtext = primaryInstruction?.description || '';
@@ -67,15 +97,23 @@ export default function GameOverlay({
           subtext = `${revealState.ya} Ja • ${revealState.nein} Nein`;
           isActive = true;
         } else if (me?.isAlive && !me?.hasVoted) {
-          title = 'Vote in Private';
-          subtext = `Approve or reject ${currentChancellor?.name || 'the proposed government'} on this phone.`;
+          title = activePendingVote ? 'Locking Vote' : 'Vote in Private';
+          subtext = activePendingVote
+            ? `Submitting your ${activePendingVote === 'YA' ? 'Ja' : 'Nein'} vote now.`
+            : `Approve or reject ${currentChancellor?.name || 'the proposed government'} on this phone.`;
           isActive = true;
           actionContent = (
             <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => onVote(true)}
-                className="flex min-h-[112px] items-center justify-center rounded-[24px] border border-[#2b5c8f]/15 bg-white/70 p-3 shadow-sm transition-transform active:scale-[0.98]"
+                onClick={() => handleVoteSelection(true)}
+                disabled={Boolean(activePendingVote)}
+                aria-pressed={activePendingVote === 'YA'}
+                className={`touch-manipulation flex min-h-[112px] items-center justify-center rounded-[24px] border bg-white/70 p-3 shadow-sm transition-all active:scale-[0.98] ${
+                  activePendingVote === 'YA'
+                    ? 'border-[#2b5c8f]/45 ring-2 ring-[#2b5c8f]/35'
+                    : 'border-[#2b5c8f]/15'
+                } ${activePendingVote ? 'cursor-wait opacity-85' : ''}`}
               >
                 <img
                   src="/assets/vote-yes.png"
@@ -87,8 +125,14 @@ export default function GameOverlay({
               </button>
               <button
                 type="button"
-                onClick={() => onVote(false)}
-                className="flex min-h-[112px] items-center justify-center rounded-[24px] border border-[#c1272d]/15 bg-white/70 p-3 shadow-sm transition-transform active:scale-[0.98]"
+                onClick={() => handleVoteSelection(false)}
+                disabled={Boolean(activePendingVote)}
+                aria-pressed={activePendingVote === 'NEIN'}
+                className={`touch-manipulation flex min-h-[112px] items-center justify-center rounded-[24px] border bg-white/70 p-3 shadow-sm transition-all active:scale-[0.98] ${
+                  activePendingVote === 'NEIN'
+                    ? 'border-[#c1272d]/45 ring-2 ring-[#c1272d]/35'
+                    : 'border-[#c1272d]/15'
+                } ${activePendingVote ? 'cursor-wait opacity-85' : ''}`}
               >
                 <img
                   src="/assets/vote-no.png"
@@ -98,6 +142,13 @@ export default function GameOverlay({
                   className="w-full max-w-[96px]"
                 />
               </button>
+
+              {activePendingVote && (
+                <div className="col-span-2 flex items-center justify-center gap-2 pt-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#5f5449]">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[#2c2c2c]/50" />
+                  Vote sending...
+                </div>
+              )}
             </div>
           );
         } else {
@@ -117,13 +168,21 @@ export default function GameOverlay({
           privateAudience = 'President Only';
 
           if (gameState.drawnCards) {
-            actionContent = (
-              <div className="mt-4 flex flex-wrap justify-center gap-3">
-                {gameState.drawnCards.map((card, index) => (
-                  <button
+          actionContent = (
+            <motion.div
+              key={`president-hand-${(gameState.drawnCards || []).join('-')}-${gameState.drawPileCount}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4 flex flex-wrap justify-center gap-3"
+            >
+              {gameState.drawnCards.map((card, index) => (
+                  <motion.button
                     key={index}
                     type="button"
-                    onClick={() => onDiscard(index)}
+                    onClick={runWithHaptic(() => onDiscard(index))}
+                    initial={{ opacity: 0, y: 48, rotate: -10 + index * 6, scale: 0.86 }}
+                    animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 18, delay: 0.08 * index }}
                     className="group flex flex-col items-center transition-transform active:scale-[0.98]"
                   >
                     <img
@@ -136,9 +195,9 @@ export default function GameOverlay({
                     <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#8a001d]">
                       Discard
                     </span>
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </motion.div>
             );
           }
         } else {
@@ -156,14 +215,14 @@ export default function GameOverlay({
             <div className="mt-4 grid w-full max-w-sm grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => onRespondVeto(true)}
+                onClick={runWithHaptic(() => onRespondVeto(true), 'confirm')}
                 className="rounded-2xl border border-[#2b5c8f]/20 bg-[#2b5c8f] px-4 py-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#21476d] active:scale-[0.98]"
               >
                 Accept Veto
               </button>
               <button
                 type="button"
-                onClick={() => onRespondVeto(false)}
+                onClick={runWithHaptic(() => onRespondVeto(false), 'warning')}
                 className="rounded-2xl border border-[#c1272d]/20 bg-[#c1272d] px-4 py-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#9f1d22] active:scale-[0.98]"
               >
                 Reject
@@ -181,12 +240,20 @@ export default function GameOverlay({
           if (gameState.drawnCards && !gameState.vetoRequested) {
             actionContent = (
               <div className="mt-4 flex w-full max-w-md flex-col items-center gap-4">
-                <div className="flex flex-wrap justify-center gap-3">
+                <motion.div
+                  key={`chancellor-hand-${(gameState.drawnCards || []).join('-')}-${gameState.drawPileCount}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-wrap justify-center gap-3"
+                >
                   {gameState.drawnCards.map((card, index) => (
-                    <button
+                    <motion.button
                       key={index}
                       type="button"
-                      onClick={() => onEnact(index)}
+                      onClick={runWithHaptic(() => onEnact(index), 'confirm')}
+                      initial={{ opacity: 0, y: 52, rotate: -8 + index * 5, scale: 0.88 }}
+                      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 220, damping: 18, delay: 0.08 * index }}
                       className="group flex flex-col items-center transition-transform active:scale-[0.98]"
                     >
                       <img
@@ -199,14 +266,14 @@ export default function GameOverlay({
                       <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#2b5c8f]">
                         Enact
                       </span>
-                    </button>
+                    </motion.button>
                   ))}
-                </div>
+                </motion.div>
 
                 {gameState.vetoAvailable && !gameState.vetoRequested && (
                   <button
                     type="button"
-                    onClick={onRequestVeto}
+                    onClick={runWithHaptic(onRequestVeto, 'warning')}
                     className="rounded-2xl border border-[#8a001d]/20 bg-[#c1272d] px-5 py-3 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#9f1d22] active:scale-[0.98]"
                   >
                     Request Veto
@@ -228,9 +295,20 @@ export default function GameOverlay({
           subtext = 'These are the next three policies in order. They stay in the deck.';
           actionContent = (
             <div className="mt-4 flex w-full max-w-md flex-col items-center gap-4">
-              <div className="flex flex-wrap justify-center gap-3">
+              <motion.div
+                key={`peek-hand-${(gameState.peekedPolicies || []).join('-')}-${gameState.drawPileCount}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-wrap justify-center gap-3"
+              >
                 {gameState.peekedPolicies.map((card, index) => (
-                  <div key={`${card}-${index}`} className="flex flex-col items-center">
+                  <motion.div
+                    key={`${card}-${index}`}
+                    initial={{ opacity: 0, y: 44, rotate: -8 + index * 5, scale: 0.88 }}
+                    animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 18, delay: 0.08 * index }}
+                    className="flex flex-col items-center"
+                  >
                     <img
                       src={card === 'FASCIST' ? '/assets/policy-fascist.png' : '/assets/policy-liberal.png'}
                       alt={card}
@@ -241,12 +319,12 @@ export default function GameOverlay({
                     <span className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#2b5c8f]">
                       Top {index + 1}
                     </span>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
               <button
                 type="button"
-                onClick={onAcknowledgePeek}
+                onClick={runWithHaptic(onAcknowledgePeek, 'selection')}
                 className="rounded-2xl border border-[#2b5c8f]/20 bg-[#2b5c8f] px-5 py-3 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#21476d] active:scale-[0.98]"
               >
                 Continue
@@ -365,14 +443,14 @@ export default function GameOverlay({
               <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={onConfirm}
+                  onClick={runWithHaptic(onConfirm, 'confirm')}
                   className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
                 >
                   Confirm
                 </button>
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={runWithHaptic(onCancel, 'soft')}
                   className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
                 >
                   Cancel

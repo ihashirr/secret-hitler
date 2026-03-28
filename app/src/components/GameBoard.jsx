@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   EXECUTIVE_POWERS,
   FASCIST_TO_WIN,
@@ -6,8 +7,9 @@ import {
   MAX_ELECTION_TRACKER,
   PHASES,
 } from '../lib/constants';
-import { Shield, Skull } from 'lucide-react';
+import { Bot, Shield, Skull } from 'lucide-react';
 import GameOverlay from './GameOverlay';
+import { triggerHaptic } from '../lib/haptics';
 
 const getStableNumber = (seed, min, max) => {
   let hash = 0;
@@ -158,8 +160,10 @@ export default function GameBoard({
   const [recentVoteIds, setRecentVoteIds] = React.useState([]);
   const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
   const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
+  const [deckAnimation, setDeckAnimation] = React.useState(null);
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
+  const previousDeckCountRef = React.useRef(gameState.drawPileCount);
   const voteStateReadyRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -264,6 +268,30 @@ export default function GameBoard({
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [gameState.phase, gameState.players, revealState]);
 
+  React.useEffect(() => {
+    const previousDeckCount = previousDeckCountRef.current;
+    const currentDeckCount = gameState.drawPileCount;
+    const visibleCardCount = Math.max(gameState.drawnCards?.length || 0, gameState.peekedPolicies?.length || 0);
+
+    if (typeof previousDeckCount === 'number' && currentDeckCount < previousDeckCount && visibleCardCount > 0) {
+      const nextAnimation = {
+        id: Date.now(),
+        count: Math.min(3, Math.max(1, previousDeckCount - currentDeckCount, visibleCardCount)),
+      };
+      setDeckAnimation(nextAnimation);
+
+      const timer = window.setTimeout(() => {
+        setDeckAnimation((active) => (active?.id === nextAnimation.id ? null : active));
+      }, 900);
+
+      previousDeckCountRef.current = currentDeckCount;
+      return () => window.clearTimeout(timer);
+    }
+
+    previousDeckCountRef.current = currentDeckCount;
+    return undefined;
+  }, [gameState.drawPileCount, gameState.drawnCards?.length, gameState.peekedPolicies?.length]);
+
   const viewerHasImmediateAction =
     canNominate ||
     ['VOTE', 'DISCARD_POLICY', 'ENACT_POLICY', 'RESPOND_VETO', 'PEEK_POLICIES', 'INVESTIGATE', 'SPECIAL_ELECTION', 'EXECUTION'].includes(directorState?.currentAction) ||
@@ -317,27 +345,32 @@ export default function GameBoard({
           : 'Cast your vote on this device now.');
 
   const handleNominate = (id) => {
+    triggerHaptic('selection');
     const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'NOMINATE' });
   };
 
   const handleKill = (id) => {
+    triggerHaptic('warning');
     const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'KILL' });
   };
 
   const handleInvestigate = (id) => {
+    triggerHaptic('selection');
     const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'INVESTIGATE' });
   };
 
   const handleSpecialElection = (id) => {
+    triggerHaptic('selection');
     const player = gameState.players.find((candidate) => candidate.id === id);
     setPendingSelection({ id, name: player?.name, type: 'SPECIAL_ELECTION' });
   };
 
   const confirmSelection = () => {
     if (!pendingSelection) return;
+    triggerHaptic('confirm');
     if (pendingSelection.type === 'NOMINATE') onNominate(pendingSelection.id);
     if (pendingSelection.type === 'KILL') onKill(pendingSelection.id);
     if (pendingSelection.type === 'INVESTIGATE') onInvestigate(pendingSelection.id);
@@ -345,7 +378,45 @@ export default function GameBoard({
     setPendingSelection(null);
   };
 
-  const cancelSelection = () => setPendingSelection(null);
+  const cancelSelection = () => {
+    triggerHaptic('soft');
+    setPendingSelection(null);
+  };
+
+  const renderDeckMetric = (className = 'text-white/72') => (
+    <span className={`relative inline-flex items-center ${className}`}>
+      <AnimatePresence>
+        {deckAnimation && (
+          <span className="pointer-events-none absolute left-1/2 top-1/2">
+            {Array.from({ length: deckAnimation.count }).map((_, index) => (
+              <motion.span
+                key={`${deckAnimation.id}-${index}`}
+                initial={{ opacity: 0, x: -8, y: 6, scale: 0.72, rotate: -14 + index * 7 }}
+                animate={{ opacity: [0, 0.95, 0], x: 12 + index * 10, y: -18 - index * 5, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.72, delay: index * 0.05, ease: 'easeOut' }}
+                className="absolute h-9 w-7 rounded-[8px] border border-[#d4c098]/18 bg-[linear-gradient(180deg,rgba(239,229,211,0.92)_0%,rgba(207,189,155,0.84)_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.28)] paper-grain"
+              />
+            ))}
+          </span>
+        )}
+      </AnimatePresence>
+
+      <motion.span
+        animate={
+          deckAnimation
+            ? {
+                color: ['rgba(255,255,255,0.72)', 'rgba(244,238,224,1)', 'rgba(255,255,255,0.72)'],
+                textShadow: ['0 0 0 rgba(0,0,0,0)', '0 0 18px rgba(212,192,152,0.18)', '0 0 0 rgba(0,0,0,0)'],
+              }
+            : undefined
+        }
+        transition={{ duration: 0.7, ease: 'easeOut' }}
+      >
+        DECK {gameState.drawPileCount}
+      </motion.span>
+    </span>
+  );
 
   const renderTrack = (current, max, type) => {
     const isFascist = type === 'FASCIST';
@@ -567,7 +638,7 @@ export default function GameBoard({
               <span className="text-white/18">|</span>
               <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
               <span className="text-white/18">|</span>
-              <span className="text-white/72">DECK {gameState.drawPileCount}</span>
+              {renderDeckMetric()}
               <span className="text-white/18">|</span>
               <span className="text-white/72">DISC {gameState.discardPileCount}</span>
               <span className="text-white/18">|</span>
@@ -602,7 +673,7 @@ export default function GameBoard({
             <span className="text-white/16">|</span>
             <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
             <span className="text-white/16">|</span>
-            <span>DECK {gameState.drawPileCount}</span>
+            {renderDeckMetric('text-white/68')}
             <span className="text-white/16">|</span>
             <span>DISC {gameState.discardPileCount}</span>
             <span className="text-white/16">|</span>
@@ -753,6 +824,13 @@ export default function GameBoard({
                                   ${isSelf ? 'border-cyan-300/28 shadow-[0_0_0_1px_rgba(103,232,249,0.2),0_16px_32px_rgba(0,0,0,0.25)]' : 'border-white/8 shadow-[0_12px_24px_rgba(0,0,0,0.22)]'}
                                 `}
                               >
+                                {player.isBot && (
+                                  <span className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-full border border-amber-300/25 bg-amber-400/12 px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-amber-100">
+                                    <Bot size={8} />
+                                    Bot
+                                  </span>
+                                )}
+
                                 <div className={`relative mx-auto flex h-14 w-14 items-end justify-center overflow-hidden rounded-[18px] border ${
                                   player.isAlive ? 'border-white/10 bg-white/[0.06]' : 'border-white/8 bg-white/[0.04]'
                                 }`}>
@@ -863,6 +941,13 @@ export default function GameBoard({
                               playerIsPresident ? 'bg-[#d4af37] text-white' : 'bg-[#d9d9d9] text-[#2c2c2c]'
                             }`}>
                               {playerIsPresident ? 'PRES' : 'CHAN'}
+                            </span>
+                          )}
+
+                          {player.isBot && (
+                            <span className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-full border border-amber-700/35 bg-amber-300/14 px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-[#7a5412]">
+                              <Bot size={8} />
+                              Bot
                             </span>
                           )}
 
