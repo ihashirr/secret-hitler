@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev ./app",
-    "build": "next build ./app && node scripts/sync-next-build.mjs",
+    "dev": "cd app && next dev",
+    "build": "cd app && next build && cd .. && node scripts/sync-next-build.mjs",
     "vercel-build": "npm run build",
-    "start": "next start ./app",
+    "start": "cd app && next start",
     "lint": "eslint app/src backend/convex --config config/eslint.config.mjs"
   },
   "dependencies": {
