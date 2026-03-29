@@ -7,7 +7,7 @@ import {
   MAX_ELECTION_TRACKER,
   PHASES,
 } from '../lib/constants';
-import { Bot, Shield, Skull, X } from 'lucide-react';
+import { Ban, Bot, Shield, Skull, X } from 'lucide-react';
 import FactionAccentText from './FactionAccentText';
 import GameOverlay from './GameOverlay';
 import { triggerHaptic } from '../lib/haptics';
@@ -378,6 +378,15 @@ export default function GameBoard({
   const isPresident = gameState.amIPresident || myActualId === gameState.currentPresident;
   const isChancellor = gameState.amIChancellor || myActualId === gameState.currentChancellor;
   const executivePower = gameState.executivePower;
+  const alivePlayerCount = gameState.players.filter((player) => player.isAlive).length;
+  const eligibleChancellorIdSet = React.useMemo(
+    () => new Set(gameState.eligibleChancellorIds || []),
+    [gameState.eligibleChancellorIds],
+  );
+  const termLimitedPlayerIdSet = React.useMemo(
+    () => new Set(gameState.termLimitedPlayerIds || []),
+    [gameState.termLimitedPlayerIds],
+  );
 
   const canNominate = gameState.phase === PHASES.NOMINATION && isPresident;
   const canExecutiveTarget =
@@ -388,6 +397,16 @@ export default function GameBoard({
       EXECUTIVE_POWERS.SPECIAL_ELECTION,
       EXECUTIVE_POWERS.EXECUTION,
     ].includes(executivePower);
+  const selectionPhaseActive = canNominate || canExecutiveTarget;
+  const selectionPromptLabel = canNominate
+    ? 'Choose A Chancellor'
+    : executivePower === EXECUTIVE_POWERS.INVESTIGATE
+      ? 'Choose Investigation Target'
+      : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+        ? 'Choose Next President'
+        : executivePower === EXECUTIVE_POWERS.EXECUTION
+          ? 'Choose Elimination Target'
+          : null;
 
   const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
@@ -624,6 +643,89 @@ export default function GameBoard({
           executivePower: gameState.executivePower,
         })
       : null;
+  const getSeatSelectionMeta = (player) => {
+    const isSelf = player.id === myActualId;
+    const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
+    const playerIsCurrentChancellor =
+      player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
+    const playerWasLastChancellor = player.id === gameState.lastGovernment?.chancellorId;
+    const playerWasLastPresident = player.id === gameState.lastGovernment?.presidentId;
+
+    if (canNominate) {
+      const isSelectable =
+        eligibleChancellorIdSet.size > 0
+          ? eligibleChancellorIdSet.has(player.id)
+          : player.isAlive && !isSelf && !termLimitedPlayerIdSet.has(player.id);
+
+      if (isSelectable) {
+        return {
+          isSelectable: true,
+          actionLabel: 'Nominate',
+          badgeLabel: 'Choose',
+        };
+      }
+
+      if (!player.isAlive) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Dead' };
+      }
+
+      if (isSelf) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'You' };
+      }
+
+      if (playerWasLastChancellor || termLimitedPlayerIdSet.has(player.id)) {
+        return {
+          isSelectable: false,
+          actionLabel: 'Blocked',
+          badgeLabel: playerWasLastChancellor ? 'Last Chan' : playerWasLastPresident && alivePlayerCount > 5 ? 'Last Pres' : 'Term Limit',
+        };
+      }
+
+      if (playerIsCurrentChancellor) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Chancellor' };
+      }
+
+      return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Not Eligible' };
+    }
+
+    if (canExecutiveTarget) {
+      const isSelectable =
+        player.isAlive &&
+        !isSelf &&
+        !(executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated);
+
+      if (isSelectable) {
+        return {
+          isSelectable: true,
+          actionLabel:
+            executivePower === EXECUTIVE_POWERS.INVESTIGATE
+              ? 'Investigate'
+              : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+                ? 'Elect'
+                : executivePower === EXECUTIVE_POWERS.EXECUTION
+                  ? 'Eliminate'
+                  : 'Choose',
+          badgeLabel: 'Choose',
+        };
+      }
+
+      if (!player.isAlive) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Dead' };
+      }
+
+      if (isSelf) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'You' };
+      }
+
+      if (executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated) {
+        return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Checked' };
+      }
+
+      return { isSelectable: false, actionLabel: 'Blocked', badgeLabel: 'Blocked' };
+    }
+
+    return null;
+  };
 
   const handleNominate = (id) => {
     triggerHaptic('selection');
@@ -1489,11 +1591,32 @@ export default function GameBoard({
                           <div className="h-16 w-16 rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.01)_70%,rgba(0,0,0,0.16)_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.18)]" />
                         </div>
                       </div>
+                      {selectionPhaseActive && selectionPromptLabel && (
+                        <div className="pointer-events-none absolute inset-[30%] z-10 flex items-center justify-center">
+                          <div className="rounded-full border border-white/10 bg-black/34 px-4 py-3 text-center shadow-[0_16px_28px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+                            <p className="text-[8px] font-mono font-black uppercase tracking-[0.2em] text-white/82">
+                              {selectionPromptLabel}
+                            </p>
+                            <div className="mt-2 flex items-center justify-center gap-2 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-white/58">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[#d4c098]/25 bg-[#d4c098]/10 px-1.5 py-0.5 text-[#f1e6c4]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#d4c098]" />
+                                Choose
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-red-300/20 bg-red-500/10 px-1.5 py-0.5 text-red-100">
+                                <Ban size={7} />
+                                Blocked
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {tablePlayers.map((player, index) => {
                         const isSelf = player.id === myActualId;
                         const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
+                        const selectionMeta = getSeatSelectionMeta(player);
                         const isSelectable =
+                          selectionMeta?.isSelectable ||
                           (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
                           (displayPhase === PHASES.EXECUTIVE_ACTION &&
                             canExecutiveTarget &&
@@ -1525,6 +1648,8 @@ export default function GameBoard({
                               ${playerIsChancellor && !playerIsPresident ? 'ring-2 ring-white/55' : ''}
                               ${isNextPresident ? 'ring-2 ring-cyan-300 shadow-[0_0_0_1px_rgba(103,232,249,0.4),0_16px_30px_rgba(0,0,0,0.3)]' : ''}
                               ${isAfterNextPresident ? 'shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_28px_rgba(0,0,0,0.28)]' : ''}
+                              ${selectionPhaseActive && isSelectable ? 'border-[#d4c098]/65 shadow-[0_0_0_1px_rgba(212,192,152,0.25),0_18px_32px_rgba(0,0,0,0.3)]' : ''}
+                              ${selectionPhaseActive && !isSelectable ? 'border-red-400/18 bg-[linear-gradient(180deg,rgba(30,14,17,0.96)_0%,rgba(17,10,12,0.96)_100%)]' : ''}
                               ${isSelectable ? 'cursor-pointer hover:scale-[1.04] hover:border-[#d4c098] active:scale-[0.98]' : 'cursor-default'}
                               ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
                               ${!player.isAlive ? 'opacity-45 brightness-75' : ''}
@@ -1533,6 +1658,19 @@ export default function GameBoard({
                               ${isSelf ? 'shadow-[0_0_0_1px_rgba(103,232,249,0.24),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
                             `}
                           >
+                            {selectionPhaseActive && !isSelectable && player.isAlive && (
+                              <>
+                                <div className="pointer-events-none absolute inset-0 z-0 bg-red-500/[0.08]" />
+                                <span className="pointer-events-none absolute inset-x-2 top-1/2 z-10 h-[2px] -translate-y-1/2 -rotate-[18deg] rounded-full bg-red-300/55 shadow-[0_0_10px_rgba(252,165,165,0.2)]" />
+                              </>
+                            )}
+                            {selectionPhaseActive && isSelectable && !isPending && (
+                              <motion.div
+                                animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.97, 1.02, 0.97] }}
+                                transition={{ duration: 1.7, repeat: Infinity, ease: 'easeInOut' }}
+                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(212,192,152,0.18)_0%,rgba(212,192,152,0.08)_48%,transparent_76%)]"
+                              />
+                            )}
                             {playerIsPresident && (
                               <motion.div
                                 animate={{ opacity: [0.1, 0.28, 0.1], scale: [0.94, 1.02, 0.94] }}
@@ -1625,22 +1763,28 @@ export default function GameBoard({
                                 ? 'text-cyan-100'
                                 : playerIsPresident
                                   ? 'text-[#2c2410]/72'
+                                  : selectionPhaseActive && !isSelectable
+                                    ? 'text-red-100'
                                   : isSelectable
                                     ? 'text-[#d4c098]'
                                     : 'text-white/42'
                             }`}>
                               {isNextPresident
                                 ? 'Next Up'
-                                : isSelectable
-                                  ? displayPhase === PHASES.NOMINATION
-                                    ? 'Nominate'
-                                    : executivePower === EXECUTIVE_POWERS.INVESTIGATE
-                                      ? 'Investigate'
-                                      : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
-                                        ? 'Elect'
-                                        : executivePower === EXECUTIVE_POWERS.EXECUTION
-                                          ? 'Eliminate'
-                                          : 'Selectable'
+                                : selectionPhaseActive
+                                  ? isSelectable
+                                    ? selectionMeta?.actionLabel || 'Choose'
+                                    : selectionMeta?.badgeLabel || 'Blocked'
+                                  : isSelectable
+                                    ? displayPhase === PHASES.NOMINATION
+                                      ? 'Nominate'
+                                      : executivePower === EXECUTIVE_POWERS.INVESTIGATE
+                                        ? 'Investigate'
+                                        : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+                                          ? 'Elect'
+                                          : executivePower === EXECUTIVE_POWERS.EXECUTION
+                                            ? 'Eliminate'
+                                            : 'Selectable'
                                   : player.isAlive
                                     ? 'In Rotation'
                                     : 'Eliminated'}
