@@ -7,7 +7,7 @@ import {
   MAX_ELECTION_TRACKER,
   PHASES,
 } from '../lib/constants';
-import { Bot, Shield, Skull } from 'lucide-react';
+import { Bot, ChevronDown, ChevronUp, Shield, Skull } from 'lucide-react';
 import FactionAccentText from './FactionAccentText';
 import GameOverlay from './GameOverlay';
 import { triggerHaptic } from '../lib/haptics';
@@ -446,6 +446,7 @@ export default function GameBoard({
       slotIndex: Math.min(defaultCurrent, defaultMax - 1),
     };
   });
+  const [isTrackBriefingCollapsed, setIsTrackBriefingCollapsed] = React.useState(true);
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
   const previousDeckCountRef = React.useRef(gameState.drawPileCount);
@@ -699,7 +700,20 @@ export default function GameBoard({
 
   const handleTrackInspect = (type, slotIndex) => {
     triggerHaptic('selection');
+    const isSameSelection = selectedTrackFocus?.type === type && selectedTrackFocus?.slotIndex === slotIndex;
+
+    if (isSameSelection) {
+      setIsTrackBriefingCollapsed((current) => !current);
+      return;
+    }
+
     setSelectedTrackFocus({ type, slotIndex });
+    setIsTrackBriefingCollapsed(false);
+  };
+
+  const toggleTrackBriefing = () => {
+    triggerHaptic('soft');
+    setIsTrackBriefingCollapsed((current) => !current);
   };
 
   const renderDeckMetric = (className = 'text-white/72') => (
@@ -823,144 +837,113 @@ export default function GameBoard({
           </div>
         </div>
 
-        <div className="mt-2 grid min-w-0 gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
-          {Array.from({ length: max }).map((_, index) => {
-            const isActive = index < current;
-            const slotMeta = getTrackSlotMeta(type, index);
-            const isNextSlot = current < max && index === current;
-            const isCurrentEdge = current > 0 && index === current - 1;
-            const isSelectedSlot = trackIsFocused && selectedTrackFocus.slotIndex === index;
+        <div className="mt-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="inline-grid min-w-max gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(42px, 1fr))` }}>
+            {Array.from({ length: max }).map((_, index) => {
+              const isActive = index < current;
+              const slotMeta = getTrackSlotMeta(type, index);
+              const isNextSlot = current < max && index === current;
+              const isCurrentEdge = current > 0 && index === current - 1;
+              const isSelectedSlot = trackIsFocused && selectedTrackFocus.slotIndex === index;
 
-            return (
-              <motion.button
-                key={index}
-                type="button"
-                onClick={() => handleTrackInspect(type, index)}
-                whileTap={{ scale: 0.96 }}
-                className={`relative min-h-[30px] overflow-hidden border px-1 py-1 transition-all duration-500 sm:min-h-[34px] ${
-                  isActive ? `${fillClass} shadow-[0_8px_18px_rgba(0,0,0,0.18)]` : inactiveClass
-                } ${isSelectedSlot ? 'ring-2 ring-white/50 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_12px_26px_rgba(0,0,0,0.28)]' : ''} ${
-                  isNextSlot && !isActive
-                    ? isFascist
-                      ? 'border-red-300/42 shadow-[0_0_0_1px_rgba(248,113,113,0.12)]'
-                      : 'border-cyan-200/38 shadow-[0_0_0_1px_rgba(103,232,249,0.1)]'
-                    : ''
-                }`}
-              >
-                {isNextSlot && !isActive && (
-                  <>
-                    <motion.div
-                      animate={
-                        isFascist
-                          ? { opacity: [0.12, 0.28, 0.12], scale: [0.94, 1.02, 0.94] }
-                          : { opacity: [0.1, 0.24, 0.1], scale: [0.94, 1.03, 0.94] }
-                      }
-                      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                      className={`absolute inset-0 ${
-                        isFascist ? 'bg-red-400/18' : 'bg-cyan-300/16'
-                      }`}
-                    />
-                    <motion.img
-                      src={cardSrc}
-                      alt=""
-                      aria-hidden="true"
-                      animate={{ y: [8, 2, 8], rotate: [-4, 0, -4], opacity: [0.14, 0.26, 0.14] }}
-                      transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
-                      className="pointer-events-none absolute bottom-0 left-1/2 h-8 w-6 -translate-x-1/2 rounded-[6px] object-cover"
-                    />
-                  </>
-                )}
-
-                <div className="relative z-10 flex h-full flex-col items-center justify-between text-center">
-                  <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80">
-                    {slotMeta}
-                  </span>
-
-                  {isActive ? (
-                    <motion.span
-                      animate={isCurrentEdge ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                      transition={isCurrentEdge ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' } : undefined}
-                    >
-                      <Icon size={9} />
-                    </motion.span>
-                  ) : (
-                    <span className="text-[9px] font-mono font-black opacity-38">
-                      {isNextSlot ? 'NEXT' : index + 1}
-                    </span>
+              return (
+                <motion.button
+                  key={index}
+                  type="button"
+                  onClick={() => handleTrackInspect(type, index)}
+                  whileTap={{ scale: 0.96 }}
+                  className={`relative min-h-[30px] min-w-[42px] overflow-hidden border px-1 py-1 transition-all duration-500 sm:min-h-[34px] ${
+                    isActive ? `${fillClass} shadow-[0_8px_18px_rgba(0,0,0,0.18)]` : inactiveClass
+                  } ${isSelectedSlot ? 'ring-2 ring-white/50 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_12px_26px_rgba(0,0,0,0.28)]' : ''} ${
+                    isNextSlot && !isActive
+                      ? isFascist
+                        ? 'border-red-300/42 shadow-[0_0_0_1px_rgba(248,113,113,0.12)]'
+                        : 'border-cyan-200/38 shadow-[0_0_0_1px_rgba(103,232,249,0.1)]'
+                      : ''
+                  }`}
+                >
+                  {isNextSlot && !isActive && (
+                    <>
+                      <motion.div
+                        animate={
+                          isFascist
+                            ? { opacity: [0.12, 0.28, 0.12], scale: [0.94, 1.02, 0.94] }
+                            : { opacity: [0.1, 0.24, 0.1], scale: [0.94, 1.03, 0.94] }
+                        }
+                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        className={`absolute inset-0 ${
+                          isFascist ? 'bg-red-400/18' : 'bg-cyan-300/16'
+                        }`}
+                      />
+                      <motion.img
+                        src={cardSrc}
+                        alt=""
+                        aria-hidden="true"
+                        animate={{ y: [8, 2, 8], rotate: [-4, 0, -4], opacity: [0.14, 0.26, 0.14] }}
+                        transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                        className="pointer-events-none absolute bottom-0 left-1/2 h-8 w-6 -translate-x-1/2 rounded-[6px] object-cover"
+                      />
+                    </>
                   )}
-                </div>
 
-                {index === current - 1 && (
-                  <motion.div
-                    initial={{ scale: 1.15, opacity: 0.55 }}
-                    animate={{ scale: 1, opacity: 0 }}
-                    transition={{ duration: 0.75, ease: 'easeOut' }}
-                    className={`absolute inset-0 pointer-events-none ${isFascist ? 'bg-red-400/40' : 'bg-cyan-300/40'}`}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
+                  <div className="relative z-10 flex h-full flex-col items-center justify-between text-center">
+                    <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80">
+                      {slotMeta}
+                    </span>
+
+                    {isActive ? (
+                      <motion.span
+                        animate={isCurrentEdge ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+                        transition={isCurrentEdge ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' } : undefined}
+                      >
+                        <Icon size={9} />
+                      </motion.span>
+                    ) : (
+                      <span className="text-[9px] font-mono font-black opacity-38">
+                        {isNextSlot ? 'NEXT' : index + 1}
+                      </span>
+                    )}
+                  </div>
+
+                  {index === current - 1 && (
+                    <motion.div
+                      initial={{ scale: 1.15, opacity: 0.55 }}
+                      animate={{ scale: 1, opacity: 0 }}
+                      transition={{ duration: 0.75, ease: 'easeOut' }}
+                      className={`absolute inset-0 pointer-events-none ${isFascist ? 'bg-red-400/40' : 'bg-cyan-300/40'}`}
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
     );
   };
 
   const renderTrackBriefing = () => (
-    <AnimatePresence mode="wait">
-      <motion.div
+    <motion.div
         key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}-${selectedTrackProgress}-${displayPhase}-${gameState.executivePower || 'idle'}`}
         initial={{ opacity: 0, y: 14, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.28, ease: 'easeOut' }}
-        className="relative mt-3 overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(7,8,10,0.94)_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
+        className="relative mt-3 overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(7,8,10,0.94)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
       >
         <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
-        <div className="grid min-w-0 gap-4 min-[520px]:grid-cols-[116px,minmax(0,1fr)]">
-          <div className="flex items-center justify-center">
-            <div className={`relative flex h-[132px] w-[100px] items-center justify-center overflow-hidden rounded-[24px] border ${selectedTrackInsight.accentSurfaceClassName}`}>
-              <motion.div
-                animate={
-                  selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow
-                    ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
-                    : { y: [2, -2, 2], rotate: [-2, 2, -2] }
-                }
-                transition={{ duration: selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
-                className="relative z-10"
-              >
-                <img
-                  src={selectedTrackInsight.cardSrc}
-                  alt={`${selectedTrackInsight.cardLabel} reference`}
-                  loading="eager"
-                  decoding="async"
-                  className="h-[112px] w-[76px] rounded-[14px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
-                />
-              </motion.div>
-
-              <motion.div
-                animate={
-                  selectedTrackInsight.type === 'FASCIST'
-                    ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
-                    : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
-                }
-                transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
-                className={`absolute inset-3 rounded-[20px] ${selectedTrackInsight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
-              />
-
-              <div className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/28 px-2 py-1 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/78">
-                Slot {selectedTrackInsight.slotNumber}
-              </div>
-            </div>
-          </div>
-
+        <button
+          type="button"
+          onClick={toggleTrackBriefing}
+          className="relative z-10 flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
+        >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em]">
               <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSurfaceClassName} ${selectedTrackInsight.accentClassName}`}>
                 {selectedTrackInsight.trackLabel}
               </span>
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
-                {selectedTrackProgress}/{selectedTrackMax} On Board
+                Slot {selectedTrackInsight.slotNumber}
               </span>
               <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
                 {selectedTrackInsight.statusLabel}
@@ -969,51 +952,119 @@ export default function GameBoard({
 
             <FactionAccentText
               as="h3"
-              className="mt-3 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+              className="mt-3 text-base font-black uppercase tracking-[0.12em] text-white sm:text-lg"
             >
               {selectedTrackInsight.outcomeLabel}
             </FactionAccentText>
-            <FactionAccentText as="p" className="mt-2 max-w-[44rem] text-sm leading-relaxed text-white/68">
-              {selectedTrackInsight.outcomeDescription}
-            </FactionAccentText>
-            <p className="mt-2 max-w-[42rem] text-[11px] leading-relaxed text-white/44">
-              {selectedTrackInsight.statusDescription}
-            </p>
-
-            <div className="mt-4 grid gap-2 min-[420px]:grid-cols-3">
-              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                  Board Position
-                </p>
-                <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                  {selectedTrackProgress}/{selectedTrackMax}
-                </p>
-              </div>
-              <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                  Selected Slot
-                </p>
-                <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
-                  {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
-                </p>
-              </div>
-              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                  If A Card Lands Here
-                </p>
-                <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                  {selectedTrackInsight.isResolvingNow ? 'Trigger Live Now' : selectedTrackInsight.outcomeLabel}
-                </FactionAccentText>
-              </div>
-            </div>
-
-            <p className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/32">
-              Tap another slot above to inspect a different breakpoint on the board.
+            <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.16em] text-white/42">
+              {isTrackBriefingCollapsed
+                ? 'Tap to expand the full breakpoint briefing.'
+                : 'Tap to collapse the briefing.'}
             </p>
           </div>
-        </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62">
+              {isTrackBriefingCollapsed ? 'Collapsed' : 'Expanded'}
+            </span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72">
+              {isTrackBriefingCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+            </span>
+          </div>
+        </button>
+
+        <AnimatePresence initial={false}>
+          {!isTrackBriefingCollapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.24, ease: 'easeOut' }}
+              className="relative z-10 overflow-hidden"
+            >
+              <div className="max-h-[min(42vh,360px)] overflow-y-auto px-4 pb-4 scrollbar-hide sm:px-5 sm:pb-5">
+                <div className="grid min-w-0 gap-4 min-[520px]:grid-cols-[116px,minmax(0,1fr)]">
+                  <div className="flex items-center justify-center">
+                    <div className={`relative flex h-[132px] w-[100px] items-center justify-center overflow-hidden rounded-[24px] border ${selectedTrackInsight.accentSurfaceClassName}`}>
+                      <motion.div
+                        animate={
+                          selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow
+                            ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
+                            : { y: [2, -2, 2], rotate: [-2, 2, -2] }
+                        }
+                        transition={{ duration: selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
+                        className="relative z-10"
+                      >
+                        <img
+                          src={selectedTrackInsight.cardSrc}
+                          alt={`${selectedTrackInsight.cardLabel} reference`}
+                          loading="eager"
+                          decoding="async"
+                          className="h-[112px] w-[76px] rounded-[14px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
+                        />
+                      </motion.div>
+
+                      <motion.div
+                        animate={
+                          selectedTrackInsight.type === 'FASCIST'
+                            ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
+                            : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
+                        }
+                        transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                        className={`absolute inset-3 rounded-[20px] ${selectedTrackInsight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
+                      />
+
+                      <div className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/28 px-2 py-1 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/78">
+                        Slot {selectedTrackInsight.slotNumber}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <FactionAccentText as="p" className="text-sm leading-relaxed text-white/68">
+                      {selectedTrackInsight.outcomeDescription}
+                    </FactionAccentText>
+                    <p className="mt-2 max-w-[42rem] text-[11px] leading-relaxed text-white/44">
+                      {selectedTrackInsight.statusDescription}
+                    </p>
+
+                    <div className="mt-4 grid gap-2 min-[420px]:grid-cols-3">
+                      <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                          Board Position
+                        </p>
+                        <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                          {selectedTrackProgress}/{selectedTrackMax}
+                        </p>
+                      </div>
+                      <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
+                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                          Selected Slot
+                        </p>
+                        <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
+                          {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
+                        </p>
+                      </div>
+                      <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                          If A Card Lands Here
+                        </p>
+                        <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                          {selectedTrackInsight.isResolvingNow ? 'Trigger Live Now' : selectedTrackInsight.outcomeLabel}
+                        </FactionAccentText>
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/32">
+                      Tap another slot above to inspect a different breakpoint on the board.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
-    </AnimatePresence>
   );
 
   const renderBoardStage = () => {
