@@ -40,17 +40,24 @@ export default function StageSpotlight({
   const [isHolding, setIsHolding] = useState(false);
   const [remainingMs, setRemainingMs] = useState(AUTO_CLOSE_MS);
   const remainingRef = useRef(AUTO_CLOSE_MS);
+  const isHoldingRef = useRef(false);
 
   const toneTheme = TONE_MAP[tone] || TONE_MAP.neutral;
 
   useEffect(() => {
-    if (!isVisible || isHolding) return undefined;
+    if (!isVisible) return undefined;
 
-    const startedAt = window.Date.now();
-    const startingRemaining = remainingRef.current;
+    let lastTick = window.Date.now();
     const timer = window.setInterval(() => {
-      const elapsed = window.Date.now() - startedAt;
-      const nextRemaining = Math.max(0, startingRemaining - elapsed);
+      const now = window.Date.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
+
+      if (isHoldingRef.current) {
+        return;
+      }
+
+      const nextRemaining = Math.max(0, remainingRef.current - elapsed);
 
       remainingRef.current = nextRemaining;
       setRemainingMs(nextRemaining);
@@ -64,7 +71,7 @@ export default function StageSpotlight({
     return () => {
       window.clearInterval(timer);
     };
-  }, [isVisible, isHolding]);
+  }, [isVisible]);
 
   const progressPercent = Math.max(0, Math.min(100, (remainingMs / AUTO_CLOSE_MS) * 100));
   const modeLabel = visibility === 'private' ? 'Private Briefing' : 'Table Briefing';
@@ -76,6 +83,7 @@ export default function StageSpotlight({
       triggerHaptic('soft');
     }
 
+    isHoldingRef.current = true;
     setIsHolding(true);
   };
   const handleHoldEnd = (event) => {
@@ -86,6 +94,7 @@ export default function StageSpotlight({
       triggerHaptic('light');
     }
 
+    isHoldingRef.current = false;
     setIsHolding(false);
   };
 
@@ -152,6 +161,7 @@ export default function StageSpotlight({
                   onClick={(event) => {
                     event.stopPropagation();
                     remainingRef.current = AUTO_CLOSE_MS;
+                    isHoldingRef.current = false;
                     setRemainingMs(AUTO_CLOSE_MS);
                     setIsHolding(false);
                     setIsVisible(false);
@@ -212,10 +222,16 @@ export default function StageSpotlight({
 
                 <button
                   type="button"
+                  onTouchStart={handleHoldStart}
+                  onTouchEnd={handleHoldEnd}
+                  onTouchCancel={handleHoldEnd}
                   onPointerDown={handleHoldStart}
                   onPointerUp={handleHoldEnd}
                   onPointerLeave={handleHoldEnd}
                   onPointerCancel={handleHoldEnd}
+                  onMouseDown={handleHoldStart}
+                  onMouseUp={handleHoldEnd}
+                  onMouseLeave={handleHoldEnd}
                   onContextMenu={(event) => event.preventDefault()}
                   className={`mt-4 flex w-full items-center justify-between gap-4 rounded-[24px] border px-4 py-4 text-left transition-all ${
                     isHolding
@@ -224,6 +240,7 @@ export default function StageSpotlight({
                   }`}
                   style={{
                     userSelect: 'none',
+                    touchAction: 'none',
                     WebkitTouchCallout: 'none',
                     WebkitUserSelect: 'none',
                   }}
