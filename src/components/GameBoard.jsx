@@ -1583,7 +1583,7 @@ export default function GameBoard({
                   ))}
                 </div>
               ) : (
-                <div className="flex min-h-0 items-center justify-center">
+                <div className="flex min-h-0 flex-col items-center justify-center gap-4">
                   <div className="relative mx-auto w-full max-w-[440px]">
                     <div className="relative aspect-square w-full">
                       <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
@@ -1814,8 +1814,8 @@ export default function GameBoard({
                       })}
                     </div>
                   </div>
-                  <div className="mx-auto mt-4 w-full max-w-[380px]">
-                    <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-3">
+                  <div className="w-full max-w-[420px]">
+                    <div className="grid grid-cols-3 gap-2">
                       {orbitStatusItems.map((item) => (
                         <div
                           key={item.label}
@@ -1823,9 +1823,9 @@ export default function GameBoard({
                         >
                           <div className="flex items-center gap-1.5 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
                             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
-                            {item.label}
+                            <span className="truncate">{item.label}</span>
                           </div>
-                          <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.06em] text-white/78">
+                          <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.04em] text-white/78 sm:text-[11px]">
                             {item.value}
                           </p>
                         </div>
