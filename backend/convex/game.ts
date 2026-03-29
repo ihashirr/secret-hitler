@@ -35,61 +35,115 @@ const ROLE_COUNTS: Record<number, Record<string, number>> = {
   10: { [ROLES.LIBERAL]: 6, [ROLES.FASCIST]: 3, [ROLES.HITLER]: 1 },
 };
 const BOT_THINK_DELAYS_MS = {
-  ROLE_REVEAL_MIN: 550,
-  ROLE_REVEAL_MAX: 900,
-  VOTING_MIN: 700,
-  VOTING_MAX: 1250,
-  NOMINATION_MIN: 1400,
-  NOMINATION_MAX: 2200,
-  DEFAULT_MIN: 1200,
-  DEFAULT_MAX: 2000,
-  LEGISLATIVE_PRESIDENT_MIN: 1800,
-  LEGISLATIVE_PRESIDENT_MAX: 3000,
-  LEGISLATIVE_CHANCELLOR_MIN: 1900,
-  LEGISLATIVE_CHANCELLOR_MAX: 3200,
-  EXECUTIVE_ACTION_MIN: 2200,
-  EXECUTIVE_ACTION_MAX: 3600,
+  ROLE_REVEAL_MIN: 700,
+  ROLE_REVEAL_MAX: 1100,
+  VOTING_MIN: 1100,
+  VOTING_MAX: 1800,
+  NOMINATION_MIN: 2100,
+  NOMINATION_MAX: 3200,
+  DEFAULT_MIN: 1500,
+  DEFAULT_MAX: 2400,
+  LEGISLATIVE_PRESIDENT_MIN: 2200,
+  LEGISLATIVE_PRESIDENT_MAX: 3400,
+  LEGISLATIVE_CHANCELLOR_MIN: 2300,
+  LEGISLATIVE_CHANCELLOR_MAX: 3500,
+  EXECUTIVE_ACTION_MIN: 2400,
+  EXECUTIVE_ACTION_MAX: 3700,
+};
+const ALL_BOT_TABLE_BONUS_MS = {
+  ROLE_REVEAL_MIN: 180,
+  ROLE_REVEAL_MAX: 320,
+  VOTING_MIN: 900,
+  VOTING_MAX: 1500,
+  NOMINATION_MIN: 1500,
+  NOMINATION_MAX: 2300,
+  DEFAULT_MIN: 700,
+  DEFAULT_MAX: 1200,
+  LEGISLATIVE_PRESIDENT_MIN: 1000,
+  LEGISLATIVE_PRESIDENT_MAX: 1700,
+  LEGISLATIVE_CHANCELLOR_MIN: 1000,
+  LEGISLATIVE_CHANCELLOR_MAX: 1700,
+  EXECUTIVE_ACTION_MIN: 1100,
+  EXECUTIVE_ACTION_MAX: 1800,
 };
 
 function pickBotThinkDelayMs(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-function getBotThinkDelayMs(room: any) {
+function getBotThinkDelayMs(room: any, players: any[]) {
+  const alivePlayers = getAlivePlayers(players);
+  const isAllBotTable = alivePlayers.length > 0 && alivePlayers.every((player) => player.isBot);
+  const withAllBotBonus = (min: number, max: number, bonusMin: number, bonusMax: number) => {
+    const baseDelay = pickBotThinkDelayMs(min, max);
+
+    if (!isAllBotTable) {
+      return baseDelay;
+    }
+
+    return baseDelay + pickBotThinkDelayMs(bonusMin, bonusMax);
+  };
+
   if (room.phase === PHASES.ROLE_REVEAL) {
-    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.ROLE_REVEAL_MIN, BOT_THINK_DELAYS_MS.ROLE_REVEAL_MAX);
+    return withAllBotBonus(
+      BOT_THINK_DELAYS_MS.ROLE_REVEAL_MIN,
+      BOT_THINK_DELAYS_MS.ROLE_REVEAL_MAX,
+      ALL_BOT_TABLE_BONUS_MS.ROLE_REVEAL_MIN,
+      ALL_BOT_TABLE_BONUS_MS.ROLE_REVEAL_MAX,
+    );
   }
 
   if (room.phase === PHASES.VOTING) {
-    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.VOTING_MIN, BOT_THINK_DELAYS_MS.VOTING_MAX);
+    return withAllBotBonus(
+      BOT_THINK_DELAYS_MS.VOTING_MIN,
+      BOT_THINK_DELAYS_MS.VOTING_MAX,
+      ALL_BOT_TABLE_BONUS_MS.VOTING_MIN,
+      ALL_BOT_TABLE_BONUS_MS.VOTING_MAX,
+    );
   }
 
   if (room.phase === PHASES.NOMINATION) {
-    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.NOMINATION_MIN, BOT_THINK_DELAYS_MS.NOMINATION_MAX);
+    return withAllBotBonus(
+      BOT_THINK_DELAYS_MS.NOMINATION_MIN,
+      BOT_THINK_DELAYS_MS.NOMINATION_MAX,
+      ALL_BOT_TABLE_BONUS_MS.NOMINATION_MIN,
+      ALL_BOT_TABLE_BONUS_MS.NOMINATION_MAX,
+    );
   }
 
   if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
-    return pickBotThinkDelayMs(
+    return withAllBotBonus(
       BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MIN,
       BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MAX,
+      ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MIN,
+      ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MAX,
     );
   }
 
   if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
-    return pickBotThinkDelayMs(
+    return withAllBotBonus(
       BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MIN,
       BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MAX,
+      ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MIN,
+      ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MAX,
     );
   }
 
   if (room.phase === PHASES.EXECUTIVE_ACTION) {
-    return pickBotThinkDelayMs(
+    return withAllBotBonus(
       BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MIN,
       BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MAX,
+      ALL_BOT_TABLE_BONUS_MS.EXECUTIVE_ACTION_MIN,
+      ALL_BOT_TABLE_BONUS_MS.EXECUTIVE_ACTION_MAX,
     );
   }
 
-  return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.DEFAULT_MIN, BOT_THINK_DELAYS_MS.DEFAULT_MAX);
+  return withAllBotBonus(
+    BOT_THINK_DELAYS_MS.DEFAULT_MIN,
+    BOT_THINK_DELAYS_MS.DEFAULT_MAX,
+    ALL_BOT_TABLE_BONUS_MS.DEFAULT_MIN,
+    ALL_BOT_TABLE_BONUS_MS.DEFAULT_MAX,
+  );
 }
 
 function shuffle<T>(array: T[]): T[] {
@@ -622,7 +676,7 @@ async function resolveBotsIfNeeded(ctx: any, roomId: string) {
     return;
   }
 
-  const delayMs = getBotThinkDelayMs(room);
+  const delayMs = getBotThinkDelayMs(room, players);
   const scheduledAt = Date.now() + delayMs + Math.floor(Math.random() * 17);
 
   await ctx.db.patch(room._id, { botThinkAt: scheduledAt });

@@ -5,7 +5,7 @@ import { triggerHaptic } from '../lib/haptics';
 import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
 
-const UNIFIED_SPOTLIGHT_MS = 3000;
+const ACTIONABLE_SPOTLIGHT_MS = 1200;
 
 function getSpotlightSceneId({
   displayPhase,
@@ -56,57 +56,6 @@ function getSpotlightSceneId({
   }
 }
 
-function getInitialPassiveSpotlightKey({
-  displayPhase,
-  gameState,
-  revealState,
-  pendingSelection,
-  currentBallotKey,
-  isPresident,
-  isChancellor,
-  me,
-}) {
-  if (pendingSelection || revealState) {
-    return null;
-  }
-
-  switch (displayPhase) {
-    case PHASES.NOMINATION:
-      return getSpotlightSceneId({
-        displayPhase,
-        gameState,
-        currentBallotKey,
-        currentAction: null,
-        hasActionContent: false,
-        isPresident,
-        isChancellor,
-      });
-
-    case PHASES.VOTING:
-      if (me?.isAlive && !me?.hasVoted) {
-        return null;
-      }
-
-      return getSpotlightSceneId({
-        displayPhase,
-        gameState,
-        currentBallotKey,
-        currentAction: null,
-        hasActionContent: false,
-        isPresident,
-        isChancellor,
-      });
-
-    case PHASES.LEGISLATIVE_PRESIDENT:
-    case PHASES.LEGISLATIVE_CHANCELLOR:
-    case PHASES.EXECUTIVE_ACTION:
-      return null;
-
-    default:
-      return null;
-  }
-}
-
 export default function GameOverlay({
   gameState,
   playerId,
@@ -134,18 +83,6 @@ export default function GameOverlay({
   const [pendingVote, setPendingVote] = useState(null);
   const [dismissedSpotlightKey, setDismissedSpotlightKey] = useState(null);
   const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
-  const [initialPassiveSpotlightKey] = useState(() =>
-    getInitialPassiveSpotlightKey({
-      displayPhase,
-      gameState,
-      revealState,
-      pendingSelection,
-      currentBallotKey,
-      isPresident,
-      isChancellor,
-      me,
-    }),
-  );
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
     gameState.phase === PHASES.VOTING &&
@@ -475,13 +412,13 @@ export default function GameOverlay({
         : 'neutral';
   const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
   const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'You' : 'Table';
-  const spotlightAutoCloseMs = UNIFIED_SPOTLIGHT_MS;
+  const spotlightAutoCloseMs = ACTIONABLE_SPOTLIGHT_MS;
   const spotlightActions =
     !pendingSelection && Array.isArray(primaryInstruction?.actions)
       ? primaryInstruction.actions.map((action) => action.label)
       : [];
   const spotlightKey =
-    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload
+    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload || !hasActionContent
       ? null
       : getSpotlightSceneId({
           displayPhase,
@@ -492,15 +429,9 @@ export default function GameOverlay({
           isPresident,
           isChancellor,
         });
-  const suppressInitialPassiveSpotlight =
-    Boolean(initialPassiveSpotlightKey) &&
-    spotlightKey === initialPassiveSpotlightKey &&
-    !hasActionContent &&
-    !pendingSelection;
   const spotlightVisible =
     Boolean(spotlightKey) &&
-    spotlightKey !== dismissedSpotlightKey &&
-    !suppressInitialPassiveSpotlight;
+    spotlightKey !== dismissedSpotlightKey;
   const showActionDesk = hasActionContent && !spotlightVisible;
 
   if (!isActive) return null;
