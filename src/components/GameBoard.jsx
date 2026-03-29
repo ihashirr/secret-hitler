@@ -450,6 +450,12 @@ export default function GameBoard({
   const prevVoteStateRef = React.useRef({});
   const previousDeckCountRef = React.useRef(gameState.drawPileCount);
   const voteStateReadyRef = React.useRef(false);
+  const voteHighlightTimersRef = React.useRef(new Map());
+
+  React.useEffect(() => () => {
+    voteHighlightTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    voteHighlightTimersRef.current.clear();
+  }, []);
 
   React.useEffect(() => {
     setPendingSelection(null);
@@ -482,17 +488,24 @@ export default function GameBoard({
 
     setRecentVoteIds((current) => Array.from(new Set([...current, ...justVotedIds])));
 
-    const timer = window.setTimeout(() => {
-      setRecentVoteIds((current) => current.filter((id) => !justVotedIds.includes(id)));
-    }, 650);
+    justVotedIds.forEach((id) => {
+      const existingTimer = voteHighlightTimersRef.current.get(id);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
 
-    return () => window.clearTimeout(timer);
+      const timer = window.setTimeout(() => {
+        setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
+        voteHighlightTimersRef.current.delete(id);
+      }, 650);
+
+      voteHighlightTimersRef.current.set(id, timer);
+    });
+
+    return undefined;
   }, [gameState.phase, gameState.players]);
 
   React.useEffect(() => {
-    let revealTimer;
-    let cleanupTimer;
-
     if (prevPhaseRef.current === PHASES.VOTING && gameState.phase !== PHASES.VOTING && gameState.lastVotes) {
       let ya = 0;
       let nein = 0;
@@ -503,27 +516,33 @@ export default function GameBoard({
       });
 
       setRevealState({
+        id: `${gameState.phase}-${Date.now()}`,
         result: ya > nein ? 'APPROVED' : 'REJECTED',
         votes: gameState.lastVotes,
         ya,
         nein,
       });
-
-      setRevealStage(0);
-      revealTimer = setTimeout(() => setRevealStage(1), VOTE_REVEAL_STAGE_DELAY_MS);
-      cleanupTimer = setTimeout(() => {
-        setRevealState(null);
-        setRevealStage(0);
-      }, VOTE_REVEAL_DURATION_MS);
     }
 
     prevPhaseRef.current = gameState.phase;
+  }, [gameState.phase, gameState.lastVotes]);
+
+  React.useEffect(() => {
+    if (!revealState?.id) return undefined;
+
+    setRevealStage(0);
+
+    const revealTimer = window.setTimeout(() => setRevealStage(1), VOTE_REVEAL_STAGE_DELAY_MS);
+    const cleanupTimer = window.setTimeout(() => {
+      setRevealState((current) => (current?.id === revealState.id ? null : current));
+      setRevealStage(0);
+    }, VOTE_REVEAL_DURATION_MS);
 
     return () => {
-      clearTimeout(revealTimer);
-      clearTimeout(cleanupTimer);
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(cleanupTimer);
     };
-  }, [gameState.phase, gameState.lastVotes]);
+  }, [revealState?.id]);
 
   React.useEffect(() => {
     if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
@@ -565,17 +584,23 @@ export default function GameBoard({
       };
       setDeckAnimation(nextAnimation);
 
-      const timer = window.setTimeout(() => {
-        setDeckAnimation((active) => (active?.id === nextAnimation.id ? null : active));
-      }, 900);
-
       previousDeckCountRef.current = currentDeckCount;
-      return () => window.clearTimeout(timer);
+      return undefined;
     }
 
     previousDeckCountRef.current = currentDeckCount;
     return undefined;
   }, [gameState.drawPileCount, gameState.drawnCards?.length, gameState.peekedPolicies?.length]);
+
+  React.useEffect(() => {
+    if (!deckAnimation?.id) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setDeckAnimation((active) => (active?.id === deckAnimation.id ? null : active));
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [deckAnimation?.id]);
 
   const showVoteReveal = Boolean(revealState) && gameState.phase !== PHASES.VOTING;
   const isVoteRevealPhase = showVoteReveal;
