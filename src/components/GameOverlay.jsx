@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
+import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
 
 const UNIFIED_SPOTLIGHT_MS = 3000;
@@ -473,14 +474,20 @@ export default function GameOverlay({
                 <span className="text-[#7a6b57]">Private Channel — {privateAudience}</span>
               </div>
 
-              <h2 className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]">
+              <FactionAccentText
+                as="h2"
+                className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]"
+              >
                 {title}
-              </h2>
+              </FactionAccentText>
 
               {subtext && (
-                <p className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#5f5449] sm:text-[11px]">
+                <FactionAccentText
+                  as="p"
+                  className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#5f5449] sm:text-[11px]"
+                >
                   {subtext}
-                </p>
+                </FactionAccentText>
               )}
             </div>
 

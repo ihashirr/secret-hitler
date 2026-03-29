@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Info, Lock, Unlock, X } from 'lucide-react';
+import FactionAccentText from './FactionAccentText';
 import StageTimeline from './StageTimeline';
 
 const urgencyStyles = {
@@ -72,17 +73,22 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.26em] text-cyan-200/75">
                   <Info size={14} />
-                  {timelineVisible ? 'Match Progress' : stageLabel}
+                  <FactionAccentText>{timelineVisible ? 'Match Progress' : stageLabel}</FactionAccentText>
                 </p>
                 {timelineVisible && (
                   <div className="mt-3">
                     <StageTimeline timeline={timeline} />
                   </div>
                 )}
-                <h2 className="mt-2 text-xl font-serif font-black uppercase tracking-[0.08em] text-white sm:text-2xl">
+                <FactionAccentText
+                  as="h2"
+                  className="mt-2 text-xl font-serif font-black uppercase tracking-[0.08em] text-white sm:text-2xl"
+                >
                   {stageTitle}
-                </h2>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">{stageDescription}</p>
+                </FactionAccentText>
+                <FactionAccentText as="p" className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
+                  {stageDescription}
+                </FactionAccentText>
               </div>
             </div>
 
@@ -118,12 +124,12 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                         </span>
                       </div>
 
-                      <h3 className="mt-3 text-base font-black uppercase tracking-[0.08em] text-white">
+                      <FactionAccentText as="h3" className="mt-3 text-base font-black uppercase tracking-[0.08em] text-white">
                         {primaryInstruction.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-white/60">
+                      </FactionAccentText>
+                      <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/60">
                         {primaryInstruction.description}
-                      </p>
+                      </FactionAccentText>
 
                       {primaryInstruction.actions?.length ? (
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -132,7 +138,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                               key={action.action}
                               className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100"
                             >
-                              {action.label}
+                              <FactionAccentText>{action.label}</FactionAccentText>
                             </span>
                           ))}
                         </div>
@@ -153,10 +159,15 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                           key={`${instruction.title}-${index}`}
                           className="rounded-[18px] border border-white/10 bg-white/[0.02] px-4 py-3"
                         >
-                          <p className="text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/75">
+                          <FactionAccentText
+                            as="p"
+                            className="text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/75"
+                          >
                             {instruction.title}
-                          </p>
-                          <p className="mt-2 text-sm leading-relaxed text-white/50">{instruction.description}</p>
+                          </FactionAccentText>
+                          <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/50">
+                            {instruction.description}
+                          </FactionAccentText>
                         </div>
                       ))}
                     </div>
@@ -169,12 +180,18 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                   <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-3">
                     {facts.map((fact) => (
                       <div key={fact.label} className="rounded-[18px] border border-white/10 bg-white/[0.03] px-3 py-3">
-                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/40">
+                        <FactionAccentText
+                          as="p"
+                          className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/40"
+                        >
                           {fact.label}
-                        </p>
-                        <p className="mt-2 text-sm font-black uppercase tracking-[0.06em] text-white/85">
+                        </FactionAccentText>
+                        <FactionAccentText
+                          as="p"
+                          className="mt-2 text-sm font-black uppercase tracking-[0.06em] text-white/85"
+                        >
                           {fact.value}
-                        </p>
+                        </FactionAccentText>
                       </div>
                     ))}
                   </div>
@@ -186,10 +203,15 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                   <div className="grid gap-2">
                     {intel.map((item) => (
                       <div key={item.label} className="rounded-[18px] border border-cyan-400/14 bg-cyan-400/[0.06] px-4 py-3">
-                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-cyan-200/55">
+                        <FactionAccentText
+                          as="p"
+                          className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-cyan-200/55"
+                        >
                           {item.label}
-                        </p>
-                        <p className="mt-2 text-sm leading-relaxed text-cyan-50">{item.value}</p>
+                        </FactionAccentText>
+                        <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-cyan-50">
+                          {item.value}
+                        </FactionAccentText>
                       </div>
                     ))}
                   </div>

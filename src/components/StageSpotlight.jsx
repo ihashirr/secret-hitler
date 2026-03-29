@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Lock, Unlock, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import FactionAccentText from './FactionAccentText';
 import { triggerHaptic } from '../lib/haptics';
 
 const DEFAULT_AUTO_CLOSE_MS = 3000;
@@ -205,7 +206,9 @@ export default function StageSpotlight({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
                   <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
-                    {timelineLabel ? `${timelineLabel} · ${stageLabel}` : stageLabel}
+                    <FactionAccentText>
+                      {timelineLabel ? `${timelineLabel} · ${stageLabel}` : stageLabel}
+                    </FactionAccentText>
                   </span>
                   <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
                     {modeLabel}
@@ -221,13 +224,19 @@ export default function StageSpotlight({
                 <p className="text-[11px] font-mono font-black uppercase tracking-[0.42em] text-white/42">
                   Current Stage
                 </p>
-                <h2 className="mt-4 break-words text-3xl font-black uppercase tracking-[0.14em] text-white sm:text-5xl sm:tracking-[0.16em]">
+                <FactionAccentText
+                  as="h2"
+                  className="mt-4 break-words text-3xl font-black uppercase tracking-[0.14em] text-white sm:text-5xl sm:tracking-[0.16em]"
+                >
                   {title}
-                </h2>
+                </FactionAccentText>
                 {description && (
-                  <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/68 sm:text-base">
+                  <FactionAccentText
+                    as="p"
+                    className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/68 sm:text-base"
+                  >
                     {description}
-                  </p>
+                  </FactionAccentText>
                 )}
 
                 {actionLabels.length > 0 && (
@@ -237,7 +246,7 @@ export default function StageSpotlight({
                         key={`${actionLabel}-${index}`}
                         className={`rounded-full border px-3 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${toneTheme.chip}`}
                       >
-                        {actionLabel}
+                        <FactionAccentText>{actionLabel}</FactionAccentText>
                       </span>
                     ))}
                   </div>

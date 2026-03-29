@@ -8,6 +8,7 @@ import {
   PHASES,
 } from '../lib/constants';
 import { Bot, Shield, Skull } from 'lucide-react';
+import FactionAccentText from './FactionAccentText';
 import GameOverlay from './GameOverlay';
 import { triggerHaptic } from '../lib/haptics';
 
@@ -473,9 +474,12 @@ export default function GameBoard({
       <div className="min-w-0 rounded-[14px] border border-white/6 bg-black/18 px-3 py-2">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}>
+            <FactionAccentText
+              as="p"
+              className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}
+            >
               {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
-            </p>
+            </FactionAccentText>
             <p className="mt-1 text-[9px] font-mono uppercase tracking-[0.16em] text-white/28">
               {summary}
             </p>
@@ -554,9 +558,9 @@ export default function GameBoard({
               >
                 {revealOutcomeTitle}
               </motion.h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/62">
+              <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/62">
                 {revealNextStep}
-              </p>
+              </FactionAccentText>
             </div>
 
             <div className="mt-5 rounded-[22px] border border-white/8 bg-black/22 px-4 py-4">
@@ -586,9 +590,12 @@ export default function GameBoard({
                 </div>
               </div>
 
-              <p className="mt-3 text-center text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
+              <FactionAccentText
+                as="p"
+                className="mt-3 text-center text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/45"
+              >
                 {revealProgressTotal < aliveCount ? `Revealing votes ${revealProgressTotal}/${aliveCount}` : revealNextStep}
-              </p>
+              </FactionAccentText>
             </div>
           </div>
         </div>
@@ -608,12 +615,15 @@ export default function GameBoard({
                 >
                   Live Briefing
                 </motion.span>
-                <h2 className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl">
+                <FactionAccentText
+                  as="h2"
+                  className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+                >
                   {voteStatusTitle}
-                </h2>
-                <p className="mt-1 max-w-[40rem] text-sm leading-relaxed text-white/62">
+                </FactionAccentText>
+                <FactionAccentText as="p" className="mt-1 max-w-[40rem] text-sm leading-relaxed text-white/62">
                   {voteStatusCopy}
-                </p>
+                </FactionAccentText>
 
                 {!showVoteReveal && (
                   <div className="mt-3 flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/52">
