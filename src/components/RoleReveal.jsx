@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { FACTIONS, ROLES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 
-const AUTO_ADVANCE_MS = 1200;
+const AUTO_ADVANCE_MS = 5000;
 
 const THEMES = {
   liberal: {
@@ -291,38 +291,54 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                     </div>
                   </div>
 
-                  <div className="w-full rounded-[24px] border border-white/8 bg-black/32 px-4 py-4 text-center shadow-inner">
-                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
-                      {allyHeading}
-                    </p>
+                  <div className="w-full rounded-[24px] border border-white/8 bg-black/32 px-4 py-5 shadow-inner">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+                       <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
+                        {allyHeading}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[8px] font-mono font-bold text-green-500/80 uppercase">Active Net</span>
+                      </div>
+                    </div>
 
                     {knownPlayers.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      <div className="grid grid-cols-1 gap-2.5">
                         {knownPlayers.map((player) => (
                           <div
                             key={player.id}
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 ${theme.chip}`}
+                            className={`flex items-center justify-between rounded-xl border ${theme.chip} group overflow-hidden`}
                           >
-                            <img
-                              src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              className="h-7 w-7 rounded-full border border-white/12 object-cover"
-                            />
-                            <span className="max-w-[88px] truncate text-[11px] font-black uppercase tracking-[0.08em] text-white">
-                              {player.name}
-                            </span>
-                            <span className={`text-[9px] font-mono font-black uppercase tracking-[0.16em] ${theme.softText}`}>
-                              {player.role === ROLES.HITLER ? 'Hitler' : 'Fascist'}
-                            </span>
+                            <div className="flex items-center gap-3">
+                               <div className="relative h-12 w-12 shrink-0">
+                                  <img
+                                    src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                                    alt=""
+                                    className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                               </div>
+                               <div className="text-left">
+                                  <p className="text-[12px] font-black uppercase tracking-tight text-white">{player.name}</p>
+                                  <p className={`text-[8px] font-mono font-black uppercase tracking-widest ${theme.softText}`}>
+                                    {player.role === ROLES.HITLER ? 'PRIMARY TARGET' : 'LOYALIST AGENT'}
+                                  </p>
+                               </div>
+                            </div>
+                            <div className="pr-4">
+                               <span className={`text-[9px] font-mono font-black uppercase border border-current rounded px-2 py-0.5 ${theme.softText}`}>
+                                 {player.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
+                               </span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm leading-relaxed text-white/56">
-                        {allySummary}
-                      </p>
+                      <div className="py-4">
+                        <p className="text-[11px] leading-relaxed text-white/32 italic px-4">
+                          {allySummary}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
