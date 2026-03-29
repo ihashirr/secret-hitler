@@ -21,6 +21,17 @@ export default function GameOver({ gameState, playerId, onReplay }) {
   const me = gameState.players.find((player) => player.id === myActualId);
   const isLiberalWin = gameState.winner === FACTIONS.LIBERAL;
   const winnerTitle = isLiberalWin ? 'REPUBLIC SECURED' : 'REGIME ASCENDANT';
+  const winnerArtwork = isLiberalWin
+    ? {
+        src: '/assets/gameover-liberal-resolve.svg',
+        alt: 'Blue resistance imagery as the regime collapses.',
+        kicker: 'Republic Restored',
+      }
+    : {
+        src: '/assets/gameover-fascist-regime.svg',
+        alt: 'A fictional authoritarian council assembling beneath crimson banners.',
+        kicker: 'Regime In Command',
+      };
   const logs = useQuery(api.game.getGameLog, gameState?.roomId ? { roomId: gameState.roomId } : 'skip');
   const [typedTitle, setTypedTitle] = useState('');
   const [typedReason, setTypedReason] = useState('');
@@ -85,6 +96,28 @@ export default function GameOver({ gameState, playerId, onReplay }) {
             transition={{ duration: 0.7, ease: 'easeOut' }}
             className="mx-auto flex w-full flex-col items-center"
           >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.7, ease: 'easeOut', delay: 0.08 }}
+              className="mb-5 w-full overflow-hidden rounded-[26px] border border-white/10 bg-black/25 shadow-[0_20px_52px_rgba(0,0,0,0.28)]"
+            >
+              <div className="relative aspect-[4/3] w-full overflow-hidden">
+                <img
+                  src={winnerArtwork.src}
+                  alt={winnerArtwork.alt}
+                  loading="eager"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.62)_100%)] px-4 pb-4 pt-10 text-left">
+                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.28em] text-white/72">
+                    {winnerArtwork.kicker}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
             <motion.div
               animate={{
                 scale: [1, 1.05, 1],
