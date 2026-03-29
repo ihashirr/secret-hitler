@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Lock, Unlock, X } from 'lucide-react';
+import { Hand, Lock, Unlock, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { triggerHaptic } from '../lib/haptics';
 
 const AUTO_CLOSE_MS = 3000;
 
@@ -86,13 +87,19 @@ export default function StageSpotlight({
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            animate={{ opacity: 1, scale: isHolding ? 1.02 : 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 16 }}
             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             onPointerDown={() => {
+              if (!isHolding) {
+                triggerHaptic('soft');
+              }
               setIsHolding(true);
             }}
             onPointerUp={() => {
+              if (isHolding) {
+                triggerHaptic('light');
+              }
               setIsHolding(false);
             }}
             onPointerLeave={() => {
@@ -101,11 +108,23 @@ export default function StageSpotlight({
             onPointerCancel={() => {
               setIsHolding(false);
             }}
-            className="relative w-full max-w-2xl overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)]"
-            style={{ boxShadow: `0 40px 120px rgba(0,0,0,0.62), 0 0 70px ${toneTheme.glow}` }}
+            className={`relative w-full max-w-2xl overflow-hidden rounded-[34px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
+            style={{
+              boxShadow: isHolding
+                ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`
+                : `0 40px 120px rgba(0,0,0,0.62), 0 0 70px ${toneTheme.glow}`,
+            }}
           >
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${toneTheme.accentBar}`} />
             <div className="absolute inset-0 paper-grain opacity-[0.08] pointer-events-none" />
+            {isHolding && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-white/[0.03] pointer-events-none"
+              />
+            )}
 
             <div className="relative z-10 px-5 pb-5 pt-4 sm:px-7 sm:pb-7 sm:pt-5">
               <div className="flex items-start justify-between gap-4">
@@ -153,9 +172,9 @@ export default function StageSpotlight({
 
                 {actionLabels.length > 0 && (
                   <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                    {actionLabels.map((actionLabel) => (
+                    {actionLabels.map((actionLabel, index) => (
                       <span
-                        key={actionLabel}
+                        key={`${actionLabel}-${index}`}
                         className={`rounded-full border px-3 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${toneTheme.chip}`}
                       >
                         {actionLabel}
@@ -163,6 +182,19 @@ export default function StageSpotlight({
                     ))}
                   </div>
                 )}
+
+                <motion.div
+                  animate={isHolding ? { scale: 1.03 } : { scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+                  className={`mx-auto mt-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
+                    isHolding
+                      ? 'border-white/18 bg-white/[0.08] text-white'
+                      : 'border-white/10 bg-white/[0.04] text-white/72'
+                  }`}
+                >
+                  <Hand size={14} />
+                  {isHolding ? 'Pinned While Pressed' : 'Hold To Keep Open'}
+                </motion.div>
               </div>
 
               <div className="mt-8 sm:mt-10">
@@ -170,12 +202,19 @@ export default function StageSpotlight({
                   <span>{isHolding ? 'Holding spotlight' : 'Auto closing in 3s'}</span>
                   <span>{isHolding ? 'Release to resume' : 'Press and hold to keep open'}</span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
                   <motion.div
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ ease: 'linear', duration: 0.08 }}
+                    animate={isHolding ? { width: '100%', opacity: [0.45, 0.9, 0.45] } : { width: `${progressPercent}%`, opacity: 1 }}
+                    transition={isHolding ? { duration: 1.05, repeat: Infinity, ease: 'easeInOut' } : { ease: 'linear', duration: 0.08 }}
                     className={`h-full rounded-full bg-gradient-to-r ${toneTheme.accentBar}`}
                   />
+                  {isHolding && (
+                    <motion.div
+                      animate={{ opacity: [0.18, 0.42, 0.18] }}
+                      transition={{ duration: 0.95, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute inset-0 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.18)_0_10px,transparent_10px_20px)]"
+                    />
+                  )}
                 </div>
               </div>
             </div>
