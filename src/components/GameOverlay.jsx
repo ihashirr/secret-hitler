@@ -4,6 +4,8 @@ import { PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 import StageSpotlight from './StageSpotlight';
 
+const UNIFIED_SPOTLIGHT_MS = 3000;
+
 function getSpotlightSceneId({
   displayPhase,
   gameState,
@@ -78,6 +80,7 @@ export default function GameOverlay({
   const primaryInstruction = directorState?.primaryInstruction;
   const currentBallotKey = `${gameState.phase}:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || gameState.currentChancellor || 'none'}`;
   const [pendingVote, setPendingVote] = useState(null);
+  const [dismissedSpotlightKey, setDismissedSpotlightKey] = useState(null);
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
     gameState.phase === PHASES.VOTING &&
@@ -409,7 +412,7 @@ export default function GameOverlay({
         : 'neutral';
   const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
   const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'You' : 'Table';
-  const spotlightAutoCloseMs = hasActionContent ? 1050 : 2600;
+  const spotlightAutoCloseMs = UNIFIED_SPOTLIGHT_MS;
   const spotlightActions =
     !pendingSelection && Array.isArray(primaryInstruction?.actions)
       ? primaryInstruction.actions.map((action) => action.label)
@@ -426,12 +429,14 @@ export default function GameOverlay({
           isPresident,
           isChancellor,
         });
+  const spotlightVisible = Boolean(spotlightKey) && spotlightKey !== dismissedSpotlightKey;
+  const showActionDesk = hasActionContent && !spotlightVisible;
 
   if (!isActive) return null;
 
   return (
     <AnimatePresence>
-      {spotlightKey && (
+      {spotlightVisible && (
         <StageSpotlight
           key={spotlightKey}
           stageLabel={directorState?.stageLabel || 'Live Match'}
@@ -443,10 +448,11 @@ export default function GameOverlay({
           actionLabels={spotlightActions}
           tone={spotlightTone}
           autoCloseMs={spotlightAutoCloseMs}
+          onDismiss={() => setDismissedSpotlightKey(spotlightKey)}
         />
       )}
 
-      {hasActionContent && (
+      {showActionDesk && (
         <motion.div
           key={`desk-${displayPhase}`}
           initial={{ y: '100%' }}

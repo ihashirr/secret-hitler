@@ -36,12 +36,14 @@ export default function StageSpotlight({
   actionLabels = [],
   tone = 'neutral',
   autoCloseMs = DEFAULT_AUTO_CLOSE_MS,
+  onDismiss,
 }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isHolding, setIsHolding] = useState(false);
   const [remainingMs, setRemainingMs] = useState(autoCloseMs);
   const remainingRef = useRef(autoCloseMs);
   const isHoldingRef = useRef(false);
+  const pressStartedAtRef = useRef(0);
 
   const toneTheme = TONE_MAP[tone] || TONE_MAP.neutral;
 
@@ -79,9 +81,14 @@ export default function StageSpotlight({
   const progressPercent = Math.max(0, Math.min(100, (remainingMs / Math.max(1, autoCloseMs)) * 100));
   const modeLabel = visibility === 'private' ? 'Private' : 'Public';
   const autoCloseLabel = `${(autoCloseMs / 1000).toFixed(autoCloseMs % 1000 === 0 ? 0 : 1)}s`;
+  const resetTimer = () => {
+    remainingRef.current = autoCloseMs;
+    setRemainingMs(autoCloseMs);
+  };
   const handleHoldStart = (event) => {
     event.preventDefault();
     event.stopPropagation();
+    pressStartedAtRef.current = window.Date.now();
 
     if (!isHolding) {
       triggerHaptic('soft');
@@ -101,9 +108,20 @@ export default function StageSpotlight({
     isHoldingRef.current = false;
     setIsHolding(false);
   };
+  const handleSurfaceTap = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (window.Date.now() - pressStartedAtRef.current > 250) {
+      return;
+    }
+
+    triggerHaptic('light');
+    resetTimer();
+  };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={onDismiss}>
       {isVisible && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -139,9 +157,8 @@ export default function StageSpotlight({
               data-spotlight-close="true"
               onClick={(event) => {
                 event.stopPropagation();
-                remainingRef.current = autoCloseMs;
                 isHoldingRef.current = false;
-                setRemainingMs(autoCloseMs);
+                resetTimer();
                 setIsHolding(false);
                 setIsVisible(false);
               }}
@@ -163,6 +180,7 @@ export default function StageSpotlight({
               onMouseDown={handleHoldStart}
               onMouseUp={handleHoldEnd}
               onMouseLeave={handleHoldEnd}
+              onClick={handleSurfaceTap}
               onContextMenu={(event) => event.preventDefault()}
               className="absolute inset-0 z-30"
               style={{
@@ -229,7 +247,7 @@ export default function StageSpotlight({
               <div className="mt-8 sm:mt-10">
                 <div className="flex flex-col gap-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
                   <span>{isHolding ? 'Holding spotlight' : `Auto closing in ${autoCloseLabel}`}</span>
-                  <span>{isHolding ? 'Release to resume' : 'Hold anywhere on the card'}</span>
+                  <span>{isHolding ? 'Release to resume' : 'Tap to reset • hold to pause'}</span>
                 </div>
                 <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
                   <motion.div
