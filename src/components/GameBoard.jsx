@@ -950,25 +950,6 @@ export default function GameBoard({
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-col items-center gap-4">
-                  <div className="grid w-full max-w-[680px] grid-cols-1 gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62 sm:grid-cols-3 sm:gap-3 sm:text-[10px]">
-                    <div className="rounded-[18px] border border-[#d4af37]/22 bg-[#d4af37]/10 px-3 py-2">
-                      <span className="block text-[#f3df9c]">Current President</span>
-                      <span className="mt-1 block truncate text-white">{currentPresidentPlayer?.name || 'Unknown'}</span>
-                    </div>
-                    <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/10 px-3 py-2">
-                      <span className="block text-cyan-100">Next President</span>
-                      <span className="mt-1 block truncate text-white">{nextPresidentPlayer?.name || 'Unknown'}</span>
-                    </div>
-                    <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-2">
-                      <span className="block text-white/55">{gameState.specialElectionCallerId ? 'Order Resumes After' : 'Then'}</span>
-                      <span className="mt-1 block truncate text-white">
-                        {gameState.specialElectionCallerId
-                          ? (presidencyOriginPlayer?.name || 'Current Rotation')
-                          : (afterNextPresidentPlayer?.name || 'Rotation Continues')}
-                      </span>
-                    </div>
-                  </div>
-
                   <div className="relative mx-auto w-full max-w-[390px]">
                     <div className="relative aspect-square w-full">
                       <div className="absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
@@ -1135,6 +1116,25 @@ export default function GameBoard({
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className="grid w-full max-w-[680px] grid-cols-1 gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62 sm:grid-cols-3 sm:gap-3 sm:text-[10px]">
+                    <div className="rounded-[18px] border border-[#d4af37]/22 bg-[#d4af37]/10 px-3 py-2">
+                      <span className="block text-[#f3df9c]">Current President</span>
+                      <span className="mt-1 block truncate text-white">{currentPresidentPlayer?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/10 px-3 py-2">
+                      <span className="block text-cyan-100">Next President</span>
+                      <span className="mt-1 block truncate text-white">{nextPresidentPlayer?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-2">
+                      <span className="block text-white/55">{gameState.specialElectionCallerId ? 'Order Resumes After' : 'Then'}</span>
+                      <span className="mt-1 block truncate text-white">
+                        {gameState.specialElectionCallerId
+                          ? (presidencyOriginPlayer?.name || 'Current Rotation')
+                          : (afterNextPresidentPlayer?.name || 'Rotation Continues')}
+                      </span>
                     </div>
                   </div>
                 </div>
