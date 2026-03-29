@@ -79,22 +79,48 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const faction = me?.faction || (role === ROLES.LIBERAL ? FACTIONS.LIBERAL : FACTIONS.FASCIST);
   const theme = faction === FACTIONS.LIBERAL ? THEMES.liberal : THEMES.fascist;
   const roleMeta = ROLE_COPY[role] || ROLE_COPY[ROLES.LIBERAL];
-  const [step, setStep] = useState('cover');
-
-  const knownPlayers = useMemo(
-    () => getKnownPlayers(gameState, myActualId),
-    [gameState, myActualId],
-  );
+  const [isHolding, setIsHolding] = useState(false);
+  const [remainingMs, setRemainingMs] = useState(AUTO_ADVANCE_MS);
+  const remainingRef = useRef(AUTO_ADVANCE_MS);
+  const isHoldingRef = useRef(false);
 
   useEffect(() => {
     if (step !== 'role') return undefined;
 
-    const timer = window.setTimeout(() => {
-      setStep('briefing');
-    }, AUTO_ADVANCE_MS);
+    let lastTick = window.Date.now();
+    const timer = window.setInterval(() => {
+      const now = window.Date.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
 
-    return () => window.clearTimeout(timer);
+      if (isHoldingRef.current) return;
+
+      const nextRemaining = Math.max(0, remainingRef.current - elapsed);
+      remainingRef.current = nextRemaining;
+      setRemainingMs(nextRemaining);
+
+      if (nextRemaining <= 0) {
+        window.clearInterval(timer);
+        setStep('briefing');
+      }
+    }, 40);
+
+    return () => window.clearInterval(timer);
   }, [step]);
+
+  const handleHoldStart = (e) => {
+    e.preventDefault();
+    triggerHaptic('soft');
+    isHoldingRef.current = true;
+    setIsHolding(true);
+  };
+
+  const handleHoldEnd = () => {
+    isHoldingRef.current = false;
+    setIsHolding(false);
+  };
+
+  const progressPercent = Math.max(0, (remainingMs / AUTO_ADVANCE_MS) * 100);
 
   const revealRole = () => {
     triggerHaptic('selection');
@@ -211,21 +237,37 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 className={`w-full rounded-[32px] border ${theme.frame} px-6 py-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.6)]`}
               >
                 <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-white/32">
-                  Your Identity
+                  {isHolding ? 'ID Verification Paused' : 'Scanning Identity'}
                 </p>
                 <div className="mt-6">
-                  <div className="relative mx-auto aspect-[0.7] w-full max-w-[240px] overflow-hidden rounded-[24px] border border-white/15 bg-black/40 shadow-2xl">
+                  <div 
+                    onPointerDown={handleHoldStart}
+                    onPointerUp={handleHoldEnd}
+                    onPointerLeave={handleHoldEnd}
+                    className="relative mx-auto aspect-[0.7] w-full max-w-[240px] cursor-pointer overflow-hidden rounded-[24px] border border-white/15 bg-black/40 shadow-2xl transition-transform active:scale-[1.02]"
+                  >
                     <div className="absolute inset-0 paper-grain opacity-20" />
                     <img 
                       src={roleMeta.image} 
                       alt="" 
-                      className="h-full w-full object-cover transition-transform duration-[3000ms] hover:scale-105" 
+                      className={`h-full w-full object-cover transition-transform duration-[3000ms] ${isHolding ? 'scale-110' : 'hover:scale-105'}`} 
                       loading="eager"
                     />
                     <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1 text-[9px] font-mono font-black uppercase tracking-widest ${theme.chip}`}>
                       {roleMeta.stamp}
                     </div>
+                    {isHolding && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 flex items-center justify-center bg-white/[0.03] backdrop-blur-[2px]"
+                      >
+                         <div className="rounded-full border border-white/20 bg-black/40 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-widest text-white shadow-xl">
+                           Pinned
+                         </div>
+                      </motion.div>
+                    )}
                   </div>
 
                   <h2 className="mt-6 text-3xl font-black uppercase tracking-tight text-white leading-none">
@@ -237,20 +279,23 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 </div>
 
                 <div className="mt-8">
-                  <div className="mx-auto h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-white/10">
+                  <div className="flex items-center justify-between gap-3 text-[9px] font-mono font-black uppercase tracking-widest text-white/30 mb-2 px-1">
+                     <span>{isHolding ? 'Paused' : 'Auto Scanning'}</span>
+                     <span>Hold to Freeze</span>
+                  </div>
+                  <div className={`mx-auto h-2 w-full max-w-[220px] overflow-hidden rounded-full ${isHolding ? 'bg-white/15' : 'bg-white/10'}`}>
                     <motion.div
-                      initial={{ width: '0%' }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: 'linear' }}
-                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'}`}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ ease: 'linear', duration: 0.08 }}
+                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'} ${isHolding ? 'opacity-50' : 'opacity-100'}`}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={showBriefingNow}
-                    className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/40 transition-colors hover:text-white/70"
+                    className={`mt-6 inline-flex h-12 w-full max-w-[180px] items-center justify-center rounded-xl border text-[10px] font-mono font-black uppercase tracking-[0.2em] transition-all hover:bg-white/5 ${theme.chip}`}
                   >
-                    Skip to Briefing
+                    Proceed to Briefing
                   </button>
                 </div>
               </motion.div>
