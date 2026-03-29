@@ -23,14 +23,14 @@ export default function GameOver({ gameState, playerId, onReplay }) {
   const winnerTitle = isLiberalWin ? 'REPUBLIC SECURED' : 'REGIME ASCENDANT';
   const winnerArtwork = isLiberalWin
     ? {
-        src: '/assets/gameover-liberal-resolve.svg',
-        alt: 'Blue resistance imagery as the regime collapses.',
-        kicker: 'Republic Restored',
+        src: '/assets/hitler_sad.png',
+        alt: 'A defeated and mourning leader as the republic is secured.',
+        kicker: 'The Chancellor Weeps',
       }
     : {
-        src: '/assets/gameover-fascist-regime.svg',
-        alt: 'A fictional authoritarian council assembling beneath crimson banners.',
-        kicker: 'Regime In Command',
+        src: '/assets/hitler_victory.png',
+        alt: 'A triumphant leader summoning the strength of the regime.',
+        kicker: 'Summoning Leadership',
       };
   const logs = useQuery(api.game.getGameLog, gameState?.roomId ? { roomId: gameState.roomId } : 'skip');
   const [typedTitle, setTypedTitle] = useState('');
@@ -83,6 +83,20 @@ export default function GameOver({ gameState, playerId, onReplay }) {
           backgroundSize: '180% 180%',
         }}
       />
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 0.15, scale: 1 }}
+        transition={{ duration: 1.5, ease: 'easeOut' }}
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${winnerArtwork.src})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          mixBlendMode: 'luminosity',
+        }}
+      />
+      
       <div className="absolute inset-0 board-grid opacity-[0.06]" />
 
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col">
