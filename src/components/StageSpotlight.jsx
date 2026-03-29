@@ -130,6 +130,23 @@ export default function StageSpotlight({
               WebkitUserSelect: 'none',
             }}
           >
+            <button
+              type="button"
+              data-spotlight-close="true"
+              onClick={(event) => {
+                event.stopPropagation();
+                remainingRef.current = AUTO_CLOSE_MS;
+                isHoldingRef.current = false;
+                setRemainingMs(AUTO_CLOSE_MS);
+                setIsHolding(false);
+                setIsVisible(false);
+              }}
+              className="pointer-events-auto absolute right-5 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-colors hover:bg-white/[0.08] sm:right-7 sm:top-5"
+              aria-label="Close stage spotlight"
+            >
+              <X size={18} />
+            </button>
+
             <div
               aria-hidden="true"
               onTouchStart={handleHoldStart}
@@ -143,7 +160,7 @@ export default function StageSpotlight({
               onMouseUp={handleHoldEnd}
               onMouseLeave={handleHoldEnd}
               onContextMenu={(event) => event.preventDefault()}
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-30"
               style={{
                 touchAction: 'none',
                 userSelect: 'none',
@@ -162,7 +179,7 @@ export default function StageSpotlight({
               />
             )}
 
-            <div className="relative z-20 px-5 pb-5 pt-4 pointer-events-none sm:px-7 sm:pb-7 sm:pt-5">
+            <div className="relative z-10 px-5 pb-5 pt-4 pointer-events-none sm:px-7 sm:pb-7 sm:pt-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
                   <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
@@ -176,22 +193,6 @@ export default function StageSpotlight({
                     {audienceLabel}
                   </span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    remainingRef.current = AUTO_CLOSE_MS;
-                    isHoldingRef.current = false;
-                    setRemainingMs(AUTO_CLOSE_MS);
-                    setIsHolding(false);
-                    setIsVisible(false);
-                  }}
-                  className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-colors hover:bg-white/[0.08]"
-                  aria-label="Close stage spotlight"
-                >
-                  <X size={18} />
-                </button>
               </div>
 
               <div className="mx-auto mt-8 max-w-xl text-center sm:mt-10">
