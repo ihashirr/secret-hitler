@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import FactionAccentText from './FactionAccentText';
 import { triggerHaptic } from '../lib/haptics';
 
-const DEFAULT_AUTO_CLOSE_MS = 3000;
+const DEFAULT_AUTO_CLOSE_MS = 10000;
 const DISMISS_DRAG_OFFSET = 120;
 const DISMISS_DRAG_VELOCITY = 720;
 
@@ -41,10 +41,11 @@ export default function StageSpotlight({
   autoCloseMs = DEFAULT_AUTO_CLOSE_MS,
   onDismiss,
 }) {
+  const effectiveAutoCloseMs = Math.max(DEFAULT_AUTO_CLOSE_MS, autoCloseMs);
   const [isVisible, setIsVisible] = useState(true);
   const [isHolding, setIsHolding] = useState(false);
-  const [remainingMs, setRemainingMs] = useState(autoCloseMs);
-  const remainingRef = useRef(autoCloseMs);
+  const [remainingMs, setRemainingMs] = useState(effectiveAutoCloseMs);
+  const remainingRef = useRef(effectiveAutoCloseMs);
   const isHoldingRef = useRef(false);
   const pressStartedAtRef = useRef(0);
   const dragControls = useDragControls();
@@ -82,17 +83,17 @@ export default function StageSpotlight({
     };
   }, [isVisible]);
 
-  const progressPercent = Math.max(0, Math.min(100, (remainingMs / Math.max(1, autoCloseMs)) * 100));
+  const progressPercent = Math.max(0, Math.min(100, (remainingMs / Math.max(1, effectiveAutoCloseMs)) * 100));
   const modeLabel = visibility === 'private' ? 'Private' : 'Public';
-  const autoCloseLabel = `${(autoCloseMs / 1000).toFixed(autoCloseMs % 1000 === 0 ? 0 : 1)}s`;
+  const autoCloseLabel = `${(effectiveAutoCloseMs / 1000).toFixed(effectiveAutoCloseMs % 1000 === 0 ? 0 : 1)}s`;
   const closeSpotlight = () => {
     isHoldingRef.current = false;
     setIsHolding(false);
     setIsVisible(false);
   };
   const resetTimer = () => {
-    remainingRef.current = autoCloseMs;
-    setRemainingMs(autoCloseMs);
+    remainingRef.current = effectiveAutoCloseMs;
+    setRemainingMs(effectiveAutoCloseMs);
   };
   const handleHoldStart = (event) => {
     event.preventDefault();

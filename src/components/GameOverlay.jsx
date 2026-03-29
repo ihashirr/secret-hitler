@@ -5,7 +5,7 @@ import { triggerHaptic } from '../lib/haptics';
 import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
 
-const ACTIONABLE_SPOTLIGHT_MS = 1200;
+const ACTIONABLE_SPOTLIGHT_MS = 10000;
 
 function getSpotlightSceneId({
   displayPhase,
