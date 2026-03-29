@@ -1397,6 +1397,27 @@ export default function GameBoard({
       nextPresidentId,
       afterNextPresidentId,
     } = getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId);
+    const currentPresidentPlayer = tablePlayers.find((player) => player.id === gameState.currentPresident) || null;
+    const currentChancellorPlayer =
+      tablePlayers.find((player) => player.id === (gameState.currentChancellor || gameState.nominatedChancellor)) || null;
+    const nextPresidentPlayer = tablePlayers.find((player) => player.id === nextPresidentId) || null;
+    const orbitStatusItems = [
+      {
+        label: 'President',
+        value: currentPresidentPlayer?.name || 'Open',
+        accentClassName: 'bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.32)]',
+      },
+      {
+        label: 'Chancellor',
+        value: currentChancellorPlayer?.name || 'Open',
+        accentClassName: 'bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.16)]',
+      },
+      {
+        label: 'Next',
+        value: nextPresidentPlayer?.name || 'Open',
+        accentClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.3)]',
+      },
+    ];
     const ringSeatClass = getTableRingSeatClass(playerCount);
     const votingGroups = isVotingPhase
       ? showVoteReveal
@@ -1610,6 +1631,23 @@ export default function GameBoard({
                           </div>
                         </div>
                       )}
+                      <div className="pointer-events-none absolute left-1/2 top-[66%] z-10 w-[152px] -translate-x-1/2">
+                        <div className="rounded-[20px] border border-white/8 bg-black/28 px-3 py-2 shadow-[0_14px_24px_rgba(0,0,0,0.22)] backdrop-blur-sm">
+                          <div className="space-y-1.5">
+                            {orbitStatusItems.map((item) => (
+                              <div key={item.label} className="flex items-center justify-between gap-2 text-[8px] font-mono font-black uppercase tracking-[0.16em]">
+                                <span className="inline-flex min-w-0 items-center gap-1.5 text-white/46">
+                                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
+                                  {item.label}
+                                </span>
+                                <span className="truncate text-right text-white/76">
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
 
                       {tablePlayers.map((player, index) => {
                         const isSelf = player.id === myActualId;
