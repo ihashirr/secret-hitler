@@ -8,6 +8,7 @@ export default function GlobalControls({
   gameState,
   playerId,
   directorState,
+  infoOpen,
   onOpenInfo,
   onReset,
   onWipe,
@@ -128,7 +129,7 @@ export default function GlobalControls({
               </div>
             )}
 
-            <StageInfoButton onClick={onOpenInfo} />
+            <StageInfoButton onClick={onOpenInfo} active={infoOpen} />
 
             <button
               type="button"

@@ -147,6 +147,7 @@ export default function App() {
           gameState={gameState} 
           playerId={playerId} 
           directorState={directorState}
+          infoOpen={showStageInfo}
           onOpenInfo={() => setShowStageInfo(true)}
           onReset={async () => {
             await resetRoom({ roomId });
@@ -164,7 +165,12 @@ export default function App() {
       )}
 
       {!showGlobalControls && (
-        <StageInfoButton floating onClick={() => setShowStageInfo(true)} />
+        <StageInfoButton
+          floating
+          active={showStageInfo}
+          label={viewKey === 'CONNECT' ? 'How To Play' : 'Guide'}
+          onClick={() => setShowStageInfo(true)}
+        />
       )}
 
       <StageInfoOverlay
