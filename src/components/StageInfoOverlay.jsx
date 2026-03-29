@@ -57,10 +57,10 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            className="relative z-[151] flex max-h-[calc(var(--app-vh)-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+            className="relative z-[151] flex min-w-0 max-h-[calc(var(--app-vh)-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
           >
             <div className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.26em] text-cyan-200/75">
                     <Info size={14} />
@@ -80,7 +80,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10"
+                  className="flex h-10 w-10 self-start items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 min-[420px]:shrink-0"
                   aria-label="Close stage information"
                 >
                   <X size={18} />
@@ -88,7 +88,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
               <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
                 {tabs.map((tab) => (
                   <button
@@ -168,7 +168,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
 
               {activeTab === 'board' && (
                 <section className="pt-4">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-3">
                     {facts.map((fact) => (
                       <div key={fact.label} className="rounded-[18px] border border-white/10 bg-white/[0.03] px-3 py-3">
                         <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/40">

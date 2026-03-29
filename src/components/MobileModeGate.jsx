@@ -105,12 +105,12 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
     <div className="fixed inset-0 z-[180] flex items-end justify-center p-3 sm:items-center sm:p-6">
       <div className="absolute inset-0 bg-[#020304]/84 backdrop-blur-md" />
 
-      <div className="relative z-[181] w-full max-w-md">
+      <div className="relative z-[181] w-full min-w-0 max-w-md">
         <div
-          className="tactical-panel flex max-h-[calc(var(--app-vh)-24px)] flex-col overflow-hidden rounded-[30px] border border-cyan-400/30 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
+          className="tactical-panel flex min-w-0 max-h-[calc(var(--app-vh)-24px)] flex-col overflow-hidden rounded-[30px] border border-cyan-400/30 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
         >
           <div className="shrink-0 border-b border-white/8 px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.28em] text-cyan-300/75">
                   <Shield size={14} />
@@ -124,13 +124,13 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 </p>
               </div>
 
-              <span className="shrink-0 rounded-full border border-cyan-300/18 bg-cyan-400/8 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100">
+              <span className="self-start rounded-full border border-cyan-300/18 bg-cyan-400/8 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100 min-[380px]:shrink-0">
                 {detectedModeLabel}
               </span>
             </div>
             </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
             <div className="space-y-5">
               <div className="grid gap-3">
                 {hasInstallPrompt ? (

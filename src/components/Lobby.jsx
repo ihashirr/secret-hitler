@@ -64,14 +64,14 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-transparent">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)]">
+      <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col overflow-hidden px-3 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] sm:px-4">
         <section className="rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-5 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/70">
                 Briefing Room
               </p>
-              <h2 className="mt-2 text-5xl font-mono font-black uppercase tracking-[0.24em] text-white sm:text-6xl">
+              <h2 className="mt-2 truncate text-4xl font-mono font-black uppercase tracking-[0.22em] text-white min-[360px]:text-5xl sm:text-6xl">
                 {gameState.roomId}
               </h2>
             </div>
@@ -85,7 +85,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
             Share the code and start when ready.
           </p>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
             <button
               type="button"
               onClick={() => handleCopy(gameState.roomId, 'code')}
@@ -130,7 +130,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${
+                  className={`flex min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 ${
                     isSelf ? 'border-cyan-400/35 bg-cyan-400/8' : 'border-white/8 bg-white/[0.03]'
                   }`}
                 >
@@ -143,7 +143,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
                   />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-black uppercase tracking-[0.12em] text-white">
                         {player.name}
                       </p>
@@ -170,17 +170,17 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
             })}
 
             {Array.from({ length: ghostSlotCount }).map((_, index) => (
-              <div
-                key={`ghost-${index}`}
-                className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3"
-              >
-                <div className="flex h-12 w-10 shrink-0 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm font-black text-white/25">
-                  +
-                </div>
-                <div>
-                  <p className="text-sm font-black uppercase tracking-[0.12em] text-white/40">
-                    Waiting for player
-                  </p>
+                <div
+                  key={`ghost-${index}`}
+                  className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3"
+                >
+                  <div className="flex h-12 w-10 shrink-0 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm font-black text-white/25">
+                    +
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black uppercase tracking-[0.12em] text-white/40">
+                      Waiting for player
+                    </p>
                   <p className="mt-1 text-[11px] font-mono uppercase tracking-[0.16em] text-white/25">
                     Room supports up to 10
                   </p>

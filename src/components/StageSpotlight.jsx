@@ -120,7 +120,7 @@ export default function StageSpotlight({
             exit={{ opacity: 0, scale: 0.98, y: 16 }}
             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             onContextMenu={(event) => event.preventDefault()}
-            className={`relative w-full max-w-2xl select-none overflow-hidden rounded-[34px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
+            className={`relative w-full min-w-0 max-w-2xl select-none overflow-hidden rounded-[34px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
             style={{
               boxShadow: isHolding
                 ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`
@@ -179,7 +179,7 @@ export default function StageSpotlight({
               />
             )}
 
-            <div className="relative z-10 px-5 pb-5 pt-4 pointer-events-none sm:px-7 sm:pb-7 sm:pt-5">
+            <div className="pointer-events-none relative z-10 min-w-0 px-4 pb-5 pt-4 sm:px-7 sm:pb-7 sm:pt-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
                   <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
@@ -199,7 +199,7 @@ export default function StageSpotlight({
                 <p className="text-[11px] font-mono font-black uppercase tracking-[0.42em] text-white/42">
                   Current Stage
                 </p>
-                <h2 className="mt-4 text-3xl font-black uppercase tracking-[0.14em] text-white sm:text-5xl sm:tracking-[0.16em]">
+                <h2 className="mt-4 break-words text-3xl font-black uppercase tracking-[0.14em] text-white sm:text-5xl sm:tracking-[0.16em]">
                   {title}
                 </h2>
                 {description && (
@@ -223,7 +223,7 @@ export default function StageSpotlight({
               </div>
 
               <div className="mt-8 sm:mt-10">
-                <div className="flex items-center justify-between gap-3 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48">
+                <div className="flex flex-col gap-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
                   <span>{isHolding ? 'Holding spotlight' : 'Auto closing in 3s'}</span>
                   <span>{isHolding ? 'Release to resume' : 'Hold anywhere on the card'}</span>
                 </div>
@@ -246,7 +246,7 @@ export default function StageSpotlight({
                     ? 'border-white/20 bg-white/[0.1] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
                     : 'border-white/10 bg-white/[0.04]'
                 }`}>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
                     <div className="min-w-0">
                       <div className="text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white">
                         {isHolding ? 'Pinned While Pressed' : 'Whole Card Hold Surface'}
@@ -259,7 +259,7 @@ export default function StageSpotlight({
                     </div>
 
                     <span
-                      className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
+                      className={`self-start rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] min-[360px]:shrink-0 ${
                         isHolding
                           ? 'border-white/18 bg-white/[0.12] text-white'
                           : 'border-white/10 bg-white/[0.04] text-white/70'

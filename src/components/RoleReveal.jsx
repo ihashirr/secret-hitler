@@ -105,8 +105,8 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   
     if (me?.isReady) {
     return (
-      <div className="flex h-full min-h-0 w-full items-center justify-center px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] text-center">
-        <div className="tactical-panel p-6 sm:p-8 text-center border-cyan-500/30 w-full max-w-sm">
+      <div className="flex h-full min-h-0 w-full items-center justify-center px-3 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] text-center sm:px-4">
+        <div className="tactical-panel w-full max-w-sm min-w-0 border-cyan-500/30 p-6 text-center sm:p-8">
           <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 animate-spin mx-auto mb-6 transform rotate-45" />
           <h2 className="text-lg sm:text-xl font-mono text-cyan-400 mb-2 uppercase tracking-[0.2em]">Room Is Synchronizing</h2>
           <p className="text-cyan-500/50 text-xs font-mono tracking-widest uppercase animate-pulse">Waiting for every phone to finish the briefing...</p>
@@ -120,7 +120,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const showColors = state === REVEAL_STATES.DETAILS || state === REVEAL_STATES.OPERATIVES || state === REVEAL_STATES.CONFIRMED;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-900 px-4 pb-[calc(var(--app-safe-bottom)+0.5rem)] pt-[calc(var(--app-header-offset)+20px)] sm:px-6">
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-900 px-3 pb-[calc(var(--app-safe-bottom)+0.5rem)] pt-[calc(var(--app-header-offset)+20px)] sm:px-6">
       
       {/* Background Grid Zoom Animation on Transition */}
       <motion.div 
@@ -132,19 +132,19 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
       {/* Header */}
       <motion.div 
         animate={{ opacity: showCardContent ? 0.3 : 1 }}
-        className="text-center mb-6 shrink-0 z-10"
+        className="z-10 mb-6 shrink-0 text-center"
       >
-        <h2 className="text-xl sm:text-2xl font-mono text-cyan-400 tracking-[0.25em] font-black neon-text-cyan uppercase">Private Role Briefing</h2>
-        <p className="text-cyan-500/60 text-[9px] mt-1 font-mono uppercase tracking-[0.4em] font-bold">Made for phones. Shield your screen before opening.</p>
+        <h2 className="text-lg font-mono font-black uppercase tracking-[0.18em] text-cyan-400 neon-text-cyan sm:text-2xl sm:tracking-[0.25em]">Private Role Briefing</h2>
+        <p className="mt-1 text-[9px] font-mono font-bold uppercase tracking-[0.28em] text-cyan-500/60 sm:tracking-[0.4em]">Made for phones. Shield your screen before opening.</p>
       </motion.div>
 
       {/* Shared Active Container */}
-      <div className="z-10 flex min-h-0 flex-1 flex-col items-center overflow-y-auto py-4 scrollbar-hide w-full">
+      <div className="z-10 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center overflow-y-auto py-4 scrollbar-hide">
         
         <motion.div 
           animate={state === REVEAL_STATES.AUTH_TAP ? { scale: 0.96, boxShadow: "0 0 40px rgba(0,240,255,0.4)" } : { scale: 1 }}
           transition={{ duration: 0.15 }}
-          className={`w-full max-w-[300px] sm:max-w-xs shrink-0 tactical-panel relative overflow-hidden transition-all duration-300
+          className={`relative w-full min-w-0 max-w-[300px] shrink-0 overflow-hidden tactical-panel transition-all duration-300 sm:max-w-xs
             ${showColors ? themeColors : 'border border-cyan-500/20 bg-black/60'}
             p-6 flex flex-col items-center justify-center min-h-[360px] cursor-default
           `}
@@ -217,7 +217,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="bg-black/60 w-full p-4 border border-white/10 mb-4 font-mono text-[10px] sm:text-[11px] leading-relaxed text-white/80 tracking-wide text-left shadow-inner"
+                        className="mb-4 w-full min-w-0 border border-white/10 bg-black/60 p-4 text-left font-mono text-[10px] leading-relaxed tracking-wide text-white/80 shadow-inner sm:text-[11px]"
                      >
                        <span className={`font-black block mb-1 text-[9px] tracking-widest ${isFactionLiberal ? 'text-cyan-400/60' : 'text-red-400/60'}`}>DIRECTIVE:</span>
                        {directiveText}
@@ -235,15 +235,15 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                       <p className="text-[8px] sm:text-[9px] text-white/40 font-mono uppercase tracking-[0.3em] mb-2 border-b border-white/10 pb-1 font-bold">Known Allies</p>
                       <div className="flex flex-col gap-[2px]">
                         {visibleTeammates.map((t, index) => (
-                           <motion.div 
-                             key={t.id} 
-                             initial={{ opacity: 0, x: -15 }}
-                             animate={{ opacity: 1, x: 0 }}
-                             transition={{ delay: index * 0.04, type: "spring", stiffness: 300, damping: 20 }}
-                             className="flex justify-between items-center bg-black/40 px-3 py-2 border-l-2 border-red-500/40 text-[10px] font-mono"
-                           >
-                             <div className="flex min-w-0 items-center gap-2">
-                               <span className="truncate font-bold text-white/90">{t.name}</span>
+                            <motion.div 
+                              key={t.id} 
+                              initial={{ opacity: 0, x: -15 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.04, type: "spring", stiffness: 300, damping: 20 }}
+                              className="flex flex-col gap-2 border-l-2 border-red-500/40 bg-black/40 px-3 py-2 text-[10px] font-mono min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between"
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="truncate font-bold text-white/90">{t.name}</span>
                                {t.isBot && (
                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-amber-100">
                                    <Bot size={9} />
@@ -251,8 +251,8 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                                  </span>
                                )}
                              </div>
-                             <span className="shrink-0 ml-2 font-black text-red-500">[{t.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}]</span>
-                           </motion.div>
+                              <span className="self-start font-black text-red-500 min-[360px]:ml-2 min-[360px]:shrink-0">[{t.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}]</span>
+                            </motion.div>
                         ))}
                       </div>
                     </motion.div>

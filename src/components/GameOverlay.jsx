@@ -213,7 +213,7 @@ export default function GameOverlay({
           isActive = true;
           privateAudience = 'President Only';
           actionContent = (
-            <div className="mt-4 grid w-full max-w-sm grid-cols-2 gap-3">
+            <div className="mt-4 grid w-full max-w-sm grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <button
                 type="button"
                 onClick={runWithHaptic(() => onRespondVeto(true), 'confirm')}
@@ -386,12 +386,12 @@ export default function GameOverlay({
           transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
-          <div className="pointer-events-auto relative flex max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">
+          <div className="pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">
             <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
             <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 shrink-0 rounded-full bg-black/10" />
 
             <div className="relative z-10 shrink-0">
-              <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
                 <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
                   Action Desk
                 </span>
@@ -417,7 +417,7 @@ export default function GameOverlay({
               )}
 
               {pendingSelection && (
-                <div className={`grid grid-cols-2 gap-3 ${actionContent ? 'mt-5' : ''}`}>
+              <div className={`grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 ${actionContent ? 'mt-5' : ''}`}>
                   <button
                     type="button"
                     onClick={runWithHaptic(onConfirm, 'confirm')}

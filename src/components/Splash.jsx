@@ -46,8 +46,8 @@ export default function Splash({ onConnect }) {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,240,255,0.08),transparent_38%),linear-gradient(180deg,#040607_0%,#111111_100%)] text-white">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-y-auto px-4 pb-[calc(var(--app-safe-bottom)+1.5rem)] pt-[calc(var(--app-safe-top)+1rem)] scrollbar-hide">
-        <section className="rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-6 shadow-[0_24px_64px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col overflow-y-auto px-3 pb-[calc(var(--app-safe-bottom)+1.5rem)] pt-[calc(var(--app-safe-top)+1rem)] scrollbar-hide sm:px-4">
+        <section className="min-w-0 rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-6 shadow-[0_24px_64px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/70">
             Private Phone Match
           </p>
@@ -70,7 +70,7 @@ export default function Splash({ onConnect }) {
 
         <form
           onSubmit={handleSubmit}
-          className="mt-4 rounded-[28px] border border-white/10 bg-[rgba(12,12,12,0.82)] px-4 py-5 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-xl"
+          className="mt-4 min-w-0 rounded-[28px] border border-white/10 bg-[rgba(12,12,12,0.82)] px-4 py-5 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-xl"
         >
           <div>
             <label
@@ -167,7 +167,7 @@ export default function Splash({ onConnect }) {
               autoComplete="off"
               spellCheck="false"
               placeholder="Auto-create if blank"
-              className="mt-2 h-14 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-center font-mono text-2xl font-black uppercase tracking-[0.4em] text-cyan-300 outline-none transition-colors placeholder:tracking-[0.18em] placeholder:text-white/25 focus:border-cyan-400/60 focus:bg-cyan-400/5"
+              className="mt-2 h-14 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-center font-mono text-2xl font-black uppercase tracking-[0.28em] text-cyan-300 outline-none transition-colors placeholder:tracking-[0.14em] placeholder:text-white/25 focus:border-cyan-400/60 focus:bg-cyan-400/5 min-[360px]:tracking-[0.4em] min-[360px]:placeholder:tracking-[0.18em]"
             />
             <p className="mt-2 text-xs leading-relaxed text-white/45">
               Leave blank to create a room.

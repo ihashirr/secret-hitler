@@ -51,7 +51,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
   }, [gameState.players, gameState.winReason, winnerTitle]);
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] sm:px-6">
+    <div className="relative h-full min-h-0 overflow-hidden bg-obsidian-950 px-3 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] sm:px-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -74,8 +74,8 @@ export default function GameOver({ gameState, playerId, onReplay }) {
       />
       <div className="absolute inset-0 board-grid opacity-[0.06]" />
 
-      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-md flex-col">
-        <section className="shrink-0 rounded-[30px] border border-white/10 bg-black/35 px-5 py-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col">
+        <section className="min-w-0 shrink-0 rounded-[30px] border border-white/10 bg-black/35 px-5 py-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{
@@ -129,7 +129,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
               </p>
             </div>
 
-            <div className="mt-5 grid w-full grid-cols-2 gap-2">
+            <div className="mt-5 grid w-full grid-cols-1 gap-2 min-[360px]:grid-cols-2">
               <button
                 type="button"
                 onClick={onReplay}
@@ -190,7 +190,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
         ) : (
           <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 scrollbar-hide">
             <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
                   Revealing Roles
                 </p>
@@ -211,7 +211,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className="rounded-[20px] border border-white/10 bg-black/35 px-4 py-3"
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-3 min-[360px]:flex-row min-[360px]:items-start min-[360px]:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span
@@ -250,7 +250,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
                           </div>
                         </div>
 
-                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${tag.className}`}>
+                        <span className={`self-start rounded-full border px-2.5 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] min-[360px]:shrink-0 ${tag.className}`}>
                           {tag.label}
                         </span>
                       </div>
