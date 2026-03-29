@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { FACTIONS, ROLES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 
-const AUTO_ADVANCE_MS = 5000;
+const AUTO_ADVANCE_MS = 1200;
 
 const THEMES = {
   liberal: {
@@ -36,19 +36,16 @@ const ROLE_COPY = {
     headline: 'You Are A Liberal',
     detail: 'Protect the Republic and keep Hitler away from power.',
     stamp: 'LIBERAL',
-    image: '/assets/role-liberal.png',
   },
   [ROLES.FASCIST]: {
     headline: 'You Are A Fascist',
     detail: 'Blend in, protect Hitler, and push the regime forward.',
     stamp: 'FASCIST',
-    image: '/assets/role-fascist.png',
   },
   [ROLES.HITLER]: {
     headline: 'You Are Hitler',
     detail: 'Stay trusted. Let the table bring you to power.',
     stamp: 'HITLER',
-    image: '/assets/role-hitler.png',
   },
 };
 
@@ -79,48 +76,22 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const faction = me?.faction || (role === ROLES.LIBERAL ? FACTIONS.LIBERAL : FACTIONS.FASCIST);
   const theme = faction === FACTIONS.LIBERAL ? THEMES.liberal : THEMES.fascist;
   const roleMeta = ROLE_COPY[role] || ROLE_COPY[ROLES.LIBERAL];
-  const [isHolding, setIsHolding] = useState(false);
-  const [remainingMs, setRemainingMs] = useState(AUTO_ADVANCE_MS);
-  const remainingRef = useRef(AUTO_ADVANCE_MS);
-  const isHoldingRef = useRef(false);
+  const [step, setStep] = useState('cover');
+
+  const knownPlayers = useMemo(
+    () => getKnownPlayers(gameState, myActualId),
+    [gameState, myActualId],
+  );
 
   useEffect(() => {
     if (step !== 'role') return undefined;
 
-    let lastTick = window.Date.now();
-    const timer = window.setInterval(() => {
-      const now = window.Date.now();
-      const elapsed = now - lastTick;
-      lastTick = now;
+    const timer = window.setTimeout(() => {
+      setStep('briefing');
+    }, AUTO_ADVANCE_MS);
 
-      if (isHoldingRef.current) return;
-
-      const nextRemaining = Math.max(0, remainingRef.current - elapsed);
-      remainingRef.current = nextRemaining;
-      setRemainingMs(nextRemaining);
-
-      if (nextRemaining <= 0) {
-        window.clearInterval(timer);
-        setStep('briefing');
-      }
-    }, 40);
-
-    return () => window.clearInterval(timer);
+    return () => window.clearTimeout(timer);
   }, [step]);
-
-  const handleHoldStart = (e) => {
-    e.preventDefault();
-    triggerHaptic('soft');
-    isHoldingRef.current = true;
-    setIsHolding(true);
-  };
-
-  const handleHoldEnd = () => {
-    isHoldingRef.current = false;
-    setIsHolding(false);
-  };
-
-  const progressPercent = Math.max(0, (remainingMs / AUTO_ADVANCE_MS) * 100);
 
   const revealRole = () => {
     triggerHaptic('selection');
@@ -234,68 +205,38 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 1.02, y: -16 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className={`w-full rounded-[32px] border ${theme.frame} px-6 py-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.6)]`}
+                className={`w-full rounded-[32px] border ${theme.frame} px-6 py-8 text-center shadow-[0_28px_84px_rgba(0,0,0,0.56)]`}
               >
                 <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-white/32">
-                  {isHolding ? 'ID Verification Paused' : 'Scanning Identity'}
+                  Your Role
                 </p>
-                <div className="mt-6">
-                  <div 
-                    onPointerDown={handleHoldStart}
-                    onPointerUp={handleHoldEnd}
-                    onPointerLeave={handleHoldEnd}
-                    className="relative mx-auto aspect-[0.7] w-full max-w-[240px] cursor-pointer overflow-hidden rounded-[24px] border border-white/15 bg-black/40 shadow-2xl transition-transform active:scale-[1.02]"
-                  >
-                    <div className="absolute inset-0 paper-grain opacity-20" />
-                    <img 
-                      src={roleMeta.image} 
-                      alt="" 
-                      className={`h-full w-full object-cover transition-transform duration-[3000ms] ${isHolding ? 'scale-110' : 'hover:scale-105'}`} 
-                      loading="eager"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1 text-[9px] font-mono font-black uppercase tracking-widest ${theme.chip}`}>
-                      {roleMeta.stamp}
-                    </div>
-                    {isHolding && (
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute inset-0 flex items-center justify-center bg-white/[0.03] backdrop-blur-[2px]"
-                      >
-                         <div className="rounded-full border border-white/20 bg-black/40 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-widest text-white shadow-xl">
-                           Pinned
-                         </div>
-                      </motion.div>
-                    )}
+                <div className="mt-8">
+                  <div className={`mx-auto inline-flex rounded-full border px-4 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.26em] ${theme.panel}`}>
+                    {roleMeta.stamp}
                   </div>
-
-                  <h2 className="mt-6 text-3xl font-black uppercase tracking-tight text-white leading-none">
+                  <h2 className="mt-6 text-4xl font-black uppercase tracking-[0.08em] text-white sm:text-5xl">
                     {roleMeta.headline}
                   </h2>
-                  <p className="mt-4 text-sm leading-relaxed text-white/58 px-4">
+                  <p className="mt-4 text-base leading-relaxed text-white/58">
                     {roleMeta.detail}
                   </p>
                 </div>
 
-                <div className="mt-8">
-                  <div className="flex items-center justify-between gap-3 text-[9px] font-mono font-black uppercase tracking-widest text-white/30 mb-2 px-1">
-                     <span>{isHolding ? 'Paused' : 'Auto Scanning'}</span>
-                     <span>Hold to Freeze</span>
-                  </div>
-                  <div className={`mx-auto h-2 w-full max-w-[220px] overflow-hidden rounded-full ${isHolding ? 'bg-white/15' : 'bg-white/10'}`}>
+                <div className="mt-10">
+                  <div className="mx-auto h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
                     <motion.div
-                      animate={{ width: `${progressPercent}%` }}
-                      transition={{ ease: 'linear', duration: 0.08 }}
-                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'} ${isHolding ? 'opacity-50' : 'opacity-100'}`}
+                      initial={{ width: '0%' }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: 'linear' }}
+                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-300' : 'bg-red-400'}`}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={showBriefingNow}
-                    className={`mt-6 inline-flex h-12 w-full max-w-[180px] items-center justify-center rounded-xl border text-[10px] font-mono font-black uppercase tracking-[0.2em] transition-all hover:bg-white/5 ${theme.chip}`}
+                    className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/40 transition-colors hover:text-white/70"
                   >
-                    Proceed to Briefing
+                    Skip Ahead
                   </button>
                 </div>
               </motion.div>
@@ -312,78 +253,62 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
               >
                 <div className="text-center">
                   <p className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-white/30">
-                    Mission Dossier
+                    Private Briefing
                   </p>
                   <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.12em] text-white">
                     {roleMeta.headline}
                   </h2>
                 </div>
 
-                <div className="mt-5 flex flex-col items-center gap-6">
-                  {/* Two Identity Cards Display */}
-                  <div className="flex w-full items-center justify-center gap-4">
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                       <p className="text-[8px] font-mono font-black uppercase tracking-widest text-white/20">Secret Role</p>
-                       <div className="relative aspect-[0.7] w-full max-w-[110px] overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
-                          <img src={roleMeta.image} alt="" className="h-full w-full object-cover" />
-                       </div>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                       <p className="text-[8px] font-mono font-black uppercase tracking-widest text-white/20">Membership</p>
-                       <div className="relative aspect-[0.7] w-full max-w-[110px] overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
-                          <img src={theme.partyImage} alt="" className="h-full w-full object-cover" />
-                       </div>
-                    </div>
+                <div className="mt-5 flex flex-col items-center gap-4">
+                  <div className="text-center">
+                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/34">
+                      Party Membership
+                    </p>
+                    <img
+                      src={theme.partyImage}
+                      alt={theme.partyLabel}
+                      loading="eager"
+                      decoding="async"
+                      className="mx-auto mt-3 w-full max-w-[220px] rounded-[24px] shadow-[0_18px_42px_rgba(0,0,0,0.34)] sm:max-w-[250px]"
+                    />
+                    <p className={`mt-3 text-sm font-black uppercase tracking-[0.14em] ${theme.strongText}`}>
+                      {theme.partyLabel}
+                    </p>
                   </div>
 
-                  <div className="w-full rounded-[24px] border border-white/8 bg-black/32 px-4 py-5 shadow-inner">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-                       <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
-                        {allyHeading}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-[8px] font-mono font-bold text-green-500/80 uppercase">Active Net</span>
-                      </div>
-                    </div>
+                  <div className="w-full rounded-[24px] border border-white/8 bg-black/24 px-4 py-4 text-center">
+                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
+                      {allyHeading}
+                    </p>
 
                     {knownPlayers.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2.5">
+                      <div className="mt-3 flex flex-wrap justify-center gap-2">
                         {knownPlayers.map((player) => (
                           <div
                             key={player.id}
-                            className={`flex items-center justify-between rounded-xl border ${theme.chip} group overflow-hidden`}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 ${theme.chip}`}
                           >
-                            <div className="flex items-center gap-3">
-                               <div className="relative h-12 w-12 shrink-0">
-                                  <img
-                                    src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
-                                    alt=""
-                                    className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                               </div>
-                               <div className="text-left">
-                                  <p className="text-[12px] font-black uppercase tracking-tight text-white">{player.name}</p>
-                                  <p className={`text-[8px] font-mono font-black uppercase tracking-widest ${theme.softText}`}>
-                                    {player.role === ROLES.HITLER ? 'PRIMARY TARGET' : 'LOYALIST AGENT'}
-                                  </p>
-                               </div>
-                            </div>
-                            <div className="pr-4">
-                               <span className={`text-[9px] font-mono font-black uppercase border border-current rounded px-2 py-0.5 ${theme.softText}`}>
-                                 {player.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
-                               </span>
-                            </div>
+                            <img
+                              src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="h-7 w-7 rounded-full border border-white/12 object-cover"
+                            />
+                            <span className="max-w-[88px] truncate text-[11px] font-black uppercase tracking-[0.08em] text-white">
+                              {player.name}
+                            </span>
+                            <span className={`text-[9px] font-mono font-black uppercase tracking-[0.16em] ${theme.softText}`}>
+                              {player.role === ROLES.HITLER ? 'Hitler' : 'Fascist'}
+                            </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="py-4">
-                        <p className="text-[11px] leading-relaxed text-white/32 italic px-4">
-                          {allySummary}
-                        </p>
-                      </div>
+                      <p className="mt-3 text-sm leading-relaxed text-white/56">
+                        {allySummary}
+                      </p>
                     )}
                   </div>
                 </div>

@@ -1,0 +1,162 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
+import FactionAccentText from '../../components/FactionAccentText';
+import {
+  TRACK_DETAIL_DISMISS_DRAG_OFFSET,
+  TRACK_DETAIL_DISMISS_DRAG_VELOCITY,
+} from './boardConfig';
+
+export default function TrackDetailSheet({
+  dragControls,
+  insight,
+  isOpen,
+  onClose,
+}) {
+  if (!isOpen || !insight) {
+    return null;
+  }
+
+  const impactLabel =
+    insight.type === 'FASCIST'
+      ? 'If a Fascist policy lands here'
+      : 'If a Liberal policy lands here';
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={`${insight.type}-${insight.slotNumber}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[145] flex items-end justify-center p-2 pb-[calc(var(--app-safe-bottom)+8px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
+      >
+        <motion.button
+          type="button"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-[rgba(3,4,6,0.72)] backdrop-blur-[16px]"
+        />
+
+        <motion.div
+          initial={{ opacity: 0, y: '100%' }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: '100%' }}
+          transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.18 }}
+          dragMomentum={false}
+          onDragEnd={(_, info) => {
+            if (info.offset.y > TRACK_DETAIL_DISMISS_DRAG_OFFSET || info.velocity.y > TRACK_DETAIL_DISMISS_DRAG_VELOCITY) {
+              onClose();
+            }
+          }}
+          className="relative z-[146] flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+        >
+          <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                dragControls.start(event);
+              }}
+              className="flex h-8 w-full max-w-[120px] items-center justify-center rounded-full"
+              aria-label="Swipe down to close track detail"
+              style={{ touchAction: 'none' }}
+            >
+              <span className="h-1.5 w-14 rounded-full bg-white/16" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-4"
+            aria-label="Close track detail"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-3 sm:px-5 sm:pb-6">
+            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${
+              insight.type === 'FASCIST'
+                ? 'from-red-400/85 via-red-500/75 to-red-700/85'
+                : 'from-cyan-300/85 via-cyan-400/72 to-blue-500/82'
+            }`} />
+
+            <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em]">
+              <span className={`rounded-full border px-3 py-1 ${insight.accentSurfaceClassName} ${insight.accentClassName}`}>
+                {insight.trackLabel}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
+                Slot {insight.slotNumber}
+              </span>
+            </div>
+
+            <div className="mt-4 grid min-w-0 gap-4 min-[560px]:grid-cols-[120px,minmax(0,1fr)]">
+              <div className="flex items-center justify-center">
+                <div className={`relative flex h-[142px] w-[108px] items-center justify-center overflow-hidden rounded-[26px] border ${insight.accentSurfaceClassName}`}>
+                  <motion.div
+                    animate={
+                      insight.isNext || insight.isResolvingNow
+                        ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
+                        : { y: [2, -2, 2], rotate: [-2, 2, -2] }
+                    }
+                    transition={{ duration: insight.isNext || insight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
+                    className="relative z-10"
+                  >
+                    <img
+                      src={insight.cardSrc}
+                      alt={`${insight.cardLabel} reference`}
+                      loading="eager"
+                      decoding="async"
+                      className="h-[120px] w-[82px] rounded-[15px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    animate={
+                      insight.type === 'FASCIST'
+                        ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
+                        : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
+                    }
+                    transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                    className={`absolute inset-3 rounded-[22px] ${insight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
+                  />
+
+                  <div className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/28 px-2 py-1 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/78">
+                    Slot {insight.slotNumber}
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">
+                  {impactLabel}
+                </p>
+                <FactionAccentText
+                  as="h3"
+                  className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+                >
+                  {insight.outcomeLabel}
+                </FactionAccentText>
+                <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/68">
+                  {insight.outcomeDescription}
+                </FactionAccentText>
+                <p className={`mt-4 inline-flex rounded-full border px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${insight.accentSoftClassName} ${insight.accentClassName}`}>
+                  Policy consequence only
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
