@@ -5,12 +5,15 @@ export const metadata = {
   title: 'Eclipse',
   description: 'A mobile-first Secret Hitler clone built with Next.js and Convex.',
   manifest: '/manifest.webmanifest',
-  themeColor: '#111111',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Eclipse',
   },
+};
+
+export const viewport = {
+  themeColor: '#111111',
 };
 
 export default function RootLayout({ children }) {

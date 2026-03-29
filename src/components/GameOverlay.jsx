@@ -370,7 +370,7 @@ export default function GameOverlay({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -24, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+66px)] z-[100] flex justify-center px-3 pointer-events-none"
+          className="fixed inset-x-0 top-[calc(var(--app-header-offset)+10px)] z-[100] flex justify-center px-3 pointer-events-none"
         >
           <div className="relative w-full max-w-[520px] overflow-hidden rounded-[18px] border border-[#d4c098]/18 bg-[rgba(15,12,11,0.94)] shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-md">
             <div className={`absolute inset-y-0 left-0 w-1 ${toneClass}`} />
@@ -410,7 +410,7 @@ export default function GameOverlay({
           transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
-          <div className="pointer-events-auto relative w-full max-w-[760px] overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(1.4rem+env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto relative w-full max-w-[760px] overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">
             <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
             <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 rounded-full bg-black/10" />
 

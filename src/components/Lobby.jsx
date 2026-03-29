@@ -63,8 +63,8 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
   };
 
   return (
-    <main className="min-h-[100svh] bg-transparent">
-      <div className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]">
+    <main className="h-full min-h-0 overflow-hidden bg-transparent">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)]">
         <section className="rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-5 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -123,7 +123,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
             )}
           </div>
 
-          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1 scrollbar-hide">
             {gameState.players.map((player) => {
               const isSelf = player.id === playerId;
 

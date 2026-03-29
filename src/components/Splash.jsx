@@ -1,3 +1,4 @@
+import { Download, Expand, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_IDS = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -17,12 +18,20 @@ const triggerHaptic = (pattern = 15) => {
   }
 };
 
-export default function Splash({ onConnect }) {
+export default function Splash({ onConnect, mobileAccess }) {
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState(getInitialRoomId);
   const [avatarId, setAvatarId] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const showMobileHint = mobileAccess?.isMobile && !mobileAccess?.gateSatisfied;
+  const showFullscreenHint = showMobileHint && mobileAccess.canFullscreen;
+  const showInstallHint = showMobileHint && mobileAccess.canInstall;
+  const accessModeLabel = mobileAccess?.isStandalone
+    ? 'Installed App'
+    : mobileAccess?.isFullscreen
+      ? 'Fullscreen'
+      : 'Browser';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -45,8 +54,8 @@ export default function Splash({ onConnect }) {
   };
 
   return (
-    <main className="min-h-[100svh] bg-[radial-gradient(circle_at_top,_rgba(0,240,255,0.08),transparent_38%),linear-gradient(180deg,#040607_0%,#111111_100%)] text-white">
-      <div className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
+    <main className="h-full min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,240,255,0.08),transparent_38%),linear-gradient(180deg,#040607_0%,#111111_100%)] text-white">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-y-auto px-4 pb-[calc(var(--app-safe-bottom)+1.5rem)] pt-[calc(var(--app-safe-top)+1rem)] scrollbar-hide">
         <section className="rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-6 shadow-[0_24px_64px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/70">
             Private Phone Match
@@ -67,6 +76,60 @@ export default function Splash({ onConnect }) {
             </div>
           </div>
         </section>
+
+        {showMobileHint && (
+          <section className="mt-4 rounded-[28px] border border-cyan-400/18 bg-cyan-400/[0.08] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.24em] text-cyan-200/80">
+                  <Shield size={14} />
+                  Private Play Mode
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-white/75">
+                  After you join, this phone will switch to fullscreen or the installed app so role reveals stay private and the layout fits cleanly.
+                </p>
+              </div>
+
+              <span className="shrink-0 rounded-full border border-cyan-300/20 bg-black/20 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100">
+                {accessModeLabel}
+              </span>
+            </div>
+
+            {(showFullscreenHint || showInstallHint) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {showFullscreenHint && (
+                  <button
+                    type="button"
+                    onClick={mobileAccess.requestFullscreen}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-cyan-300"
+                  >
+                    <Expand size={14} />
+                    Try Fullscreen
+                  </button>
+                )}
+
+                {showInstallHint && (
+                  <button
+                    type="button"
+                    onClick={mobileAccess.promptInstall}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#d4af37]/30 bg-[#d4af37] px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-[#e2bd48]"
+                  >
+                    <Download size={14} />
+                    Install App
+                  </button>
+                )}
+              </div>
+            )}
+
+            <p className="mt-3 text-xs leading-relaxed text-white/55">
+              {showFullscreenHint || showInstallHint
+                ? 'Optional before you join. The room will enforce a private mobile mode once you enter.'
+                : mobileAccess?.isIos
+                  ? 'iPhone/Safari: use Share, then Add to Home Screen before joining if you want the cleanest private layout.'
+                  : 'If install is unavailable here, the room will still try fullscreen when you continue.'}
+            </p>
+          </section>
+        )}
 
         <form
           onSubmit={handleSubmit}

@@ -55,7 +55,7 @@ export default function GlobalControls({
       <motion.header
         initial={{ y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed inset-x-0 top-0 z-[120] border-b border-white/10 bg-[rgba(6,7,8,0.82)] pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+        className="fixed inset-x-0 top-0 z-[120] border-b border-white/10 bg-[rgba(6,7,8,0.82)] pt-[var(--app-safe-top)] backdrop-blur-xl"
       >
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
           <div className="min-w-0">

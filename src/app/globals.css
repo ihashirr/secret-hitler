@@ -3,6 +3,12 @@
 @layer theme {
   :root {
     color-scheme: dark;
+    --app-vh: 100dvh;
+    --app-vw: 100vw;
+    --app-safe-top: env(safe-area-inset-top);
+    --app-safe-bottom: env(safe-area-inset-bottom);
+    --app-header-height: 56px;
+    --app-header-offset: calc(var(--app-safe-top) + var(--app-header-height));
     --color-obsidian-950: #111111;
     --color-obsidian-900: #1a1a1a;
     --color-obsidian-800: #2a2a2a;
@@ -23,7 +29,9 @@
 @layer base {
   html,
   body {
+    height: 100%;
     min-height: 100%;
+    overflow: hidden;
   }
 
   body {
@@ -38,6 +46,10 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%);
   }
 
+  body > * {
+    min-height: 100%;
+  }
+
   button,
   input,
   textarea,
@@ -48,6 +60,15 @@
   button {
     touch-action: manipulation;
   }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 @layer utilities {

@@ -51,7 +51,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
   }, [gameState.players, gameState.winReason, winnerTitle]);
 
   return (
-    <div className="relative min-h-[100svh] overflow-hidden bg-obsidian-950 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))] sm:px-6">
+    <div className="relative h-full min-h-0 overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] sm:px-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -74,8 +74,8 @@ export default function GameOver({ gameState, playerId, onReplay }) {
       />
       <div className="absolute inset-0 board-grid opacity-[0.06]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-5rem)] w-full max-w-md flex-col">
-        <section className="rounded-[30px] border border-white/10 bg-black/35 px-5 py-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-md flex-col">
+        <section className="shrink-0 rounded-[30px] border border-white/10 bg-black/35 px-5 py-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{
@@ -154,7 +154,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
         </section>
 
         {!showBreakdown ? (
-          <section className="mt-4 space-y-4">
+          <section className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-hide">
             <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
               <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
                 Final Events
@@ -188,7 +188,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
             </div>
           </section>
         ) : (
-          <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+          <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 scrollbar-hide">
             <div className="rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.32)] backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/45">
@@ -291,7 +291,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
           </section>
         )}
 
-        <div className="mt-4 pb-2 text-center">
+        <div className="mt-4 shrink-0 pb-2 text-center">
           <p className="text-[11px] font-mono font-black uppercase tracking-[0.2em] text-white/35">
             {me?.isHost ? 'Host controls remain in the top bar if you want a full room reset.' : 'Replay Game returns this device to the home screen.'}
           </p>

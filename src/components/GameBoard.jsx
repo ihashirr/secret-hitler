@@ -1022,7 +1022,7 @@ export default function GameBoard({
         duration: revealStage === 1 ? 0.4 : 0.55,
         ease: 'easeOut',
       }}
-      className="relative h-[100svh] w-full overflow-hidden bg-obsidian-950 pt-[calc(env(safe-area-inset-top)+56px)]"
+      className="relative h-full min-h-0 w-full overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
     >
       <div className={`absolute inset-0 z-50 pointer-events-none transition-all duration-300 ${revealStage === 0 && showVoteReveal ? 'bg-black/80' : 'bg-transparent'}`} />
 
@@ -1054,7 +1054,7 @@ export default function GameBoard({
         onAcknowledgePeek={onAcknowledgePeek}
       />
 
-      <div className={`relative z-10 grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 pb-3 transition-all duration-700 sm:gap-3 sm:pb-4 ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
+      <div className={`relative z-10 grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:gap-3 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         {renderBoardStage()}
         {renderPlayerDock()}
       </div>

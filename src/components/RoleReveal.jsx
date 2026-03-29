@@ -105,7 +105,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   
     if (me?.isReady) {
     return (
-      <div className="min-h-[100svh] w-full flex items-center justify-center p-4 pt-[calc(4.5rem+env(safe-area-inset-top))] text-center">
+      <div className="flex h-full min-h-0 w-full items-center justify-center px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] text-center">
         <div className="tactical-panel p-6 sm:p-8 text-center border-cyan-500/30 w-full max-w-sm">
           <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 animate-spin mx-auto mb-6 transform rotate-45" />
           <h2 className="text-lg sm:text-xl font-mono text-cyan-400 mb-2 uppercase tracking-[0.2em]">Room Is Synchronizing</h2>
@@ -120,7 +120,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const showColors = state === REVEAL_STATES.DETAILS || state === REVEAL_STATES.OPERATIVES || state === REVEAL_STATES.CONFIRMED;
 
   return (
-    <div className="min-h-[100svh] w-full flex flex-col px-4 sm:px-6 pb-4 sm:pb-6 pt-[calc(4.75rem+env(safe-area-inset-top))] bg-obsidian-900 overflow-hidden relative">
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-900 px-4 pb-[calc(var(--app-safe-bottom)+0.5rem)] pt-[calc(var(--app-header-offset)+20px)] sm:px-6">
       
       {/* Background Grid Zoom Animation on Transition */}
       <motion.div 
@@ -139,7 +139,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
       </motion.div>
 
       {/* Shared Active Container */}
-      <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center py-4 scrollbar-hide w-full z-10">
+      <div className="z-10 flex min-h-0 flex-1 flex-col items-center overflow-y-auto py-4 scrollbar-hide w-full">
         
         <motion.div 
           animate={state === REVEAL_STATES.AUTH_TAP ? { scale: 0.96, boxShadow: "0 0 40px rgba(0,240,255,0.4)" } : { scale: 1 }}
@@ -266,7 +266,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
       </div>
 
       {/* CONFIRMED: ACKNOWLEDGE CTA */}
-      <div className="flex justify-center mt-auto pt-2 shrink-0 px-2 pb-2 h-[80px]">
+      <div className="mt-auto flex shrink-0 justify-center px-2 pb-2 pt-2">
         <AnimatePresence>
           {state === REVEAL_STATES.CONFIRMED && (
             <motion.button

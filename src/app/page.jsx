@@ -8,6 +8,8 @@ import MobileModeGate from '../components/MobileModeGate';
 import StageInfoButton from '../components/StageInfoButton';
 import StageInfoOverlay from '../components/StageInfoOverlay';
 import { buildDirectorState } from '../engine/gameEngine';
+import useMobileAccessState from '../lib/useMobileAccessState';
+import useViewportShell from '../lib/useViewportShell';
 import PhaseRouter from '../phases/PhaseRouter';
 import { getPhaseViewKey } from '../phases/config';
 
@@ -17,10 +19,13 @@ const STORAGE_KEYS = {
 };
 
 export default function App() {
+  useViewportShell();
+
   const [mounted, setMounted] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [playerId, setPlayerId] = useState(null);
   const [showStageInfo, setShowStageInfo] = useState(false);
+  const mobileAccess = useMobileAccessState();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -89,10 +94,16 @@ export default function App() {
   const viewKey = getPhaseViewKey({ roomId, gameState, playerId });
   const directorState = buildDirectorState({ roomId, playerId, gameState, viewKey });
   const showGlobalControls = viewKey !== 'CONNECT' && viewKey !== 'LOADING';
+  const mobileGateActive = Boolean(roomId) && viewKey !== 'CONNECT' && viewKey !== 'LOADING';
 
   return (
-    <div className="min-h-svh bg-obsidian-950 text-white relative">
-      <MobileModeGate />
+    <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
+      <MobileModeGate
+        active={mobileGateActive}
+        viewKey={viewKey}
+        onExitToConnect={handleExit}
+        accessState={mobileAccess}
+      />
 
       {showGlobalControls && (
         <GlobalControls 
@@ -123,29 +134,32 @@ export default function App() {
         directorState={directorState}
       />
 
-      <PhaseRouter
-        viewKey={viewKey}
-        gameState={gameState}
-        playerId={playerId}
-        directorState={directorState}
-        actions={{
-          onConnect: handleConnect,
-          onStart: () => startGame({ roomId }),
-          onAddBot: () => addBot({ roomId, playerId }),
-          onReplay: handleExit,
-          onReady: () => toggleReady({ roomId, playerId }),
-          onNominate: (id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id }),
-          onVote: (approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" }),
-          onDiscard: (index) => presidentDiscard({ roomId, presidentId: playerId, discardedIndex: index }),
-          onRequestVeto: () => requestVeto({ roomId, chancellorId: playerId }),
-          onRespondVeto: (accept) => respondVeto({ roomId, presidentId: playerId, accept }),
-          onEnact: (index) => chancellorEnact({ roomId, chancellorId: playerId, enactedIndex: index }),
-          onInvestigate: (targetPlayerId) => investigateLoyalty({ roomId, presidentId: playerId, targetPlayerId }),
-          onSpecialElection: (targetPlayerId) => callSpecialElection({ roomId, presidentId: playerId, targetPlayerId }),
-          onAcknowledgePeek: () => completePolicyPeek({ roomId, presidentId: playerId }),
-          onKill: (targetPlayerId) => killPlayer({ roomId, presidentId: playerId, targetPlayerId }),
-        }}
-      />
+      <div className="relative min-h-0 flex-1">
+        <PhaseRouter
+          viewKey={viewKey}
+          gameState={gameState}
+          playerId={playerId}
+          directorState={directorState}
+          mobileAccess={mobileAccess}
+          actions={{
+            onConnect: handleConnect,
+            onStart: () => startGame({ roomId }),
+            onAddBot: () => addBot({ roomId, playerId }),
+            onReplay: handleExit,
+            onReady: () => toggleReady({ roomId, playerId }),
+            onNominate: (id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id }),
+            onVote: (approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" }),
+            onDiscard: (index) => presidentDiscard({ roomId, presidentId: playerId, discardedIndex: index }),
+            onRequestVeto: () => requestVeto({ roomId, chancellorId: playerId }),
+            onRespondVeto: (accept) => respondVeto({ roomId, presidentId: playerId, accept }),
+            onEnact: (index) => chancellorEnact({ roomId, chancellorId: playerId, enactedIndex: index }),
+            onInvestigate: (targetPlayerId) => investigateLoyalty({ roomId, presidentId: playerId, targetPlayerId }),
+            onSpecialElection: (targetPlayerId) => callSpecialElection({ roomId, presidentId: playerId, targetPlayerId }),
+            onAcknowledgePeek: () => completePolicyPeek({ roomId, presidentId: playerId }),
+            onKill: (targetPlayerId) => killPlayer({ roomId, presidentId: playerId, targetPlayerId }),
+          }}
+        />
+      </div>
     </div>
   );
 }
