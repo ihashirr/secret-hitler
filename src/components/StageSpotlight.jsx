@@ -65,6 +65,8 @@ export default function StageSpotlight({
 
       if (nextRemaining <= 0) {
         window.clearInterval(timer);
+        isHoldingRef.current = false;
+        setIsHolding(false);
         setIsVisible(false);
       }
     }, 40);

@@ -123,6 +123,9 @@ const getVoteRevealGroups = (players, votes = {}) => {
   ].filter((group) => group.players.length);
 };
 
+const VOTE_REVEAL_STAGE_DELAY_MS = 180;
+const VOTE_REVEAL_DURATION_MS = 3000;
+
 export default function GameBoard({
   gameState,
   playerId,
@@ -225,11 +228,11 @@ export default function GameBoard({
       });
 
       setRevealStage(0);
-      revealTimer = setTimeout(() => setRevealStage(1), 150);
+      revealTimer = setTimeout(() => setRevealStage(1), VOTE_REVEAL_STAGE_DELAY_MS);
       cleanupTimer = setTimeout(() => {
         setRevealState(null);
         setRevealStage(0);
-      }, 4000);
+      }, VOTE_REVEAL_DURATION_MS);
     }
 
     prevPhaseRef.current = gameState.phase;
@@ -292,16 +295,7 @@ export default function GameBoard({
     return undefined;
   }, [gameState.drawPileCount, gameState.drawnCards?.length, gameState.peekedPolicies?.length]);
 
-  const viewerHasImmediateAction =
-    canNominate ||
-    ['VOTE', 'DISCARD_POLICY', 'ENACT_POLICY', 'RESPOND_VETO', 'PEEK_POLICIES', 'INVESTIGATE', 'SPECIAL_ELECTION', 'EXECUTION'].includes(directorState?.currentAction) ||
-    (gameState.phase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && gameState.drawnCards?.length > 0) ||
-    (gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && isChancellor && gameState.drawnCards?.length > 0);
-
-  const showVoteReveal =
-    Boolean(revealState) &&
-    gameState.phase !== PHASES.VOTING &&
-    !viewerHasImmediateAction;
+  const showVoteReveal = Boolean(revealState) && gameState.phase !== PHASES.VOTING;
   const isVoteRevealPhase = showVoteReveal;
   const displayPhase = showVoteReveal ? PHASES.VOTING : gameState.phase;
   const playerCount = gameState.players.length;

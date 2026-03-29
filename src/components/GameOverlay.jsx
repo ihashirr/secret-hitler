@@ -4,6 +4,55 @@ import { PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 import StageSpotlight from './StageSpotlight';
 
+function getSpotlightSceneId({
+  displayPhase,
+  gameState,
+  currentBallotKey,
+  currentAction,
+  hasActionContent,
+  isPresident,
+  isChancellor,
+}) {
+  if (hasActionContent) {
+    if (displayPhase === PHASES.VOTING) {
+      return `action:vote:${currentBallotKey}`;
+    }
+
+    if (displayPhase === PHASES.LEGISLATIVE_PRESIDENT) {
+      return `action:president-hand:${gameState.currentPresident || 'none'}:${gameState.drawPileCount}:${gameState.drawnCards?.length || 0}`;
+    }
+
+    if (displayPhase === PHASES.LEGISLATIVE_CHANCELLOR) {
+      if (gameState.vetoRequested && isPresident) {
+        return `action:veto-response:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`;
+      }
+
+      if (isChancellor) {
+        return `action:chancellor-hand:${gameState.currentChancellor || 'none'}:${gameState.drawPileCount}:${gameState.drawnCards?.length || 0}:${gameState.vetoRequested ? 'pending-veto' : 'enact'}`;
+      }
+    }
+
+    if (displayPhase === PHASES.EXECUTIVE_ACTION) {
+      return `action:executive:${gameState.currentPresident || 'none'}:${gameState.executivePower || currentAction || 'watch'}`;
+    }
+  }
+
+  switch (displayPhase) {
+    case PHASES.NOMINATION:
+      return `phase:nomination:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || 'open'}`;
+    case PHASES.VOTING:
+      return `phase:voting:${currentBallotKey}`;
+    case PHASES.LEGISLATIVE_PRESIDENT:
+      return `phase:legislative-president:${gameState.currentPresident || 'none'}`;
+    case PHASES.LEGISLATIVE_CHANCELLOR:
+      return `phase:legislative-chancellor:${gameState.currentChancellor || 'none'}:${gameState.vetoRequested ? 'veto' : 'waiting'}`;
+    case PHASES.EXECUTIVE_ACTION:
+      return `phase:executive:${gameState.currentPresident || 'none'}:${gameState.executivePower || currentAction || 'watch'}`;
+    default:
+      return null;
+  }
+}
+
 export default function GameOverlay({
   gameState,
   playerId,
@@ -340,10 +389,7 @@ export default function GameOverlay({
     }
   }
 
-  if (!isActive) return null;
-
   const hasActionContent = Boolean(actionContent || pendingSelection);
-  const suppressRevealBanner = Boolean(revealState) && !pendingSelection && !actionContent;
   const waitingForPrivateActionPayload =
     !pendingSelection &&
     ((displayPhase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && !gameState.drawnCards?.length) ||
@@ -363,15 +409,25 @@ export default function GameOverlay({
         : 'neutral';
   const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
   const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'This Device' : 'Entire Table';
-  const spotlightAutoCloseMs = hasActionContent ? 1200 : 3000;
-  const spotlightKey =
-    !pendingSelection && !suppressRevealBanner && !waitingForPrivateActionPayload
-      ? `${displayPhase}:${directorState?.stageLabel || ''}:${title}:${subtext}:${hasActionContent ? 'action' : 'passive'}:${spotlightAudienceLabel}`
-      : null;
+  const spotlightAutoCloseMs = hasActionContent ? 1050 : 2600;
   const spotlightActions =
     !pendingSelection && Array.isArray(primaryInstruction?.actions)
       ? primaryInstruction.actions.map((action) => action.label)
       : [];
+  const spotlightKey =
+    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload
+      ? null
+      : getSpotlightSceneId({
+          displayPhase,
+          gameState,
+          currentBallotKey,
+          currentAction: directorState?.currentAction,
+          hasActionContent,
+          isPresident,
+          isChancellor,
+        });
+
+  if (!isActive) return null;
 
   return (
     <AnimatePresence>
@@ -396,7 +452,7 @@ export default function GameOverlay({
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
-          transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 190, damping: 28, mass: 0.9 }}
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
           <div className="pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">

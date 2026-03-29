@@ -35,31 +35,61 @@ const ROLE_COUNTS: Record<number, Record<string, number>> = {
   10: { [ROLES.LIBERAL]: 6, [ROLES.FASCIST]: 3, [ROLES.HITLER]: 1 },
 };
 const BOT_THINK_DELAYS_MS = {
-  FAST_MIN: 450,
-  FAST_MAX: 1100,
-  DEFAULT_MIN: 900,
-  DEFAULT_MAX: 1800,
-  SLOW_MIN: 1200,
-  SLOW_MAX: 2400,
+  ROLE_REVEAL_MIN: 550,
+  ROLE_REVEAL_MAX: 900,
+  VOTING_MIN: 700,
+  VOTING_MAX: 1250,
+  NOMINATION_MIN: 1400,
+  NOMINATION_MAX: 2200,
+  DEFAULT_MIN: 1200,
+  DEFAULT_MAX: 2000,
+  LEGISLATIVE_PRESIDENT_MIN: 1800,
+  LEGISLATIVE_PRESIDENT_MAX: 3000,
+  LEGISLATIVE_CHANCELLOR_MIN: 1900,
+  LEGISLATIVE_CHANCELLOR_MAX: 3200,
+  EXECUTIVE_ACTION_MIN: 2200,
+  EXECUTIVE_ACTION_MAX: 3600,
 };
 
-function getBotThinkDelayMs(room: any) {
-  let min = BOT_THINK_DELAYS_MS.DEFAULT_MIN;
-  let max = BOT_THINK_DELAYS_MS.DEFAULT_MAX;
+function pickBotThinkDelayMs(min: number, max: number) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
 
-  if (room.phase === PHASES.VOTING || room.phase === PHASES.ROLE_REVEAL) {
-    min = BOT_THINK_DELAYS_MS.FAST_MIN;
-    max = BOT_THINK_DELAYS_MS.FAST_MAX;
-  } else if (
-    room.phase === PHASES.LEGISLATIVE_PRESIDENT ||
-    room.phase === PHASES.LEGISLATIVE_CHANCELLOR ||
-    room.phase === PHASES.EXECUTIVE_ACTION
-  ) {
-    min = BOT_THINK_DELAYS_MS.SLOW_MIN;
-    max = BOT_THINK_DELAYS_MS.SLOW_MAX;
+function getBotThinkDelayMs(room: any) {
+  if (room.phase === PHASES.ROLE_REVEAL) {
+    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.ROLE_REVEAL_MIN, BOT_THINK_DELAYS_MS.ROLE_REVEAL_MAX);
   }
 
-  return min + Math.floor(Math.random() * (max - min + 1));
+  if (room.phase === PHASES.VOTING) {
+    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.VOTING_MIN, BOT_THINK_DELAYS_MS.VOTING_MAX);
+  }
+
+  if (room.phase === PHASES.NOMINATION) {
+    return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.NOMINATION_MIN, BOT_THINK_DELAYS_MS.NOMINATION_MAX);
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
+    return pickBotThinkDelayMs(
+      BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MIN,
+      BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MAX,
+    );
+  }
+
+  if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
+    return pickBotThinkDelayMs(
+      BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MIN,
+      BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MAX,
+    );
+  }
+
+  if (room.phase === PHASES.EXECUTIVE_ACTION) {
+    return pickBotThinkDelayMs(
+      BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MIN,
+      BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MAX,
+    );
+  }
+
+  return pickBotThinkDelayMs(BOT_THINK_DELAYS_MS.DEFAULT_MIN, BOT_THINK_DELAYS_MS.DEFAULT_MAX);
 }
 
 function shuffle<T>(array: T[]): T[] {
