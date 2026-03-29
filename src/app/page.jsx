@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../backend/convex/_generated/api";
 import GlobalControls from '../components/GlobalControls';
+import MobileModeGate from '../components/MobileModeGate';
 import StageInfoButton from '../components/StageInfoButton';
 import StageInfoOverlay from '../components/StageInfoOverlay';
 import { buildDirectorState } from '../engine/gameEngine';
@@ -90,7 +91,9 @@ export default function App() {
   const showGlobalControls = viewKey !== 'CONNECT' && viewKey !== 'LOADING';
 
   return (
-    <div className="min-h-[100svh] bg-obsidian-950 text-white relative">
+    <div className="min-h-svh bg-obsidian-950 text-white relative">
+      <MobileModeGate />
+
       {showGlobalControls && (
         <GlobalControls 
           gameState={gameState} 

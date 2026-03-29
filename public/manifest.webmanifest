@@ -1,0 +1,22 @@
+{
+  "name": "Eclipse",
+  "short_name": "Eclipse",
+  "description": "A mobile-first Secret Hitler clone built with Next.js and Convex.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/assets/avatars/avatar_1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/avatars/avatar_1.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
