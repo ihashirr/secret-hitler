@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Hand, Lock, Unlock, X } from 'lucide-react';
+import { Lock, Unlock, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { triggerHaptic } from '../lib/haptics';
 
@@ -130,6 +130,27 @@ export default function StageSpotlight({
               WebkitUserSelect: 'none',
             }}
           >
+            <div
+              aria-hidden="true"
+              onTouchStart={handleHoldStart}
+              onTouchEnd={handleHoldEnd}
+              onTouchCancel={handleHoldEnd}
+              onPointerDown={handleHoldStart}
+              onPointerUp={handleHoldEnd}
+              onPointerLeave={handleHoldEnd}
+              onPointerCancel={handleHoldEnd}
+              onMouseDown={handleHoldStart}
+              onMouseUp={handleHoldEnd}
+              onMouseLeave={handleHoldEnd}
+              onContextMenu={(event) => event.preventDefault()}
+              className="absolute inset-0 z-10"
+              style={{
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+              }}
+            />
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${toneTheme.accentBar}`} />
             <div className="absolute inset-0 paper-grain opacity-[0.08] pointer-events-none" />
             {isHolding && (
@@ -137,11 +158,11 @@ export default function StageSpotlight({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-white/[0.03] pointer-events-none"
+                className="absolute inset-0 z-20 bg-white/[0.03] pointer-events-none"
               />
             )}
 
-            <div className="relative z-10 px-5 pb-5 pt-4 sm:px-7 sm:pb-7 sm:pt-5">
+            <div className="relative z-20 px-5 pb-5 pt-4 pointer-events-none sm:px-7 sm:pb-7 sm:pt-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
                   <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
@@ -166,7 +187,7 @@ export default function StageSpotlight({
                     setIsHolding(false);
                     setIsVisible(false);
                   }}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-colors hover:bg-white/[0.08]"
+                  className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-colors hover:bg-white/[0.08]"
                   aria-label="Close stage spotlight"
                 >
                   <X size={18} />
@@ -203,7 +224,7 @@ export default function StageSpotlight({
               <div className="mt-8 sm:mt-10">
                 <div className="flex items-center justify-between gap-3 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48">
                   <span>{isHolding ? 'Holding spotlight' : 'Auto closing in 3s'}</span>
-                  <span>{isHolding ? 'Release to resume' : 'Press and hold to keep open'}</span>
+                  <span>{isHolding ? 'Release to resume' : 'Hold anywhere on the card'}</span>
                 </div>
                 <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
                   <motion.div
@@ -219,55 +240,34 @@ export default function StageSpotlight({
                     />
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  onTouchStart={handleHoldStart}
-                  onTouchEnd={handleHoldEnd}
-                  onTouchCancel={handleHoldEnd}
-                  onPointerDown={handleHoldStart}
-                  onPointerUp={handleHoldEnd}
-                  onPointerLeave={handleHoldEnd}
-                  onPointerCancel={handleHoldEnd}
-                  onMouseDown={handleHoldStart}
-                  onMouseUp={handleHoldEnd}
-                  onMouseLeave={handleHoldEnd}
-                  onContextMenu={(event) => event.preventDefault()}
-                  className={`mt-4 flex w-full items-center justify-between gap-4 rounded-[24px] border px-4 py-4 text-left transition-all ${
-                    isHolding
-                      ? 'border-white/20 bg-white/[0.1] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-                      : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.06]'
-                  }`}
-                  style={{
-                    userSelect: 'none',
-                    touchAction: 'none',
-                    WebkitTouchCallout: 'none',
-                    WebkitUserSelect: 'none',
-                  }}
-                  aria-label="Press and hold to keep the stage spotlight open"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white">
-                      <Hand size={15} />
-                      <span>{isHolding ? 'Pinned While Pressed' : 'Press And Hold Here'}</span>
+                <div className={`mt-4 rounded-[24px] border px-4 py-4 text-left transition-all ${
+                  isHolding
+                    ? 'border-white/20 bg-white/[0.1] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+                    : 'border-white/10 bg-white/[0.04]'
+                }`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white">
+                        {isHolding ? 'Pinned While Pressed' : 'Whole Card Hold Surface'}
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-white/58">
+                        {isHolding
+                          ? 'The transparent overlay is keeping the spotlight pinned until you release.'
+                          : 'You can press and hold anywhere on this card. The overlay blocks text selection and long-press highlighting.'}
+                      </p>
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-white/58">
-                      {isHolding
-                        ? 'Release this control when you want the countdown to continue.'
-                        : 'This pauses the auto-close timer without long-pressing the stage text.'}
-                    </p>
-                  </div>
 
-                  <span
-                    className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
-                      isHolding
-                        ? 'border-white/18 bg-white/[0.12] text-white'
-                        : 'border-white/10 bg-white/[0.04] text-white/70'
-                    }`}
-                  >
-                    {isHolding ? 'Pinned' : 'Hold'}
-                  </span>
-                </button>
+                    <span
+                      className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
+                        isHolding
+                          ? 'border-white/18 bg-white/[0.12] text-white'
+                          : 'border-white/10 bg-white/[0.04] text-white/70'
+                      }`}
+                    >
+                      {isHolding ? 'Pinned' : 'Hold'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
