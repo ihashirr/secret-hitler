@@ -344,6 +344,17 @@ export default function GameOverlay({
 
   const hasActionContent = Boolean(actionContent || pendingSelection);
   const suppressRevealBanner = Boolean(revealState) && !pendingSelection && !actionContent;
+  const waitingForPrivateActionPayload =
+    !pendingSelection &&
+    ((displayPhase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && !gameState.drawnCards?.length) ||
+      (displayPhase === PHASES.LEGISLATIVE_CHANCELLOR &&
+        isChancellor &&
+        !gameState.vetoRequested &&
+        !gameState.drawnCards?.length) ||
+      (displayPhase === PHASES.EXECUTIVE_ACTION &&
+        isPresident &&
+        gameState.executivePower === 'PEEK' &&
+        !gameState.peekedPolicies?.length));
   const spotlightTone =
     pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
       ? 'red'
@@ -352,8 +363,9 @@ export default function GameOverlay({
         : 'neutral';
   const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
   const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'This Device' : 'Entire Table';
+  const spotlightAutoCloseMs = hasActionContent ? 1200 : 3000;
   const spotlightKey =
-    !pendingSelection && !suppressRevealBanner
+    !pendingSelection && !suppressRevealBanner && !waitingForPrivateActionPayload
       ? `${displayPhase}:${directorState?.stageLabel || ''}:${title}:${subtext}:${hasActionContent ? 'action' : 'passive'}:${spotlightAudienceLabel}`
       : null;
   const spotlightActions =
@@ -374,6 +386,7 @@ export default function GameOverlay({
           visibility={spotlightVisibility}
           actionLabels={spotlightActions}
           tone={spotlightTone}
+          autoCloseMs={spotlightAutoCloseMs}
         />
       )}
 

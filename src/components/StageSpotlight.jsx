@@ -3,7 +3,7 @@ import { Lock, Unlock, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { triggerHaptic } from '../lib/haptics';
 
-const AUTO_CLOSE_MS = 3000;
+const DEFAULT_AUTO_CLOSE_MS = 3000;
 
 const TONE_MAP = {
   red: {
@@ -35,11 +35,12 @@ export default function StageSpotlight({
   visibility = 'public',
   actionLabels = [],
   tone = 'neutral',
+  autoCloseMs = DEFAULT_AUTO_CLOSE_MS,
 }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isHolding, setIsHolding] = useState(false);
-  const [remainingMs, setRemainingMs] = useState(AUTO_CLOSE_MS);
-  const remainingRef = useRef(AUTO_CLOSE_MS);
+  const [remainingMs, setRemainingMs] = useState(autoCloseMs);
+  const remainingRef = useRef(autoCloseMs);
   const isHoldingRef = useRef(false);
 
   const toneTheme = TONE_MAP[tone] || TONE_MAP.neutral;
@@ -73,8 +74,9 @@ export default function StageSpotlight({
     };
   }, [isVisible]);
 
-  const progressPercent = Math.max(0, Math.min(100, (remainingMs / AUTO_CLOSE_MS) * 100));
+  const progressPercent = Math.max(0, Math.min(100, (remainingMs / Math.max(1, autoCloseMs)) * 100));
   const modeLabel = visibility === 'private' ? 'Private Briefing' : 'Table Briefing';
+  const autoCloseLabel = `${(autoCloseMs / 1000).toFixed(autoCloseMs % 1000 === 0 ? 0 : 1)}s`;
   const handleHoldStart = (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -135,9 +137,9 @@ export default function StageSpotlight({
               data-spotlight-close="true"
               onClick={(event) => {
                 event.stopPropagation();
-                remainingRef.current = AUTO_CLOSE_MS;
+                remainingRef.current = autoCloseMs;
                 isHoldingRef.current = false;
-                setRemainingMs(AUTO_CLOSE_MS);
+                setRemainingMs(autoCloseMs);
                 setIsHolding(false);
                 setIsVisible(false);
               }}
@@ -224,7 +226,7 @@ export default function StageSpotlight({
 
               <div className="mt-8 sm:mt-10">
                 <div className="flex flex-col gap-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
-                  <span>{isHolding ? 'Holding spotlight' : 'Auto closing in 3s'}</span>
+                  <span>{isHolding ? 'Holding spotlight' : `Auto closing in ${autoCloseLabel}`}</span>
                   <span>{isHolding ? 'Release to resume' : 'Hold anywhere on the card'}</span>
                 </div>
                 <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
