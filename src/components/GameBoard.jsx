@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import {
   EXECUTIVE_POWERS,
   FASCIST_TO_WIN,
@@ -7,7 +7,7 @@ import {
   MAX_ELECTION_TRACKER,
   PHASES,
 } from '../lib/constants';
-import { Bot, ChevronDown, ChevronUp, Shield, Skull } from 'lucide-react';
+import { Bot, Shield, Skull, X } from 'lucide-react';
 import FactionAccentText from './FactionAccentText';
 import GameOverlay from './GameOverlay';
 import { triggerHaptic } from '../lib/haptics';
@@ -192,6 +192,8 @@ const GOVERNMENT_FRACTURE_SHARDS = [
   { left: '62%', top: '60%', width: 42, height: 9, rotate: -16, x: 20, y: 20, delay: 0.22 },
   { left: '78%', top: '30%', width: 36, height: 8, rotate: 26, x: 28, y: -14, delay: 0.16 },
 ];
+const TRACK_DETAIL_DISMISS_DRAG_OFFSET = 120;
+const TRACK_DETAIL_DISMISS_DRAG_VELOCITY = 720;
 const POLICY_CARD_ASSETS = {
   LIBERAL: '/assets/policy-liberal.png',
   FASCIST: '/assets/policy-fascist.png',
@@ -433,25 +435,14 @@ export default function GameBoard({
   const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
   const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
   const [deckAnimation, setDeckAnimation] = React.useState(null);
-  const [selectedTrackFocus, setSelectedTrackFocus] = React.useState(() => {
-    const defaultType =
-      gameState.phase === PHASES.EXECUTIVE_ACTION || gameState.fascistPolicies >= gameState.liberalPolicies
-        ? 'FASCIST'
-        : 'LIBERAL';
-    const defaultMax = defaultType === 'FASCIST' ? FASCIST_TO_WIN : LIBERAL_TO_WIN;
-    const defaultCurrent = defaultType === 'FASCIST' ? gameState.fascistPolicies : gameState.liberalPolicies;
-
-    return {
-      type: defaultType,
-      slotIndex: Math.min(defaultCurrent, defaultMax - 1),
-    };
-  });
-  const [isTrackBriefingCollapsed, setIsTrackBriefingCollapsed] = React.useState(true);
+  const [selectedTrackFocus, setSelectedTrackFocus] = React.useState(null);
+  const [isTrackDetailOpen, setIsTrackDetailOpen] = React.useState(false);
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
   const previousDeckCountRef = React.useRef(gameState.drawPileCount);
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
+  const trackDetailDragControls = useDragControls();
 
   React.useEffect(() => () => {
     voteHighlightTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -460,6 +451,10 @@ export default function GameBoard({
 
   React.useEffect(() => {
     setPendingSelection(null);
+  }, [gameState.phase]);
+
+  React.useEffect(() => {
+    setIsTrackDetailOpen(false);
   }, [gameState.phase]);
 
   React.useEffect(() => {
@@ -645,19 +640,29 @@ export default function GameBoard({
         : me?.hasVoted
           ? 'Your vote is in. Waiting for the rest of the table.'
           : 'Cast your vote now.');
-  const selectedTrackType = selectedTrackFocus?.type === 'LIBERAL' ? 'LIBERAL' : 'FASCIST';
-  const selectedTrackMax = selectedTrackType === 'FASCIST' ? FASCIST_TO_WIN : LIBERAL_TO_WIN;
-  const selectedTrackProgress = selectedTrackType === 'FASCIST' ? gameState.fascistPolicies : gameState.liberalPolicies;
-  const selectedTrackSlotIndex = Math.max(0, Math.min(selectedTrackFocus?.slotIndex ?? 0, selectedTrackMax - 1));
-  const selectedTrackInsight = getTrackSlotInsight({
-    type: selectedTrackType,
-    slotIndex: selectedTrackSlotIndex,
-    current: selectedTrackProgress,
-    max: selectedTrackMax,
-    playerCount,
-    phase: displayPhase,
-    executivePower: gameState.executivePower,
-  });
+  const selectedTrackType = selectedTrackFocus?.type === 'LIBERAL' ? 'LIBERAL' : selectedTrackFocus?.type === 'FASCIST' ? 'FASCIST' : null;
+  const selectedTrackMax =
+    selectedTrackType === 'FASCIST' ? FASCIST_TO_WIN : selectedTrackType === 'LIBERAL' ? LIBERAL_TO_WIN : null;
+  const selectedTrackProgress =
+    selectedTrackType === 'FASCIST'
+      ? gameState.fascistPolicies
+      : selectedTrackType === 'LIBERAL'
+        ? gameState.liberalPolicies
+        : null;
+  const selectedTrackSlotIndex =
+    selectedTrackMax == null ? null : Math.max(0, Math.min(selectedTrackFocus?.slotIndex ?? 0, selectedTrackMax - 1));
+  const selectedTrackInsight =
+    selectedTrackType && selectedTrackMax != null && selectedTrackProgress != null && selectedTrackSlotIndex != null
+      ? getTrackSlotInsight({
+          type: selectedTrackType,
+          slotIndex: selectedTrackSlotIndex,
+          current: selectedTrackProgress,
+          max: selectedTrackMax,
+          playerCount,
+          phase: displayPhase,
+          executivePower: gameState.executivePower,
+        })
+      : null;
 
   const handleNominate = (id) => {
     triggerHaptic('selection');
@@ -700,20 +705,13 @@ export default function GameBoard({
 
   const handleTrackInspect = (type, slotIndex) => {
     triggerHaptic('selection');
-    const isSameSelection = selectedTrackFocus?.type === type && selectedTrackFocus?.slotIndex === slotIndex;
-
-    if (isSameSelection) {
-      setIsTrackBriefingCollapsed((current) => !current);
-      return;
-    }
-
     setSelectedTrackFocus({ type, slotIndex });
-    setIsTrackBriefingCollapsed(false);
+    setIsTrackDetailOpen(true);
   };
 
-  const toggleTrackBriefing = () => {
+  const closeTrackDetail = () => {
     triggerHaptic('soft');
-    setIsTrackBriefingCollapsed((current) => !current);
+    setIsTrackDetailOpen(false);
   };
 
   const renderDeckMetric = (className = 'text-white/72') => (
@@ -762,23 +760,12 @@ export default function GameBoard({
       : 'border-cyan-950 bg-[#0b141d] text-cyan-100/18';
     const accentTextClass = isFascist ? 'text-red-100/82' : 'text-cyan-100/82';
     const Icon = isFascist ? Skull : Shield;
-    const trackIsFocused = selectedTrackFocus?.type === type;
-    const nextSlotIndex = current < max ? current : max - 1;
-    const previewSlotIndex = trackIsFocused ? selectedTrackFocus.slotIndex : nextSlotIndex;
-    const previewInsight = getTrackSlotInsight({
-      type,
-      slotIndex: previewSlotIndex,
-      current,
-      max,
-      playerCount,
-      phase: displayPhase,
-      executivePower: gameState.executivePower,
-    });
+    const trackIsFocused = isTrackDetailOpen && selectedTrackFocus?.type === type;
 
     return (
       <motion.div
         layout
-        className={`min-w-0 rounded-[18px] border px-3 py-2 transition-colors ${
+        className={`min-w-0 rounded-[22px] border px-3 py-3 transition-colors sm:px-4 ${
           trackIsFocused
             ? isFascist
               ? 'border-red-400/22 bg-red-500/[0.06] shadow-[0_0_0_1px_rgba(248,113,113,0.1),0_18px_30px_rgba(0,0,0,0.18)]'
@@ -787,47 +774,12 @@ export default function GameBoard({
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <motion.div
-              animate={
-                trackIsFocused
-                  ? { y: [0, -4, 0], rotate: [-3, 3, -3], scale: [1, 1.03, 1] }
-                  : { y: [0, -2, 0], rotate: [-2, 2, -2] }
-              }
-              transition={{ duration: trackIsFocused ? 2.6 : 4.2, repeat: Infinity, ease: 'easeInOut' }}
-              className={`relative hidden shrink-0 rounded-[14px] border p-1 min-[380px]:block ${
-                isFascist ? 'border-red-400/18 bg-red-500/[0.08]' : 'border-cyan-300/18 bg-cyan-300/[0.08]'
-              }`}
-            >
-              <img
-                src={cardSrc}
-                alt=""
-                aria-hidden="true"
-                loading="eager"
-                decoding="async"
-                className="h-14 w-10 rounded-[10px] object-cover shadow-[0_10px_18px_rgba(0,0,0,0.24)]"
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-[14px] paper-grain opacity-10" />
-            </motion.div>
-
-            <div className="min-w-0">
-              <FactionAccentText
-                as="p"
-                className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}
-              >
-                {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
-              </FactionAccentText>
-              <FactionAccentText
-                as="p"
-                className="mt-1 text-[9px] font-mono uppercase tracking-[0.16em] text-white/34"
-              >
-                {previewInsight.summaryLine}
-              </FactionAccentText>
-              <p className="mt-1 text-[8px] font-mono uppercase tracking-[0.18em] text-white/22">
-                Tap any slot to inspect the breakpoint.
-              </p>
-            </div>
-          </div>
+          <FactionAccentText
+            as="p"
+            className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}
+          >
+            {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
+          </FactionAccentText>
 
           <div className="flex items-center gap-2">
             <Icon size={12} className={accentTextClass} />
@@ -922,150 +874,187 @@ export default function GameBoard({
     );
   };
 
-  const renderTrackBriefing = () => (
-    <motion.div
-        key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}-${selectedTrackProgress}-${displayPhase}-${gameState.executivePower || 'idle'}`}
-        initial={{ opacity: 0, y: 14, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 10, scale: 0.98 }}
-        transition={{ duration: 0.28, ease: 'easeOut' }}
-        className="relative mt-3 overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(7,8,10,0.94)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
-      >
-        <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
-        <button
-          type="button"
-          onClick={toggleTrackBriefing}
-          className="relative z-10 flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
+  const renderTrackDetailOverlay = () => {
+    if (!isTrackDetailOpen || !selectedTrackInsight || selectedTrackProgress == null || selectedTrackMax == null) {
+      return null;
+    }
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}-${selectedTrackProgress}-${displayPhase}-${gameState.executivePower || 'idle'}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[145] flex items-end justify-center p-2 pb-[calc(var(--app-safe-bottom)+8px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
         >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em]">
-              <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSurfaceClassName} ${selectedTrackInsight.accentClassName}`}>
-                {selectedTrackInsight.trackLabel}
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
-                Slot {selectedTrackInsight.slotNumber}
-              </span>
-              <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
-                {selectedTrackInsight.statusLabel}
-              </span>
+          <motion.button
+            type="button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeTrackDetail}
+            className="absolute inset-0 bg-[rgba(3,4,6,0.72)] backdrop-blur-[16px]"
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+            drag="y"
+            dragControls={trackDetailDragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.18 }}
+            dragMomentum={false}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > TRACK_DETAIL_DISMISS_DRAG_OFFSET || info.velocity.y > TRACK_DETAIL_DISMISS_DRAG_VELOCITY) {
+                closeTrackDetail();
+              }
+            }}
+            className="relative z-[146] flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+          >
+            <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
+              <button
+                type="button"
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  trackDetailDragControls.start(event);
+                }}
+                className="flex h-8 w-full max-w-[120px] items-center justify-center rounded-full"
+                aria-label="Swipe down to close track detail"
+                style={{ touchAction: 'none' }}
+              >
+                <span className="h-1.5 w-14 rounded-full bg-white/16" />
+              </button>
             </div>
 
-            <FactionAccentText
-              as="h3"
-              className="mt-3 text-base font-black uppercase tracking-[0.12em] text-white sm:text-lg"
+            <button
+              type="button"
+              onClick={closeTrackDetail}
+              className="absolute right-4 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-4"
+              aria-label="Close track detail"
             >
-              {selectedTrackInsight.outcomeLabel}
-            </FactionAccentText>
-            <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.16em] text-white/42">
-              {isTrackBriefingCollapsed
-                ? 'Tap to expand the full breakpoint briefing.'
-                : 'Tap to collapse the briefing.'}
-            </p>
-          </div>
+              <X size={18} />
+            </button>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62">
-              {isTrackBriefingCollapsed ? 'Collapsed' : 'Expanded'}
-            </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72">
-              {isTrackBriefingCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-            </span>
-          </div>
-        </button>
+            <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
 
-        <AnimatePresence initial={false}>
-          {!isTrackBriefingCollapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.24, ease: 'easeOut' }}
-              className="relative z-10 overflow-hidden"
-            >
-              <div className="max-h-[min(42vh,360px)] overflow-y-auto px-4 pb-4 scrollbar-hide sm:px-5 sm:pb-5">
-                <div className="grid min-w-0 gap-4 min-[520px]:grid-cols-[116px,minmax(0,1fr)]">
-                  <div className="flex items-center justify-center">
-                    <div className={`relative flex h-[132px] w-[100px] items-center justify-center overflow-hidden rounded-[24px] border ${selectedTrackInsight.accentSurfaceClassName}`}>
-                      <motion.div
-                        animate={
-                          selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow
-                            ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
-                            : { y: [2, -2, 2], rotate: [-2, 2, -2] }
-                        }
-                        transition={{ duration: selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
-                        className="relative z-10"
-                      >
-                        <img
-                          src={selectedTrackInsight.cardSrc}
-                          alt={`${selectedTrackInsight.cardLabel} reference`}
-                          loading="eager"
-                          decoding="async"
-                          className="h-[112px] w-[76px] rounded-[14px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
-                        />
-                      </motion.div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-3 sm:px-5 sm:pb-6">
+              <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em]">
+                <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSurfaceClassName} ${selectedTrackInsight.accentClassName}`}>
+                  {selectedTrackInsight.trackLabel}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
+                  Slot {selectedTrackInsight.slotNumber}
+                </span>
+                <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
+                  {selectedTrackInsight.statusLabel}
+                </span>
+              </div>
 
-                      <motion.div
-                        animate={
-                          selectedTrackInsight.type === 'FASCIST'
-                            ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
-                            : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
-                        }
-                        transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
-                        className={`absolute inset-3 rounded-[20px] ${selectedTrackInsight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
-                      />
+              <FactionAccentText
+                as="h3"
+                className="mt-4 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+              >
+                {selectedTrackInsight.outcomeLabel}
+              </FactionAccentText>
+              <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/68">
+                {selectedTrackInsight.outcomeDescription}
+              </FactionAccentText>
+              <p className="mt-2 text-[11px] leading-relaxed text-white/44">
+                {selectedTrackInsight.statusDescription}
+              </p>
 
-                      <div className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/28 px-2 py-1 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/78">
-                        Slot {selectedTrackInsight.slotNumber}
-                      </div>
-                    </div>
-                  </div>
+              <div className="mt-5 flex items-center justify-center">
+                <div className={`relative flex h-[132px] w-[100px] items-center justify-center overflow-hidden rounded-[24px] border ${selectedTrackInsight.accentSurfaceClassName}`}>
+                  <motion.div
+                    animate={
+                      selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow
+                        ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
+                        : { y: [2, -2, 2], rotate: [-2, 2, -2] }
+                    }
+                    transition={{ duration: selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
+                    className="relative z-10"
+                  >
+                    <img
+                      src={selectedTrackInsight.cardSrc}
+                      alt={`${selectedTrackInsight.cardLabel} reference`}
+                      loading="eager"
+                      decoding="async"
+                      className="h-[112px] w-[76px] rounded-[14px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
+                    />
+                  </motion.div>
 
-                  <div className="min-w-0">
-                    <FactionAccentText as="p" className="text-sm leading-relaxed text-white/68">
-                      {selectedTrackInsight.outcomeDescription}
-                    </FactionAccentText>
-                    <p className="mt-2 max-w-[42rem] text-[11px] leading-relaxed text-white/44">
-                      {selectedTrackInsight.statusDescription}
-                    </p>
-
-                    <div className="mt-4 grid gap-2 min-[420px]:grid-cols-3">
-                      <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                          Board Position
-                        </p>
-                        <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                          {selectedTrackProgress}/{selectedTrackMax}
-                        </p>
-                      </div>
-                      <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
-                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                          Selected Slot
-                        </p>
-                        <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
-                          {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
-                        </p>
-                      </div>
-                      <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                        <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                          If A Card Lands Here
-                        </p>
-                        <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                          {selectedTrackInsight.isResolvingNow ? 'Trigger Live Now' : selectedTrackInsight.outcomeLabel}
-                        </FactionAccentText>
-                      </div>
-                    </div>
-
-                    <p className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/32">
-                      Tap another slot above to inspect a different breakpoint on the board.
-                    </p>
-                  </div>
+                  <motion.div
+                    animate={
+                      selectedTrackInsight.type === 'FASCIST'
+                        ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
+                        : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
+                    }
+                    transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                    className={`absolute inset-3 rounded-[20px] ${selectedTrackInsight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
+                  />
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-  );
+
+              <div className="mt-5 grid gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3">
+                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    On Board
+                  </p>
+                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                    {selectedTrackProgress}/{selectedTrackMax}
+                  </p>
+                </div>
+                <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    Selected Slot
+                  </p>
+                  <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
+                    {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
+                  </p>
+                </div>
+                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    Current Stage
+                  </p>
+                  <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                    {directorState?.timelinePositionLabel || directorState?.stageLabel || 'Live Match'}
+                  </FactionAccentText>
+                </div>
+                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    Deck
+                  </p>
+                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                    {gameState.drawPileCount}
+                  </p>
+                </div>
+                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    Discard
+                  </p>
+                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                    {gameState.discardPileCount}
+                  </p>
+                </div>
+                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                    Chaos
+                  </p>
+                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                    {gameState.electionTracker}/{MAX_ELECTION_TRACKER}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
 
   const renderBoardStage = () => {
     if (showVoteReveal) {
@@ -1344,41 +1333,11 @@ export default function GameBoard({
     const isDimmed = displayPhase === PHASES.VOTING;
 
     return (
-      <div className={`mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.84]'}`}>
-        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="inline-flex min-w-max items-center gap-2 border border-white/6 bg-black/22 px-3 py-2 text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/68 shadow-[0_12px_24px_rgba(0,0,0,0.16)] sm:gap-3 sm:text-[11px]">
-            <span className="text-cyan-100">LIB {gameState.liberalPolicies}/{LIBERAL_TO_WIN}</span>
-            <span className="text-white/16">|</span>
-            <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
-            <span className="text-white/16">|</span>
-            {renderDeckMetric('text-white/68')}
-            <span className="text-white/16">|</span>
-            <span>DISC {gameState.discardPileCount}</span>
-            <span className="text-white/16">|</span>
-            <span className="flex items-center gap-1.5">
-              <span>CHAOS</span>
-              <span className="flex items-center gap-1">
-                {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
-                  <span
-                    key={index}
-                    className={`h-2 w-2 ${
-                      index < gameState.electionTracker
-                        ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.35)]'
-                        : 'bg-white/16'
-                    }`}
-                  />
-                ))}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-3 grid min-w-0 gap-2 md:grid-cols-2">
+      <div className={`mx-auto w-full min-w-0 max-w-[860px] px-3 sm:px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.92]'}`}>
+        <div className="grid min-w-0 gap-3">
           {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
           {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
         </div>
-
-        {renderTrackBriefing()}
       </div>
     );
   };
@@ -1392,37 +1351,13 @@ export default function GameBoard({
       orderMap: presidencyOrderMap,
       nextPresidentId,
       afterNextPresidentId,
-      originPresidentId,
     } = getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId);
-    const currentPresidentPlayer = tablePlayers.find((player) => player.id === gameState.currentPresident);
-    const presidencyOriginPlayer = tablePlayers.find((player) => player.id === originPresidentId);
-    const nextPresidentPlayer = tablePlayers.find((player) => player.id === nextPresidentId);
-    const afterNextPresidentPlayer = tablePlayers.find((player) => player.id === afterNextPresidentId);
     const ringSeatClass = getTableRingSeatClass(playerCount);
     const votingGroups = isVotingPhase
       ? showVoteReveal
         ? getVoteRevealGroups(gameState.players, revealState?.votes)
         : getVotingGroups(gameState.players)
       : [];
-    const executiveLabel =
-      executivePower === EXECUTIVE_POWERS.INVESTIGATE
-        ? 'Select one player to investigate'
-        : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
-          ? 'Choose the next president'
-          : executivePower === EXECUTIVE_POWERS.EXECUTION
-            ? 'Choose one target from the dock'
-            : 'Executive action in progress';
-    const dockHint = canNominate
-      ? 'Nominate from the dock below'
-      : canExecutiveTarget
-        ? executiveLabel
-        : isVotingPhase
-          ? null
-          : isLegislativePhase
-            ? 'Policy handoff in progress'
-            : 'Seat order drives the presidency';
-    const dockTitle = 'Players';
-    const dockBadgeLabel = isVotingPhase ? null : `${aliveCount}/${playerCount} Live`;
     const dockWrapperClass = isVoteRevealPhase
       ? 'mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4'
       : 'mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 px-3 sm:px-4';
@@ -1431,33 +1366,25 @@ export default function GameBoard({
       : 'relative h-full min-h-0 min-w-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4';
     const dockBodyClass = isVoteRevealPhase
       ? 'relative z-10 min-w-0 pt-3'
-      : 'relative z-10 min-h-0 min-w-0 overflow-y-auto pt-3';
+      : isVotingPhase
+        ? 'relative z-10 min-h-0 min-w-0 overflow-y-auto pt-3'
+        : 'relative z-10 min-h-0 min-w-0 overflow-y-auto';
 
     return (
       <div className={dockWrapperClass}>
         <div className={dockPanelClass}>
           <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
 
-          <div className="relative z-10 grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/75">
-                  {dockTitle}
-                </p>
-                {dockHint && (
-                  <p className="mt-1 text-[9px] leading-relaxed text-white/55 sm:text-[10px]">
-                    {dockHint}
+          <div className={`relative z-10 ${isVotingPhase ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]' : 'h-full min-h-0'}`}>
+            {isVotingPhase && (
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/75">
+                    Players
                   </p>
-                )}
-              </div>
-
-              {dockBadgeLabel && (
-                <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.22em] text-white/70">
-                  {dockBadgeLabel}
                 </div>
-              )}
-            </div>
-
+              </div>
+            )}
             <div className={dockBodyClass}>
               {isVotingPhase ? (
                 <div className="space-y-4">
@@ -1590,29 +1517,11 @@ export default function GameBoard({
                   ))}
                 </div>
               ) : (
-                <div className="flex min-h-0 flex-col items-center gap-4">
-                  <div className="relative mx-auto w-full max-w-[390px]">
+                <div className="flex min-h-0 items-center justify-center">
+                  <div className="relative mx-auto w-full max-w-[410px]">
                     <div className="relative aspect-square w-full">
                       <div className="absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
-                      <div className="absolute inset-[22%] flex flex-col items-center justify-center rounded-full border border-[#d4c098]/18 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(6,7,8,0.92)_100%)] px-4 text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
-                        <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-[#d4c098]/72">
-                          Presidency Order
-                        </p>
-                        <p className="mt-3 text-sm font-black uppercase tracking-[0.14em] text-white sm:text-base">
-                          {gameState.specialElectionCallerId ? 'Special Election' : 'Clockwise Rotation'}
-                        </p>
-                        <p className="mt-2 max-w-[15rem] text-[10px] leading-relaxed text-white/55 sm:text-[11px]">
-                          {gameState.specialElectionCallerId
-                            ? `Order resumes after ${presidencyOriginPlayer?.name || 'the calling president'}.`
-                            : 'Seat numbers show who becomes president next.'}
-                        </p>
-                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.2em] text-white/62">
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-[8px] text-black">
-                            1
-                          </span>
-                          Next President
-                        </div>
-                      </div>
+                      <div className="absolute inset-[27%] rounded-full border border-[#d4c098]/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06)_0%,rgba(10,11,13,0.88)_72%,rgba(6,7,8,0.94)_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]" />
 
                       {tablePlayers.map((player, index) => {
                         const isSelf = player.id === myActualId;
@@ -1759,25 +1668,6 @@ export default function GameBoard({
                       })}
                     </div>
                   </div>
-
-                  <div className="grid w-full max-w-[680px] grid-cols-1 gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62 sm:grid-cols-3 sm:gap-3 sm:text-[10px]">
-                    <div className="rounded-[18px] border border-[#d4af37]/22 bg-[#d4af37]/10 px-3 py-2">
-                      <span className="block text-[#f3df9c]">Current President</span>
-                      <span className="mt-1 block truncate text-white">{currentPresidentPlayer?.name || 'Unknown'}</span>
-                    </div>
-                    <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/10 px-3 py-2">
-                      <span className="block text-cyan-100">Next President</span>
-                      <span className="mt-1 block truncate text-white">{nextPresidentPlayer?.name || 'Unknown'}</span>
-                    </div>
-                    <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-2">
-                      <span className="block text-white/55">{gameState.specialElectionCallerId ? 'Order Resumes After' : 'Then'}</span>
-                      <span className="mt-1 block truncate text-white">
-                        {gameState.specialElectionCallerId
-                          ? (presidencyOriginPlayer?.name || 'Current Rotation')
-                          : (afterNextPresidentPlayer?.name || 'Rotation Continues')}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
@@ -1836,6 +1726,7 @@ export default function GameBoard({
         onEnact={onEnact}
         onAcknowledgePeek={onAcknowledgePeek}
       />
+      {renderTrackDetailOverlay()}
 
       <div className={`relative z-10 grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:gap-3 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         {renderBoardStage()}
