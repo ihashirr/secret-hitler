@@ -192,6 +192,208 @@ const GOVERNMENT_FRACTURE_SHARDS = [
   { left: '62%', top: '60%', width: 42, height: 9, rotate: -16, x: 20, y: 20, delay: 0.22 },
   { left: '78%', top: '30%', width: 36, height: 8, rotate: 26, x: 28, y: -14, delay: 0.16 },
 ];
+const POLICY_CARD_ASSETS = {
+  LIBERAL: '/assets/policy-liberal.png',
+  FASCIST: '/assets/policy-fascist.png',
+};
+const EXECUTIVE_POWER_COPY = {
+  [EXECUTIVE_POWERS.INVESTIGATE]: {
+    label: 'Investigate Loyalty',
+    shortLabel: 'Investigation',
+    description: 'The President privately learns one player’s faction, but not their exact role.',
+  },
+  [EXECUTIVE_POWERS.SPECIAL_ELECTION]: {
+    label: 'Call A Special Election',
+    shortLabel: 'Special Election',
+    description: 'The President chooses who takes the presidency for the next round only.',
+  },
+  [EXECUTIVE_POWERS.PEEK]: {
+    label: 'Review The Top Three Policies',
+    shortLabel: 'Policy Peek',
+    description: 'The President privately sees the next three policies without changing the deck.',
+  },
+  [EXECUTIVE_POWERS.EXECUTION]: {
+    label: 'Execute A Player',
+    shortLabel: 'Execution',
+    description: 'The President eliminates one living player. If Hitler dies, the liberals win immediately.',
+  },
+};
+
+const getFascistExecutivePowerForSlot = (playerCount, slotNumber) => {
+  if (playerCount <= 6) {
+    if (slotNumber === 3) return EXECUTIVE_POWERS.PEEK;
+    if (slotNumber === 4 || slotNumber === 5) return EXECUTIVE_POWERS.EXECUTION;
+    return null;
+  }
+
+  if (playerCount <= 8) {
+    if (slotNumber === 2) return EXECUTIVE_POWERS.INVESTIGATE;
+    if (slotNumber === 3) return EXECUTIVE_POWERS.SPECIAL_ELECTION;
+    if (slotNumber === 4 || slotNumber === 5) return EXECUTIVE_POWERS.EXECUTION;
+    return null;
+  }
+
+  if (slotNumber === 1 || slotNumber === 2) return EXECUTIVE_POWERS.INVESTIGATE;
+  if (slotNumber === 3) return EXECUTIVE_POWERS.SPECIAL_ELECTION;
+  if (slotNumber === 4 || slotNumber === 5) return EXECUTIVE_POWERS.EXECUTION;
+  return null;
+};
+
+const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase, executivePower }) => {
+  const slotNumber = slotIndex + 1;
+  const isFilled = slotNumber <= current;
+  const isCurrentEdge = current > 0 && slotNumber === current;
+  const isNext = current < max && slotNumber === current + 1;
+  const isVictorySlot = slotNumber === max;
+  const fascistPower = type === 'FASCIST' ? getFascistExecutivePowerForSlot(playerCount, slotNumber) : null;
+  const activePowerCopy = fascistPower ? EXECUTIVE_POWER_COPY[fascistPower] : null;
+  const isResolvingNow =
+    type === 'FASCIST' &&
+    phase === PHASES.EXECUTIVE_ACTION &&
+    isCurrentEdge &&
+    fascistPower &&
+    executivePower === fascistPower;
+
+  let statusLabel = 'Future Slot';
+  let statusDescription = 'Nothing has landed here yet. This shows what that board position will mean if play reaches it.';
+
+  if (isResolvingNow) {
+    statusLabel = 'Resolving Now';
+    statusDescription = 'This is the fascist slot that just landed, and its executive power is currently being resolved.';
+  } else if (isNext) {
+    statusLabel = 'Next Card Here';
+    statusDescription = 'If the next enacted policy matches this track, it lands in this exact slot.';
+  } else if (isCurrentEdge) {
+    statusLabel = 'Current Board Edge';
+    statusDescription = 'This is the latest policy already locked onto the board.';
+  } else if (isFilled) {
+    statusLabel = 'Already Locked';
+    statusDescription = 'This slot is already part of the permanent board state.';
+  }
+
+  if (type === 'LIBERAL') {
+    if (isVictorySlot) {
+      return {
+        type,
+        slotNumber,
+        max,
+        isFilled,
+        isNext,
+        isCurrentEdge,
+        isResolvingNow: false,
+        trackLabel: 'Liberal Track',
+        cardLabel: 'Liberal policy',
+        cardSrc: POLICY_CARD_ASSETS.LIBERAL,
+        accentClassName: 'text-cyan-100',
+        accentSurfaceClassName: 'border-cyan-300/18 bg-cyan-300/10',
+        accentSoftClassName: 'border-cyan-300/14 bg-cyan-300/[0.08]',
+        statusLabel,
+        statusDescription,
+        outcomeLabel: 'Immediate Liberal Victory',
+        outcomeDescription: 'Placing a Liberal policy in this slot ends the match on the spot.',
+        summaryLine: isNext
+          ? 'One more Liberal policy wins the table immediately.'
+          : 'This is the victory space at the end of the Liberal track.',
+      };
+    }
+
+    return {
+      type,
+      slotNumber,
+      max,
+      isFilled,
+      isNext,
+      isCurrentEdge,
+      isResolvingNow: false,
+      trackLabel: 'Liberal Track',
+      cardLabel: 'Liberal policy',
+      cardSrc: POLICY_CARD_ASSETS.LIBERAL,
+      accentClassName: 'text-cyan-100',
+      accentSurfaceClassName: 'border-cyan-300/18 bg-cyan-300/10',
+      accentSoftClassName: 'border-cyan-300/14 bg-cyan-300/[0.08]',
+      statusLabel,
+      statusDescription,
+      outcomeLabel: `Board Advances To ${slotNumber}/${max}`,
+      outcomeDescription: 'No executive power unlocks here. A Liberal card in this space is pure progress toward victory.',
+      summaryLine: isNext
+        ? `The next Liberal policy would move the republic to ${slotNumber}/${max}.`
+        : `This slot marks Liberal progress ${slotNumber} of ${max}.`,
+    };
+  }
+
+  if (isVictorySlot) {
+    return {
+      type,
+      slotNumber,
+      max,
+      isFilled,
+      isNext,
+      isCurrentEdge,
+      isResolvingNow,
+      trackLabel: 'Fascist Track',
+      cardLabel: 'Fascist policy',
+      cardSrc: POLICY_CARD_ASSETS.FASCIST,
+      accentClassName: 'text-red-100',
+      accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
+      accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
+      statusLabel,
+      statusDescription,
+      outcomeLabel: 'Immediate Fascist Victory',
+      outcomeDescription: 'Placing a Fascist policy in this slot ends the match immediately.',
+      summaryLine: isNext
+        ? 'The next Fascist policy would end the game instantly.'
+        : 'This is the final victory space on the Fascist track.',
+    };
+  }
+
+  if (!activePowerCopy) {
+    return {
+      type,
+      slotNumber,
+      max,
+      isFilled,
+      isNext,
+      isCurrentEdge,
+      isResolvingNow,
+      trackLabel: 'Fascist Track',
+      cardLabel: 'Fascist policy',
+      cardSrc: POLICY_CARD_ASSETS.FASCIST,
+      accentClassName: 'text-red-100',
+      accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
+      accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
+      statusLabel,
+      statusDescription,
+      outcomeLabel: 'Board Pressure Only',
+      outcomeDescription: 'A Fascist card here advances the regime but does not unlock an executive power on this table size.',
+      summaryLine: isNext
+        ? 'The next Fascist policy would only add pressure here.'
+        : `This slot is plain Fascist progress ${slotNumber} of ${max}.`,
+    };
+  }
+
+  return {
+    type,
+    slotNumber,
+    max,
+    isFilled,
+    isNext,
+    isCurrentEdge,
+    isResolvingNow,
+    trackLabel: 'Fascist Track',
+    cardLabel: 'Fascist policy',
+    cardSrc: POLICY_CARD_ASSETS.FASCIST,
+    accentClassName: 'text-red-100',
+    accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
+    accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
+    statusLabel,
+    statusDescription,
+    outcomeLabel: activePowerCopy.label,
+    outcomeDescription: activePowerCopy.description,
+    summaryLine: isNext
+      ? `The next Fascist policy would unlock ${activePowerCopy.shortLabel.toLowerCase()}.`
+      : `This slot carries ${activePowerCopy.shortLabel.toLowerCase()} on this table size.`,
+  };
+};
 
 export default function GameBoard({
   gameState,
@@ -231,6 +433,19 @@ export default function GameBoard({
   const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
   const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
   const [deckAnimation, setDeckAnimation] = React.useState(null);
+  const [selectedTrackFocus, setSelectedTrackFocus] = React.useState(() => {
+    const defaultType =
+      gameState.phase === PHASES.EXECUTIVE_ACTION || gameState.fascistPolicies >= gameState.liberalPolicies
+        ? 'FASCIST'
+        : 'LIBERAL';
+    const defaultMax = defaultType === 'FASCIST' ? FASCIST_TO_WIN : LIBERAL_TO_WIN;
+    const defaultCurrent = defaultType === 'FASCIST' ? gameState.fascistPolicies : gameState.liberalPolicies;
+
+    return {
+      type: defaultType,
+      slotIndex: Math.min(defaultCurrent, defaultMax - 1),
+    };
+  });
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
   const previousDeckCountRef = React.useRef(gameState.drawPileCount);
@@ -404,6 +619,19 @@ export default function GameBoard({
         : me?.hasVoted
           ? 'Your vote is in. Waiting for the rest of the table.'
           : 'Cast your vote now.');
+  const selectedTrackType = selectedTrackFocus?.type === 'LIBERAL' ? 'LIBERAL' : 'FASCIST';
+  const selectedTrackMax = selectedTrackType === 'FASCIST' ? FASCIST_TO_WIN : LIBERAL_TO_WIN;
+  const selectedTrackProgress = selectedTrackType === 'FASCIST' ? gameState.fascistPolicies : gameState.liberalPolicies;
+  const selectedTrackSlotIndex = Math.max(0, Math.min(selectedTrackFocus?.slotIndex ?? 0, selectedTrackMax - 1));
+  const selectedTrackInsight = getTrackSlotInsight({
+    type: selectedTrackType,
+    slotIndex: selectedTrackSlotIndex,
+    current: selectedTrackProgress,
+    max: selectedTrackMax,
+    playerCount,
+    phase: displayPhase,
+    executivePower: gameState.executivePower,
+  });
 
   const handleNominate = (id) => {
     triggerHaptic('selection');
@@ -444,6 +672,11 @@ export default function GameBoard({
     setPendingSelection(null);
   };
 
+  const handleTrackInspect = (type, slotIndex) => {
+    triggerHaptic('selection');
+    setSelectedTrackFocus({ type, slotIndex });
+  };
+
   const renderDeckMetric = (className = 'text-white/72') => (
     <span className={`relative inline-flex items-center ${className}`}>
       <AnimatePresence>
@@ -481,6 +714,7 @@ export default function GameBoard({
 
   const renderTrack = (current, max, type) => {
     const isFascist = type === 'FASCIST';
+    const cardSrc = POLICY_CARD_ASSETS[type];
     const fillClass = isFascist
       ? 'border-red-400/35 bg-[linear-gradient(180deg,#c1272d_0%,#701118_100%)] text-red-50'
       : 'border-cyan-300/30 bg-[linear-gradient(180deg,#4b88c4_0%,#234a72_100%)] text-cyan-50';
@@ -488,22 +722,72 @@ export default function GameBoard({
       ? 'border-red-950 bg-[#15080a] text-red-200/18'
       : 'border-cyan-950 bg-[#0b141d] text-cyan-100/18';
     const accentTextClass = isFascist ? 'text-red-100/82' : 'text-cyan-100/82';
-    const summary = isFascist ? 'powers at 3, 4, 5' : '5 to secure';
     const Icon = isFascist ? Skull : Shield;
+    const trackIsFocused = selectedTrackFocus?.type === type;
+    const nextSlotIndex = current < max ? current : max - 1;
+    const previewSlotIndex = trackIsFocused ? selectedTrackFocus.slotIndex : nextSlotIndex;
+    const previewInsight = getTrackSlotInsight({
+      type,
+      slotIndex: previewSlotIndex,
+      current,
+      max,
+      playerCount,
+      phase: displayPhase,
+      executivePower: gameState.executivePower,
+    });
 
     return (
-      <div className="min-w-0 rounded-[14px] border border-white/6 bg-black/18 px-3 py-2">
+      <motion.div
+        layout
+        className={`min-w-0 rounded-[18px] border px-3 py-2 transition-colors ${
+          trackIsFocused
+            ? isFascist
+              ? 'border-red-400/22 bg-red-500/[0.06] shadow-[0_0_0_1px_rgba(248,113,113,0.1),0_18px_30px_rgba(0,0,0,0.18)]'
+              : 'border-cyan-300/20 bg-cyan-300/[0.06] shadow-[0_0_0_1px_rgba(103,232,249,0.08),0_18px_30px_rgba(0,0,0,0.18)]'
+            : 'border-white/6 bg-black/18'
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <FactionAccentText
-              as="p"
-              className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}
+          <div className="flex min-w-0 items-center gap-3">
+            <motion.div
+              animate={
+                trackIsFocused
+                  ? { y: [0, -4, 0], rotate: [-3, 3, -3], scale: [1, 1.03, 1] }
+                  : { y: [0, -2, 0], rotate: [-2, 2, -2] }
+              }
+              transition={{ duration: trackIsFocused ? 2.6 : 4.2, repeat: Infinity, ease: 'easeInOut' }}
+              className={`relative hidden shrink-0 rounded-[14px] border p-1 min-[380px]:block ${
+                isFascist ? 'border-red-400/18 bg-red-500/[0.08]' : 'border-cyan-300/18 bg-cyan-300/[0.08]'
+              }`}
             >
-              {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
-            </FactionAccentText>
-            <p className="mt-1 text-[9px] font-mono uppercase tracking-[0.16em] text-white/28">
-              {summary}
-            </p>
+              <img
+                src={cardSrc}
+                alt=""
+                aria-hidden="true"
+                loading="eager"
+                decoding="async"
+                className="h-14 w-10 rounded-[10px] object-cover shadow-[0_10px_18px_rgba(0,0,0,0.24)]"
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-[14px] paper-grain opacity-10" />
+            </motion.div>
+
+            <div className="min-w-0">
+              <FactionAccentText
+                as="p"
+                className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}
+              >
+                {type === 'LIBERAL' ? 'Liberal Track' : 'Fascist Track'}
+              </FactionAccentText>
+              <FactionAccentText
+                as="p"
+                className="mt-1 text-[9px] font-mono uppercase tracking-[0.16em] text-white/34"
+              >
+                {previewInsight.summaryLine}
+              </FactionAccentText>
+              <p className="mt-1 text-[8px] font-mono uppercase tracking-[0.18em] text-white/22">
+                Tap any slot to inspect the breakpoint.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -518,22 +802,65 @@ export default function GameBoard({
           {Array.from({ length: max }).map((_, index) => {
             const isActive = index < current;
             const slotMeta = getTrackSlotMeta(type, index);
+            const isNextSlot = current < max && index === current;
+            const isCurrentEdge = current > 0 && index === current - 1;
+            const isSelectedSlot = trackIsFocused && selectedTrackFocus.slotIndex === index;
 
             return (
-              <div
+              <motion.button
                 key={index}
-                className={`relative min-h-[30px] border px-1 py-1 transition-all duration-500 sm:min-h-[34px] ${isActive ? `${fillClass} shadow-[0_8px_18px_rgba(0,0,0,0.18)]` : inactiveClass}`}
+                type="button"
+                onClick={() => handleTrackInspect(type, index)}
+                whileTap={{ scale: 0.96 }}
+                className={`relative min-h-[30px] overflow-hidden border px-1 py-1 transition-all duration-500 sm:min-h-[34px] ${
+                  isActive ? `${fillClass} shadow-[0_8px_18px_rgba(0,0,0,0.18)]` : inactiveClass
+                } ${isSelectedSlot ? 'ring-2 ring-white/50 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_12px_26px_rgba(0,0,0,0.28)]' : ''} ${
+                  isNextSlot && !isActive
+                    ? isFascist
+                      ? 'border-red-300/42 shadow-[0_0_0_1px_rgba(248,113,113,0.12)]'
+                      : 'border-cyan-200/38 shadow-[0_0_0_1px_rgba(103,232,249,0.1)]'
+                    : ''
+                }`}
               >
+                {isNextSlot && !isActive && (
+                  <>
+                    <motion.div
+                      animate={
+                        isFascist
+                          ? { opacity: [0.12, 0.28, 0.12], scale: [0.94, 1.02, 0.94] }
+                          : { opacity: [0.1, 0.24, 0.1], scale: [0.94, 1.03, 0.94] }
+                      }
+                      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                      className={`absolute inset-0 ${
+                        isFascist ? 'bg-red-400/18' : 'bg-cyan-300/16'
+                      }`}
+                    />
+                    <motion.img
+                      src={cardSrc}
+                      alt=""
+                      aria-hidden="true"
+                      animate={{ y: [8, 2, 8], rotate: [-4, 0, -4], opacity: [0.14, 0.26, 0.14] }}
+                      transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                      className="pointer-events-none absolute bottom-0 left-1/2 h-8 w-6 -translate-x-1/2 rounded-[6px] object-cover"
+                    />
+                  </>
+                )}
+
                 <div className="relative z-10 flex h-full flex-col items-center justify-between text-center">
                   <span className="text-[6px] font-mono font-black uppercase tracking-[0.22em] opacity-80">
                     {slotMeta}
                   </span>
 
                   {isActive ? (
-                    <Icon size={9} />
+                    <motion.span
+                      animate={isCurrentEdge ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+                      transition={isCurrentEdge ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' } : undefined}
+                    >
+                      <Icon size={9} />
+                    </motion.span>
                   ) : (
                     <span className="text-[9px] font-mono font-black opacity-38">
-                      {index + 1}
+                      {isNextSlot ? 'NEXT' : index + 1}
                     </span>
                   )}
                 </div>
@@ -546,13 +873,123 @@ export default function GameBoard({
                     className={`absolute inset-0 pointer-events-none ${isFascist ? 'bg-red-400/40' : 'bg-cyan-300/40'}`}
                   />
                 )}
-              </div>
+              </motion.button>
             );
           })}
         </div>
-      </div>
+      </motion.div>
     );
   };
+
+  const renderTrackBriefing = () => (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}-${selectedTrackProgress}-${displayPhase}-${gameState.executivePower || 'idle'}`}
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.28, ease: 'easeOut' }}
+        className="relative mt-3 overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(7,8,10,0.94)_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
+      >
+        <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
+        <div className="grid min-w-0 gap-4 min-[520px]:grid-cols-[116px,minmax(0,1fr)]">
+          <div className="flex items-center justify-center">
+            <div className={`relative flex h-[132px] w-[100px] items-center justify-center overflow-hidden rounded-[24px] border ${selectedTrackInsight.accentSurfaceClassName}`}>
+              <motion.div
+                animate={
+                  selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow
+                    ? { y: [6, -2, 6], rotate: [-4, 2, -4], scale: [0.98, 1.03, 0.98] }
+                    : { y: [2, -2, 2], rotate: [-2, 2, -2] }
+                }
+                transition={{ duration: selectedTrackInsight.isNext || selectedTrackInsight.isResolvingNow ? 2.2 : 3.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="relative z-10"
+              >
+                <img
+                  src={selectedTrackInsight.cardSrc}
+                  alt={`${selectedTrackInsight.cardLabel} reference`}
+                  loading="eager"
+                  decoding="async"
+                  className="h-[112px] w-[76px] rounded-[14px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
+                />
+              </motion.div>
+
+              <motion.div
+                animate={
+                  selectedTrackInsight.type === 'FASCIST'
+                    ? { opacity: [0.12, 0.22, 0.12], scale: [0.94, 1.02, 0.94] }
+                    : { opacity: [0.1, 0.2, 0.1], scale: [0.94, 1.03, 0.94] }
+                }
+                transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut' }}
+                className={`absolute inset-3 rounded-[20px] ${selectedTrackInsight.type === 'FASCIST' ? 'bg-red-400/18' : 'bg-cyan-300/16'}`}
+              />
+
+              <div className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/28 px-2 py-1 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/78">
+                Slot {selectedTrackInsight.slotNumber}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em]">
+              <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSurfaceClassName} ${selectedTrackInsight.accentClassName}`}>
+                {selectedTrackInsight.trackLabel}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
+                {selectedTrackProgress}/{selectedTrackMax} On Board
+              </span>
+              <span className={`rounded-full border px-3 py-1 ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
+                {selectedTrackInsight.statusLabel}
+              </span>
+            </div>
+
+            <FactionAccentText
+              as="h3"
+              className="mt-3 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+            >
+              {selectedTrackInsight.outcomeLabel}
+            </FactionAccentText>
+            <FactionAccentText as="p" className="mt-2 max-w-[44rem] text-sm leading-relaxed text-white/68">
+              {selectedTrackInsight.outcomeDescription}
+            </FactionAccentText>
+            <p className="mt-2 max-w-[42rem] text-[11px] leading-relaxed text-white/44">
+              {selectedTrackInsight.statusDescription}
+            </p>
+
+            <div className="mt-4 grid gap-2 min-[420px]:grid-cols-3">
+              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                  Board Position
+                </p>
+                <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                  {selectedTrackProgress}/{selectedTrackMax}
+                </p>
+              </div>
+              <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
+                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                  Selected Slot
+                </p>
+                <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
+                  {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
+                  If A Card Lands Here
+                </p>
+                <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
+                  {selectedTrackInsight.isResolvingNow ? 'Trigger Live Now' : selectedTrackInsight.outcomeLabel}
+                </FactionAccentText>
+              </div>
+            </div>
+
+            <p className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/32">
+              Tap another slot above to inspect a different breakpoint on the board.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
 
   const renderBoardStage = () => {
     if (showVoteReveal) {
@@ -864,6 +1301,8 @@ export default function GameBoard({
           {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
           {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
         </div>
+
+        {renderTrackBriefing()}
       </div>
     );
   };
