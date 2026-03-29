@@ -1631,24 +1631,6 @@ export default function GameBoard({
                           </div>
                         </div>
                       )}
-                      <div className="pointer-events-none absolute left-1/2 top-[66%] z-10 w-[152px] -translate-x-1/2">
-                        <div className="rounded-[20px] border border-white/8 bg-black/28 px-3 py-2 shadow-[0_14px_24px_rgba(0,0,0,0.22)] backdrop-blur-sm">
-                          <div className="space-y-1.5">
-                            {orbitStatusItems.map((item) => (
-                              <div key={item.label} className="flex items-center justify-between gap-2 text-[8px] font-mono font-black uppercase tracking-[0.16em]">
-                                <span className="inline-flex min-w-0 items-center gap-1.5 text-white/46">
-                                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
-                                  {item.label}
-                                </span>
-                                <span className="truncate text-right text-white/76">
-                                  {item.value}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
                       {tablePlayers.map((player, index) => {
                         const isSelf = player.id === myActualId;
                         const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
@@ -1830,6 +1812,24 @@ export default function GameBoard({
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+                  <div className="mx-auto mt-4 w-full max-w-[380px]">
+                    <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-3">
+                      {orbitStatusItems.map((item) => (
+                        <div
+                          key={item.label}
+                          className="min-w-0 rounded-[18px] border border-white/8 bg-black/24 px-3 py-2 shadow-[0_12px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm"
+                        >
+                          <div className="flex items-center gap-1.5 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
+                            {item.label}
+                          </div>
+                          <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.06em] text-white/78">
+                            {item.value}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
