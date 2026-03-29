@@ -6,7 +6,7 @@ import LoadingPhaseView from './views/LoadingPhaseView';
 import LobbyPhaseView from './views/LobbyPhaseView';
 import RoleRevealPhaseView from './views/RoleRevealPhaseView';
 
-export default function PhaseRouter({ viewKey, gameState, playerId, directorState, mobileAccess, actions }) {
+export default function PhaseRouter({ viewKey, gameState, playerId, directorState, actions }) {
   switch (viewKey) {
     case 'LOADING':
       return <LoadingPhaseView />;
@@ -54,6 +54,6 @@ export default function PhaseRouter({ viewKey, gameState, playerId, directorStat
 
     case 'CONNECT':
     default:
-      return <ConnectPhaseView onConnect={actions.onConnect} mobileAccess={mobileAccess} />;
+      return <ConnectPhaseView onConnect={actions.onConnect} />;
   }
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowLeft, Download, Expand, Shield, Smartphone } from 'lucide-react';
+import { ArrowLeft, Download, Expand, Shield } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const VIEW_COPY = {
+  CONNECT: 'Install the app or use fullscreen to continue.',
   GAME_OVER: 'Open in app or fullscreen to continue.',
   LIVE_GAME: 'Open in app or fullscreen to continue.',
   LOBBY: 'Open in app or fullscreen to continue.',
@@ -122,19 +123,9 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 {detectedModeLabel}
               </span>
             </div>
-          </div>
-
-          <div className="space-y-5 overflow-y-auto px-5 py-4 scrollbar-hide">
-            <div className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/55">
-              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
-                <Smartphone size={12} className="mr-1 inline-block" />
-                Mobile
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
-                {detectedModeLabel}
-              </span>
             </div>
 
+          <div className="space-y-5 overflow-y-auto px-5 py-4 scrollbar-hide">
             <div className="grid gap-3">
               {hasInstallPrompt ? (
                 <button
@@ -197,15 +188,17 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 Refresh
               </button>
 
-              <button
-                type="button"
-                onClick={handleBackToJoin}
-                disabled={isLeaving}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/65 transition-colors hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ArrowLeft size={14} />
-                {isLeaving ? 'Returning...' : 'Back to Join Screen'}
-              </button>
+              {viewKey !== 'CONNECT' && (
+                <button
+                  type="button"
+                  onClick={handleBackToJoin}
+                  disabled={isLeaving}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/65 transition-colors hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowLeft size={14} />
+                  {isLeaving ? 'Returning...' : 'Back to Join Screen'}
+                </button>
+              )}
             </div>
 
             <p className="text-center text-xs leading-relaxed text-paper-light/50">

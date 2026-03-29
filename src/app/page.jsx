@@ -126,7 +126,7 @@ export default function App() {
   const viewKey = getPhaseViewKey({ roomId, gameState, playerId });
   const directorState = buildDirectorState({ roomId, playerId, gameState, viewKey });
   const showGlobalControls = viewKey !== 'CONNECT' && viewKey !== 'LOADING';
-  const mobileGateActive = Boolean(roomId) && viewKey !== 'CONNECT' && viewKey !== 'LOADING';
+  const mobileGateActive = viewKey !== 'LOADING';
   const installResumeUrl =
     typeof window !== 'undefined' && roomId && playerId
       ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}&player=${encodeURIComponent(playerId)}&resume=1`
@@ -185,7 +185,6 @@ export default function App() {
           gameState={gameState}
           playerId={playerId}
           directorState={directorState}
-          mobileAccess={mobileAccess}
           actions={{
             onConnect: handleConnect,
             onStart: () => startGame({ roomId }),

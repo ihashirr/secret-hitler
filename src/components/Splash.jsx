@@ -1,4 +1,3 @@
-import { Download, Expand, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_IDS = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -18,26 +17,12 @@ const triggerHaptic = (pattern = 15) => {
   }
 };
 
-export default function Splash({ onConnect, mobileAccess }) {
+export default function Splash({ onConnect }) {
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState(getInitialRoomId);
   const [avatarId, setAvatarId] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const showMobileHint = mobileAccess?.isMobile && !mobileAccess?.gateSatisfied;
-  const showFullscreenHint = showMobileHint && mobileAccess.canFullscreen;
-  const showInstallHint = showMobileHint;
-  const hasNativeInstallPrompt = showMobileHint && mobileAccess.canInstall;
-  const accessModeLabel = mobileAccess?.isStandalone
-    ? 'Installed App'
-    : mobileAccess?.isFullscreen
-      ? 'Fullscreen'
-      : 'Browser';
-  const installHintCopy = mobileAccess?.isIos
-    ? 'Share -> Add to Home Screen.'
-    : hasNativeInstallPrompt
-      ? 'Install from the prompt.'
-      : 'Use the browser menu to install.';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -82,66 +67,6 @@ export default function Splash({ onConnect, mobileAccess }) {
             </div>
           </div>
         </section>
-
-        {showMobileHint && (
-          <section className="mt-4 rounded-[28px] border border-cyan-400/18 bg-cyan-400/[0.08] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.24em] text-cyan-200/80">
-                  <Shield size={14} />
-                  Mobile Mode
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-white/75">
-                  Install the app or use fullscreen after you join.
-                </p>
-              </div>
-
-              <span className="shrink-0 rounded-full border border-cyan-300/20 bg-black/20 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100">
-                {accessModeLabel}
-              </span>
-            </div>
-
-            {(showFullscreenHint || showInstallHint) && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {showFullscreenHint && (
-                  <button
-                    type="button"
-                    onClick={mobileAccess.requestFullscreen}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-cyan-300"
-                  >
-                    <Expand size={14} />
-                    Try Fullscreen
-                  </button>
-                )}
-
-                {showInstallHint && (
-                  hasNativeInstallPrompt ? (
-                    <button
-                      type="button"
-                      onClick={mobileAccess.promptInstall}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#d4af37]/30 bg-[#d4af37] px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-[#e2bd48]"
-                    >
-                      <Download size={14} />
-                      Install App
-                    </button>
-                  ) : (
-                    <div className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[#d4af37]/20 bg-[#d4af37]/10 px-4 text-[11px] font-mono font-black uppercase tracking-[0.14em] text-[#f3d88b]">
-                      Install From Browser Menu
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-
-            <p className="mt-3 text-xs leading-relaxed text-white/55">
-              {showFullscreenHint || showInstallHint
-                ? installHintCopy
-                : mobileAccess?.isIos
-                  ? 'Share -> Add to Home Screen.'
-                  : 'Fullscreen still works if install is not available.'}
-            </p>
-          </section>
-        )}
 
         <form
           onSubmit={handleSubmit}
