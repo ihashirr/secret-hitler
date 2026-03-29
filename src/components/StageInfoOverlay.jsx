@@ -59,32 +59,30 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             className="relative z-[151] flex min-w-0 max-h-[calc(var(--app-vh)-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
           >
-            <div className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6">
-              <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.26em] text-cyan-200/75">
-                    <Info size={14} />
-                    {timelineVisible ? 'Match Progress' : stageLabel}
-                  </p>
-                  {timelineVisible && (
-                    <div className="mt-3">
-                      <StageTimeline timeline={timeline} />
-                    </div>
-                  )}
-                  <h2 className="mt-2 text-xl font-serif font-black uppercase tracking-[0.08em] text-white sm:text-2xl">
-                    {stageTitle}
-                  </h2>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">{stageDescription}</p>
-                </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-5"
+              aria-label="Close stage information"
+            >
+              <X size={18} />
+            </button>
 
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex h-10 w-10 self-start items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 min-[420px]:shrink-0"
-                  aria-label="Close stage information"
-                >
-                  <X size={18} />
-                </button>
+            <div className="shrink-0 border-b border-white/10 px-5 py-4 pr-16 sm:px-6 sm:pr-20">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.26em] text-cyan-200/75">
+                  <Info size={14} />
+                  {timelineVisible ? 'Match Progress' : stageLabel}
+                </p>
+                {timelineVisible && (
+                  <div className="mt-3">
+                    <StageTimeline timeline={timeline} />
+                  </div>
+                )}
+                <h2 className="mt-2 text-xl font-serif font-black uppercase tracking-[0.08em] text-white sm:text-2xl">
+                  {stageTitle}
+                </h2>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">{stageDescription}</p>
               </div>
             </div>
 
