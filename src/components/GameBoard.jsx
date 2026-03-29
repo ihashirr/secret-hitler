@@ -148,18 +148,6 @@ const getVotingStatusMeta = (player, isRevealed, finalVote) => {
   };
 };
 
-const getVotingGroups = (players) => {
-  const voted = players.filter((player) => player.isAlive && player.hasVoted);
-  const waiting = players.filter((player) => player.isAlive && !player.hasVoted);
-  const observers = players.filter((player) => !player.isAlive);
-
-  return [
-    { key: 'voted', label: 'Voted', players: voted },
-    { key: 'waiting', label: 'Waiting', players: waiting },
-    { key: 'observers', label: 'Observers', players: observers },
-  ].filter((group) => group.players.length);
-};
-
 const getVoteRevealGroups = (players, votes = {}) => {
   const jaPlayers = players.filter((player) => player.isAlive && votes[player.id] === 'YA');
   const neinPlayers = players.filter((player) => player.isAlive && votes[player.id] === 'NEIN');
@@ -414,12 +402,10 @@ export default function GameBoard({
   const [recentVoteIds, setRecentVoteIds] = React.useState([]);
   const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
   const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
-  const [deckAnimation, setDeckAnimation] = React.useState(null);
   const [selectedTrackFocus, setSelectedTrackFocus] = React.useState(null);
   const [isTrackDetailOpen, setIsTrackDetailOpen] = React.useState(false);
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
-  const previousDeckCountRef = React.useRef(gameState.drawPileCount);
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
   const trackDetailDragControls = useDragControls();
@@ -548,49 +534,11 @@ export default function GameBoard({
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [gameState.phase, gameState.players, revealState]);
 
-  React.useEffect(() => {
-    const previousDeckCount = previousDeckCountRef.current;
-    const currentDeckCount = gameState.drawPileCount;
-    const visibleCardCount = Math.max(gameState.drawnCards?.length || 0, gameState.peekedPolicies?.length || 0);
-
-    if (typeof previousDeckCount === 'number' && currentDeckCount < previousDeckCount && visibleCardCount > 0) {
-      const nextAnimation = {
-        id: Date.now(),
-        count: Math.min(3, Math.max(1, previousDeckCount - currentDeckCount, visibleCardCount)),
-      };
-      setDeckAnimation(nextAnimation);
-
-      previousDeckCountRef.current = currentDeckCount;
-      return undefined;
-    }
-
-    previousDeckCountRef.current = currentDeckCount;
-    return undefined;
-  }, [gameState.drawPileCount, gameState.drawnCards?.length, gameState.peekedPolicies?.length]);
-
-  React.useEffect(() => {
-    if (!deckAnimation?.id) return undefined;
-
-    const timer = window.setTimeout(() => {
-      setDeckAnimation((active) => (active?.id === deckAnimation.id ? null : active));
-    }, 900);
-
-    return () => window.clearTimeout(timer);
-  }, [deckAnimation?.id]);
-
   const showVoteReveal = Boolean(revealState) && gameState.phase !== PHASES.VOTING;
   const isVoteRevealPhase = showVoteReveal;
   const displayPhase = showVoteReveal ? PHASES.VOTING : gameState.phase;
   const playerCount = gameState.players.length;
   const aliveCount = gameState.players.filter((player) => player.isAlive).length;
-  const votedCount = gameState.players.filter((player) => player.isAlive && player.hasVoted).length;
-  const voteResponsesRemaining = Math.max(0, aliveCount - votedCount);
-  const voteMajority = Math.floor(aliveCount / 2) + 1;
-  const voteProgressPercent = aliveCount ? (votedCount / aliveCount) * 100 : 0;
-  const waitingPlayersLabel =
-    voteResponsesRemaining === 0
-      ? 'All responses received'
-      : `${voteResponsesRemaining} player${voteResponsesRemaining === 1 ? '' : 's'} remaining`;
   const revealIsApproved = revealState?.result === 'APPROVED';
   const revealProgressTotal = revealedVoteTotals.YA + revealedVoteTotals.NEIN;
   const revealJaPercent = revealProgressTotal ? (revealedVoteTotals.YA / revealProgressTotal) * 100 : 0;
@@ -608,18 +556,6 @@ export default function GameBoard({
       : gameState.chaosTriggered && gameState.chaosPolicy
         ? `Chaos auto-enacted a ${gameState.chaosPolicy.toLowerCase()} policy.`
         : `Election tracker advances to ${gameState.electionTracker}/${MAX_ELECTION_TRACKER}.`;
-  const voteStatusTitle = showVoteReveal
-    ? 'Vote Result'
-    : directorState?.primaryInstruction?.title ||
-      (me?.isAlive === false ? 'Observer Only' : me?.hasVoted ? 'Vote Locked' : 'Cast Vote');
-  const voteStatusCopy = showVoteReveal
-    ? `${revealState?.ya || 0} Ja • ${revealState?.nein || 0} Nein`
-    : directorState?.primaryInstruction?.description ||
-      (me?.isAlive === false
-        ? 'You have been eliminated. Watch the table, but you do not vote anymore.'
-        : me?.hasVoted
-          ? 'Your vote is in. Waiting for the rest of the table.'
-          : 'Cast your vote now.');
   const selectedTrackType = selectedTrackFocus?.type === 'LIBERAL' ? 'LIBERAL' : selectedTrackFocus?.type === 'FASCIST' ? 'FASCIST' : null;
   const selectedTrackMax =
     selectedTrackType === 'FASCIST' ? FASCIST_TO_WIN : selectedTrackType === 'LIBERAL' ? LIBERAL_TO_WIN : null;
@@ -776,41 +712,6 @@ export default function GameBoard({
     triggerHaptic('soft');
     setIsTrackDetailOpen(false);
   };
-
-  const renderDeckMetric = (className = 'text-white/72') => (
-    <span className={`relative inline-flex items-center ${className}`}>
-      <AnimatePresence>
-        {deckAnimation && (
-          <span className="pointer-events-none absolute left-1/2 top-1/2">
-            {Array.from({ length: deckAnimation.count }).map((_, index) => (
-              <motion.span
-                key={`${deckAnimation.id}-${index}`}
-                initial={{ opacity: 0, x: -8, y: 6, scale: 0.72, rotate: -14 + index * 7 }}
-                animate={{ opacity: [0, 0.95, 0], x: 12 + index * 10, y: -18 - index * 5, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.72, delay: index * 0.05, ease: 'easeOut' }}
-                className="absolute h-9 w-7 rounded-[8px] border border-[#d4c098]/18 bg-[linear-gradient(180deg,rgba(239,229,211,0.92)_0%,rgba(207,189,155,0.84)_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.28)] paper-grain"
-              />
-            ))}
-          </span>
-        )}
-      </AnimatePresence>
-
-      <motion.span
-        animate={
-          deckAnimation
-            ? {
-                color: ['rgba(255,255,255,0.72)', 'rgba(244,238,224,1)', 'rgba(255,255,255,0.72)'],
-                textShadow: ['0 0 0 rgba(0,0,0,0)', '0 0 18px rgba(212,192,152,0.18)', '0 0 0 rgba(0,0,0,0)'],
-              }
-            : undefined
-        }
-        transition={{ duration: 0.7, ease: 'easeOut' }}
-      >
-        DECK {gameState.drawPileCount}
-      </motion.span>
-    </span>
-  );
 
   const renderTrack = (current, max, type) => {
     const isFascist = type === 'FASCIST';
@@ -1265,120 +1166,8 @@ export default function GameBoard({
       );
     }
 
-    if (displayPhase === PHASES.VOTING && !showVoteReveal) {
-      return (
-        <div className="mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4">
-          <div className="min-w-0 rounded-[28px] border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(10,15,21,0.98)_0%,rgba(11,17,23,0.94)_100%)] px-4 py-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <motion.span
-                  animate={{ opacity: [0.55, 1, 0.55] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                  className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2.5 py-1 text-[8px] font-mono font-black uppercase tracking-[0.26em] text-cyan-100"
-                >
-                  Live Briefing
-                </motion.span>
-                <FactionAccentText
-                  as="h2"
-                  className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
-                >
-                  {voteStatusTitle}
-                </FactionAccentText>
-                <FactionAccentText as="p" className="mt-1 max-w-[40rem] text-sm leading-relaxed text-white/62">
-                  {voteStatusCopy}
-                </FactionAccentText>
-
-                {!showVoteReveal && (
-                  <div className="mt-3 flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/52">
-                    <span>{waitingPlayersLabel}</span>
-                    {voteResponsesRemaining > 0 && (
-                      <div className="flex items-center gap-1">
-                        {[0, 1, 2].map((index) => (
-                          <motion.span
-                            key={index}
-                            animate={{ opacity: [0.25, 1, 0.25] }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut', delay: index * 0.18 }}
-                            className="h-1.5 w-1.5 rounded-full bg-cyan-200/75"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-            <div className="mt-4">
-              <div className="text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48">
-                Vote Progress
-              </div>
-              <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-white/8">
-                <motion.div
-                  initial={false}
-                  animate={{ width: `${voteProgressPercent}%` }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 28 }}
-                  className="relative h-full rounded-full bg-[linear-gradient(90deg,#36d7ff_0%,#87bfff_100%)]"
-                >
-                  {voteResponsesRemaining > 0 && (
-                    <motion.div
-                      animate={{ opacity: [0.35, 0.9, 0.35] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                      className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0)_100%)]"
-                    />
-                  )}
-                </motion.div>
-                <div
-                  className="absolute inset-y-0 w-px bg-white/20"
-                  style={{ left: `${Math.min(100, Math.max(0, (voteMajority / Math.max(1, aliveCount)) * 100))}%` }}
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/65">
-                  {waitingPlayersLabel}
-                </span>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/38">
-                  Pass threshold: {voteMajority} JA
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="inline-flex min-w-max items-center gap-2 rounded-[18px] border border-white/8 bg-black/28 px-3 py-2 shadow-[0_12px_28px_rgba(0,0,0,0.18)] whitespace-nowrap text-[10px] font-mono font-black uppercase tracking-[0.16em] sm:gap-3 sm:text-[11px]">
-              <span className="text-cyan-100">LIB {gameState.liberalPolicies}/{LIBERAL_TO_WIN}</span>
-              <span className="text-white/18">|</span>
-              <span className="text-red-100">FAS {gameState.fascistPolicies}/{FASCIST_TO_WIN}</span>
-              <span className="text-white/18">|</span>
-              {renderDeckMetric()}
-              <span className="text-white/18">|</span>
-              <span className="text-white/72">DISC {gameState.discardPileCount}</span>
-              <span className="text-white/18">|</span>
-              <span className="flex items-center gap-1.5 text-white/72">
-                <span>CHAOS</span>
-                <span className="flex items-center gap-1">
-                  {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
-                    <span
-                      key={index}
-                      className={`h-2 w-2 rounded-full ${
-                        index < gameState.electionTracker
-                          ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.35)]'
-                          : 'bg-white/18'
-                      }`}
-                    />
-                  ))}
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const isDimmed = displayPhase === PHASES.VOTING;
-
     return (
-      <div className={`mx-auto w-full min-w-0 max-w-[860px] px-3 sm:px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.92]'}`}>
+      <div className="mx-auto w-full min-w-0 max-w-[860px] px-3 transition-all duration-700 opacity-[0.92] sm:px-4">
         <div className="grid min-w-0 gap-3">
           {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
           {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
@@ -1388,7 +1177,7 @@ export default function GameBoard({
   };
 
   const renderPlayerDock = () => {
-    const isVotingPhase = displayPhase === PHASES.VOTING;
+    const isVoteRevealLayout = showVoteReveal;
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
     const playerCardSizeClass = getVotingPlayerCardSize(playerCount);
     const tablePlayers = getTablePlayers(gameState.players);
@@ -1419,11 +1208,7 @@ export default function GameBoard({
       },
     ];
     const ringSeatClass = getTableRingSeatClass(playerCount);
-    const votingGroups = isVotingPhase
-      ? showVoteReveal
-        ? getVoteRevealGroups(gameState.players, revealState?.votes)
-        : getVotingGroups(gameState.players)
-      : [];
+    const votingGroups = isVoteRevealLayout ? getVoteRevealGroups(gameState.players, revealState?.votes) : [];
     const dockWrapperClass = isVoteRevealPhase
       ? 'mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4'
       : 'mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 px-3 sm:px-4';
@@ -1432,17 +1217,15 @@ export default function GameBoard({
       : 'relative h-full min-h-0 min-w-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4';
     const dockBodyClass = isVoteRevealPhase
       ? 'relative z-10 min-w-0 pt-3'
-      : isVotingPhase
-        ? 'relative z-10 min-h-0 min-w-0 overflow-y-auto pt-3'
-        : 'relative z-10 min-h-0 min-w-0 overflow-y-auto';
+      : 'relative z-10 min-h-0 min-w-0 overflow-y-auto';
 
     return (
       <div className={dockWrapperClass}>
         <div className={dockPanelClass}>
           <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
 
-          <div className={`relative z-10 ${isVotingPhase ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]' : 'h-full min-h-0'}`}>
-            {isVotingPhase && (
+          <div className={`relative z-10 ${isVoteRevealLayout ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]' : 'h-full min-h-0'}`}>
+            {isVoteRevealLayout && (
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/75">
@@ -1452,7 +1235,7 @@ export default function GameBoard({
               </div>
             )}
             <div className={dockBodyClass}>
-              {isVotingPhase ? (
+              {isVoteRevealLayout ? (
                 <div className="space-y-4">
                   {votingGroups.map((group) => (
                     <div key={group.key}>

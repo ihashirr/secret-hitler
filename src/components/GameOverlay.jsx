@@ -82,6 +82,7 @@ export default function GameOverlay({
   const currentBallotKey = `${gameState.phase}:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || gameState.currentChancellor || 'none'}`;
   const [pendingVote, setPendingVote] = useState(null);
   const [dismissedSpotlightKey, setDismissedSpotlightKey] = useState(null);
+  const [dismissedVoteDeskKey, setDismissedVoteDeskKey] = useState(null);
   const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
@@ -393,6 +394,15 @@ export default function GameOverlay({
   }
 
   const hasActionContent = Boolean(actionContent || pendingSelection);
+  const votingDrawerKey =
+    displayPhase === PHASES.VOTING &&
+    !revealState &&
+    me?.isAlive &&
+    !me?.hasVoted &&
+    hasActionContent
+      ? `vote:${currentBallotKey}`
+      : null;
+
   const waitingForPrivateActionPayload =
     !pendingSelection &&
     ((displayPhase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && !gameState.drawnCards?.length) ||
@@ -418,7 +428,7 @@ export default function GameOverlay({
       ? primaryInstruction.actions.map((action) => action.label)
       : [];
   const spotlightKey =
-    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload || !hasActionContent
+    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload || !hasActionContent || displayPhase === PHASES.VOTING
       ? null
       : getSpotlightSceneId({
           displayPhase,
@@ -432,7 +442,9 @@ export default function GameOverlay({
   const spotlightVisible =
     Boolean(spotlightKey) &&
     spotlightKey !== dismissedSpotlightKey;
-  const showActionDesk = hasActionContent && !spotlightVisible;
+  const votingDeskDismissible = Boolean(votingDrawerKey);
+  const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === votingDrawerKey;
+  const showActionDesk = hasActionContent && !spotlightVisible && !voteDeskHidden;
 
   if (!isActive) return null;
 
@@ -468,28 +480,42 @@ export default function GameOverlay({
             <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 shrink-0 rounded-full bg-black/10" />
 
             <div className="relative z-10 shrink-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
-                <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
-                  Action Desk
-                </span>
-                <span className="text-[#7a6b57]">Private Channel — {privateAudience}</span>
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
+                    <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
+                      Action Desk
+                    </span>
+                    <span className="text-[#7a6b57]">Private Channel — {privateAudience}</span>
+                  </div>
+
+                  <FactionAccentText
+                    as="h2"
+                    className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]"
+                  >
+                    {title}
+                  </FactionAccentText>
+
+                  {subtext && (
+                    <FactionAccentText
+                      as="p"
+                      className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#5f5449] sm:text-[11px]"
+                    >
+                      {subtext}
+                    </FactionAccentText>
+                  )}
+                </div>
+
+                {votingDeskDismissible && (
+                  <button
+                    type="button"
+                    onClick={runWithHaptic(() => setDismissedVoteDeskKey(votingDrawerKey), 'soft')}
+                    className="shrink-0 rounded-full border border-black/10 bg-black/5 px-3 py-1.5 text-[9px] font-mono font-black uppercase tracking-[0.2em] text-[#5f5449] transition-colors hover:bg-black/10 active:scale-[0.98]"
+                  >
+                    Hide
+                  </button>
+                )}
               </div>
-
-              <FactionAccentText
-                as="h2"
-                className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]"
-              >
-                {title}
-              </FactionAccentText>
-
-              {subtext && (
-                <FactionAccentText
-                  as="p"
-                  className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#5f5449] sm:text-[11px]"
-                >
-                  {subtext}
-                </FactionAccentText>
-              )}
             </div>
 
             <div className="relative z-10 mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
@@ -519,6 +545,25 @@ export default function GameOverlay({
               )}
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {voteDeskHidden && (
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 18 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-x-0 bottom-[calc(var(--app-safe-bottom)+0.75rem)] z-[108] flex justify-center px-3 pointer-events-none"
+        >
+          <button
+            type="button"
+            onClick={runWithHaptic(() => setDismissedVoteDeskKey(null), 'selection')}
+            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(14,22,31,0.96)_0%,rgba(9,15,21,0.94)_100%)] px-4 py-2 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-100 shadow-[0_14px_30px_rgba(0,0,0,0.32)]"
+          >
+            <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.45)]" />
+            Open Vote
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
