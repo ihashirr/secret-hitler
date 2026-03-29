@@ -7,6 +7,7 @@ const DEFAULT_STATE = {
   isFullscreen: false,
   isIos: false,
   isMobile: false,
+  isReady: false,
   isStandalone: false,
   justInstalled: false,
 };
@@ -46,6 +47,7 @@ const getAccessSnapshot = () => ({
   isFullscreen: getIsFullscreenMode(),
   isIos: getIsIosDevice(),
   isMobile: getIsMobileViewport(),
+  isReady: true,
   isStandalone: getIsStandaloneMode(),
 });
 

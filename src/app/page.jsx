@@ -131,17 +131,32 @@ export default function App() {
     typeof window !== 'undefined' && roomId && playerId
       ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}&player=${encodeURIComponent(playerId)}&resume=1`
       : null;
+  const shouldRenderOnlyGate =
+    mobileAccess.isReady &&
+    mobileGateActive &&
+    mobileAccess.isMobile &&
+    !mobileAccess.gateSatisfied;
+
+  if (!mobileAccess.isReady) {
+    return <div className="h-[var(--app-vh)] bg-obsidian-950" />;
+  }
+
+  if (shouldRenderOnlyGate) {
+    return (
+      <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
+        <MobileModeGate
+          active
+          viewKey={viewKey}
+          onExitToConnect={handleExit}
+          accessState={mobileAccess}
+          installResumeUrl={installResumeUrl}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
-      <MobileModeGate
-        active={mobileGateActive}
-        viewKey={viewKey}
-        onExitToConnect={handleExit}
-        accessState={mobileAccess}
-        installResumeUrl={installResumeUrl}
-      />
-
       {showGlobalControls && (
         <GlobalControls 
           gameState={gameState} 
