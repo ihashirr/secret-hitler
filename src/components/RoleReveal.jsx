@@ -3,76 +3,132 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, Check, Eye, Shield, Skull, Users } from 'lucide-react';
 import { FACTIONS, ROLES } from '../lib/constants';
 
-const FACTION_THEME = {
+const THEME = {
   liberal: {
-    shell: 'from-[#081220] via-[#10233b] to-[#081220]',
-    glow: 'rgba(87,169,255,0.22)',
-    frame: 'border-cyan-300/18 bg-[rgba(8,17,28,0.78)]',
-    card: 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(247,251,255,0.98)_0%,rgba(223,236,248,0.98)_100%)] text-[#10233b]',
-    cardMuted: 'text-[#36506f]',
-    badge: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
-    soft: 'border-cyan-300/14 bg-cyan-300/10 text-cyan-100/85',
-    button: 'bg-[linear-gradient(180deg,#3a82c7_0%,#214e7b_100%)] border-cyan-200/20 text-white',
+    glow: 'rgba(70,167,255,0.22)',
+    shell: 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(10,22,36,0.92)_0%,rgba(8,16,27,0.96)_100%)]',
+    primaryCard: 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(249,252,255,0.98)_0%,rgba(228,239,248,0.98)_100%)] text-[#0f2238]',
+    secondaryCard: 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(229,244,255,0.96)_0%,rgba(205,229,244,0.96)_100%)] text-[#12304c]',
+    mutedText: 'text-[#36506f]',
+    pill: 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100',
+    roster: 'border-cyan-300/14 bg-cyan-300/10 text-cyan-100/85',
+    button: 'border-cyan-200/20 bg-[linear-gradient(180deg,#3d88cf_0%,#214e7b_100%)] text-white',
     asset: '/assets/membership-liberal.png',
   },
   fascist: {
-    shell: 'from-[#180607] via-[#2d0c10] to-[#160506]',
-    glow: 'rgba(255,101,101,0.22)',
-    frame: 'border-red-300/18 bg-[rgba(26,8,9,0.78)]',
-    card: 'border-red-300/18 bg-[linear-gradient(180deg,rgba(255,247,247,0.98)_0%,rgba(249,224,224,0.98)_100%)] text-[#4b1116]',
-    cardMuted: 'text-[#7a3438]',
-    badge: 'border-red-300/20 bg-red-400/10 text-red-100',
-    soft: 'border-red-300/14 bg-red-400/10 text-red-100/85',
-    button: 'bg-[linear-gradient(180deg,#b92a31_0%,#73141a_100%)] border-red-200/20 text-white',
+    glow: 'rgba(255,92,92,0.22)',
+    shell: 'border-red-300/18 bg-[linear-gradient(180deg,rgba(34,10,12,0.92)_0%,rgba(21,8,9,0.96)_100%)]',
+    primaryCard: 'border-red-300/16 bg-[linear-gradient(180deg,rgba(255,247,247,0.98)_0%,rgba(246,226,226,0.98)_100%)] text-[#4a1116]',
+    secondaryCard: 'border-red-300/16 bg-[linear-gradient(180deg,rgba(255,236,236,0.96)_0%,rgba(244,213,213,0.96)_100%)] text-[#612227]',
+    mutedText: 'text-[#7d3a3f]',
+    pill: 'border-red-300/18 bg-red-400/10 text-red-100',
+    roster: 'border-red-300/14 bg-red-400/10 text-red-100/85',
+    button: 'border-red-200/20 bg-[linear-gradient(180deg,#b92c33_0%,#73141a_100%)] text-white',
     asset: '/assets/membership-fascist.png',
   },
 };
 
 const ROLE_COPY = {
   [ROLES.LIBERAL]: {
-    roleLabel: 'Liberal',
-    roleDescription: 'Pass liberal policies and keep Hitler away from the chancellorship.',
-    roleIcon: Shield,
+    label: 'Liberal',
+    description: 'Pass liberal policies and keep Hitler away from the chancellorship.',
     partyLabel: 'Liberal',
-    partyDescription: 'You are on the liberal team.',
+    partyDescription: 'Your party membership is Liberal.',
+    icon: Shield,
   },
   [ROLES.FASCIST]: {
-    roleLabel: 'Fascist',
-    roleDescription: 'Help fascist policies pass and protect Hitler until the table gives him power.',
-    roleIcon: Skull,
+    label: 'Fascist',
+    description: 'Pass fascist policies and help Hitler survive until the table gives him power.',
     partyLabel: 'Fascist',
-    partyDescription: 'You are on the fascist team.',
+    partyDescription: 'Your party membership is Fascist.',
+    icon: Skull,
   },
   [ROLES.HITLER]: {
-    roleLabel: 'Hitler',
-    roleDescription: 'Stay concealed and let the table open a path for your election.',
-    roleIcon: Skull,
+    label: 'Hitler',
+    description: 'Stay concealed and let the table clear a path for your election.',
     partyLabel: 'Fascist',
-    partyDescription: 'Your party membership is fascist.',
+    partyDescription: 'Your party membership is Fascist.',
+    icon: Skull,
   },
 };
 
-function IdentityCard({ eyebrow, title, description, icon: Icon, theme, assetSrc, footer }) {
+function PrivacyGate({ onReveal }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      key="privacy-gate"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -18 }}
+      className="flex min-h-0 flex-1 items-center justify-center py-6"
+    >
+      <div className="relative w-full max-w-md">
+        <div className="absolute inset-x-6 top-5 h-full rounded-[34px] border border-white/6 bg-white/[0.03]" />
+        <div className="absolute inset-x-3 top-2 h-full rounded-[34px] border border-white/8 bg-white/[0.04]" />
+
+        <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(13,15,19,0.96)_0%,rgba(7,9,12,0.98)_100%)] px-6 pb-7 pt-6 shadow-[0_34px_90px_rgba(0,0,0,0.48)]">
+          <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+          <div className="relative z-10 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-white/10 bg-white/[0.05]">
+              <Eye className="text-white/85" size={28} />
+            </div>
+            <p className="mt-5 text-[10px] font-mono font-black uppercase tracking-[0.28em] text-white/42">
+              Private Identity Check
+            </p>
+            <h1 className="mt-2 text-[32px] font-black uppercase tracking-[0.08em] text-white">
+              Reveal Your Cards
+            </h1>
+            <p className="mx-auto mt-4 max-w-[19rem] text-sm leading-relaxed text-white/62">
+              Make sure only you can see this screen, then open your role card and party membership.
+            </p>
+
+            <div className="mt-8 rounded-[28px] border border-white/8 bg-white/[0.04] p-4">
+              <div className="grid gap-3">
+                <div className="rounded-[22px] border border-white/8 bg-white/[0.04] px-4 py-4">
+                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/38">Role Card</p>
+                  <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
+                </div>
+                <div className="rounded-[22px] border border-white/8 bg-white/[0.04] px-4 py-4">
+                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/38">Party Membership</p>
+                  <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onReveal}
+              className="mt-8 flex h-14 w-full items-center justify-center rounded-[22px] border border-white/10 bg-white text-[11px] font-mono font-black uppercase tracking-[0.24em] text-[#11161c] shadow-[0_18px_34px_rgba(255,255,255,0.08)] transition-transform active:scale-[0.985]"
+            >
+              Open Identity
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function IdentityCard({ className, themeClassName, eyebrow, title, description, icon: Icon, assetSrc, footer }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: 'easeOut' }}
-      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.card}`}
+      className={`relative overflow-hidden rounded-[30px] border px-5 py-5 shadow-[0_22px_54px_rgba(0,0,0,0.26)] ${themeClassName} ${className || ''}`}
     >
       <div className="absolute inset-0 paper-grain opacity-[0.12]" />
       {assetSrc && (
         <img
           src={assetSrc}
           alt=""
-          className="pointer-events-none absolute -right-8 top-3 h-36 w-28 rotate-[10deg] object-contain opacity-[0.12] mix-blend-multiply"
+          className="pointer-events-none absolute -right-8 top-3 h-40 w-28 rotate-[10deg] object-contain opacity-[0.12] mix-blend-multiply"
         />
       )}
 
-      <div className="relative z-10 flex min-w-0 items-start justify-between gap-4">
+      <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-black/38">{eyebrow}</p>
-          <h2 className="mt-2 break-words text-[30px] font-black uppercase tracking-[0.04em] sm:text-[34px]">
+          <h2 className="mt-2 break-words text-[32px] font-black uppercase tracking-[0.04em] sm:text-[36px]">
             {title}
           </h2>
         </div>
@@ -81,10 +137,10 @@ function IdentityCard({ eyebrow, title, description, icon: Icon, theme, assetSrc
         </div>
       </div>
 
-      <p className={`relative z-10 mt-5 text-sm leading-relaxed ${theme.cardMuted}`}>{description}</p>
+      <p className="relative z-10 mt-5 text-sm leading-relaxed text-black/65">{description}</p>
 
       {footer && (
-        <div className="relative z-10 mt-5 inline-flex rounded-full border border-black/10 bg-black/[0.04] px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-black/55">
+        <div className="relative z-10 mt-5 inline-flex rounded-full border border-black/10 bg-black/[0.04] px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-black/52">
           {footer}
         </div>
       )}
@@ -92,15 +148,15 @@ function IdentityCard({ eyebrow, title, description, icon: Icon, theme, assetSrc
   );
 }
 
-function KnownTeamPanel({ knownPlayers, role, theme }) {
+function KnownRoster({ knownPlayers, role, theme }) {
   if (!knownPlayers.length) return null;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 26 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, ease: 'easeOut', delay: 0.06 }}
-      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.frame}`}
+      transition={{ duration: 0.34, ease: 'easeOut', delay: 0.08 }}
+      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_44px_rgba(0,0,0,0.2)] ${theme.shell}`}
     >
       <div className="absolute inset-0 paper-grain opacity-[0.08]" />
       <div className="relative z-10">
@@ -109,7 +165,7 @@ function KnownTeamPanel({ knownPlayers, role, theme }) {
             <Users size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/46">Known To You</p>
+            <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/44">Known To You</p>
             <h3 className="mt-1 text-lg font-black uppercase tracking-[0.06em] text-white">
               {role === ROLES.HITLER ? 'Fascist Team' : 'Your Allies'}
             </h3>
@@ -128,7 +184,7 @@ function KnownTeamPanel({ knownPlayers, role, theme }) {
                   {player.isBot && <Bot size={12} className="shrink-0 text-white/28" />}
                 </div>
               </div>
-              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${theme.soft}`}>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${theme.roster}`}>
                 {player.role === ROLES.HITLER ? 'Hitler' : 'Fascist'}
               </span>
             </div>
@@ -151,7 +207,7 @@ function ReadyState({ theme }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className={`relative z-10 w-full max-w-md overflow-hidden rounded-[32px] border p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,0.56)] backdrop-blur-2xl ${theme.frame}`}
+        className={`relative z-10 w-full max-w-md overflow-hidden rounded-[32px] border p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,0.56)] backdrop-blur-2xl ${theme.shell}`}
       >
         <div className="absolute inset-0 paper-grain opacity-[0.08]" />
         <div className="relative z-10">
@@ -174,7 +230,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   const me = gameState.players.find((player) => player.id === myActualId);
   const role = me?.role || ROLES.LIBERAL;
   const faction = me?.faction || (role === ROLES.LIBERAL ? FACTIONS.LIBERAL : FACTIONS.FASCIST);
-  const theme = faction === FACTIONS.LIBERAL ? FACTION_THEME.liberal : FACTION_THEME.fascist;
+  const theme = faction === FACTIONS.LIBERAL ? THEME.liberal : THEME.fascist;
   const roleMeta = ROLE_COPY[role] || ROLE_COPY[ROLES.LIBERAL];
   const [isRevealed, setIsRevealed] = useState(false);
 
@@ -187,152 +243,78 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
     return <ReadyState theme={theme} />;
   }
 
-  const revealIdentity = () => setIsRevealed(true);
-  const sleeveLabel = isRevealed ? 'Identity Open' : 'Swipe Up To Reveal';
-
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+14px)] sm:px-6">
       <div className="absolute inset-0 board-grid opacity-[0.04]" />
       <div
-        className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,${theme.glow}_0%,transparent_58%)] blur-[120px] transition-opacity duration-700 ${isRevealed ? 'opacity-100' : 'opacity-70'}`}
+        className="pointer-events-none absolute inset-0 blur-[120px]"
+        style={{ background: `radial-gradient(circle at 50% 18%, ${theme.glow} 0%, transparent 58%)` }}
       />
 
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
         <div className="shrink-0 text-center">
-          <p className="text-[10px] font-mono font-black uppercase tracking-[0.26em] text-white/42">Private Role Check</p>
-          <h1 className="mt-2 text-[28px] font-black uppercase tracking-[0.08em] text-white sm:text-[34px]">
-            Review Your Identity
+          <p className="text-[10px] font-mono font-black uppercase tracking-[0.26em] text-white/42">Role Reveal</p>
+          <h1 className="mt-2 text-[30px] font-black uppercase tracking-[0.08em] text-white sm:text-[34px]">
+            Private Identity
           </h1>
           <p className="mx-auto mt-3 max-w-[28rem] text-sm leading-relaxed text-white/58">
-            Open the cover, read your role and party membership, then confirm when you are done.
+            Review your two cards, remember them, then confirm when you are done.
           </p>
         </div>
 
         <AnimatePresence mode="wait">
           {!isRevealed ? (
-            <motion.div
-              key="concealed"
-              initial={{ opacity: 0, y: 26 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              className="flex min-h-0 flex-1 flex-col items-center justify-center py-6"
-            >
-              <div className="w-full max-w-[380px]">
-                <div className={`relative overflow-hidden rounded-[34px] border shadow-[0_32px_90px_rgba(0,0,0,0.44)] ${theme.frame}`}>
-                  <div className="absolute inset-0 paper-grain opacity-[0.08]" />
-                  <div className="relative aspect-[0.78]">
-                    <div className="absolute inset-x-5 top-6 space-y-3">
-                      <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
-                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">Role</p>
-                        <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
-                        <div className="mt-2 h-3 rounded-full bg-white/[0.05]" />
-                      </div>
-                      <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
-                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">Party Membership</p>
-                        <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
-                        <div className="mt-2 h-3 rounded-full bg-white/[0.05]" />
-                      </div>
-                    </div>
-
-                    <motion.div
-                      drag="y"
-                      dragConstraints={{ top: -320, bottom: 0 }}
-                      dragElastic={{ top: 0.08, bottom: 0.02 }}
-                      dragMomentum={false}
-                      onDragEnd={(_, info) => {
-                        if (info.offset.y < -120 || info.velocity.y < -700) {
-                          revealIdentity();
-                        }
-                      }}
-                      onClick={revealIdentity}
-                      className="absolute inset-0 z-20 cursor-grab active:cursor-grabbing"
-                    >
-                      <motion.div
-                        animate={{ y: 0 }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-                        className="flex h-full flex-col justify-between bg-[linear-gradient(180deg,rgba(9,11,14,0.88)_0%,rgba(6,8,11,0.94)_100%)] px-6 pb-7 pt-4 backdrop-blur-[20px]"
-                      >
-                        <div className="flex justify-center">
-                          <div className="h-1.5 w-16 rounded-full bg-white/20" />
-                        </div>
-
-                        <div className="flex flex-1 flex-col items-center justify-center text-center">
-                          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[26px] border border-white/10 bg-white/[0.05] shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
-                            <Eye className="text-white/88" size={30} />
-                          </div>
-                          <p className={`mt-6 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.2em] ${theme.badge}`}>
-                            {sleeveLabel}
-                          </p>
-                          <h2 className="mt-4 text-[30px] font-black uppercase tracking-[0.08em] text-white">
-                            Keep This Private
-                          </h2>
-                          <p className="mt-3 max-w-[17rem] text-sm leading-relaxed text-white/62">
-                            Swipe this cover upward to reveal your role card and party membership.
-                          </p>
-                        </div>
-
-                        <div className="text-center">
-                          <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/44">
-                            Swipe Up Or Tap To Open
-                          </p>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+            <PrivacyGate onReveal={() => setIsRevealed(true)} />
           ) : (
             <motion.div
-              key="revealed"
-              initial={{ opacity: 0, y: 26 }}
+              key="identity-stack"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               className="mt-5 flex min-h-0 flex-1 flex-col"
             >
               <div className="min-h-0 flex-1 overflow-y-auto pb-6 scrollbar-hide">
-                <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
-                  <div className="grid gap-4">
+                <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+                  <div className="relative pt-5">
+                    <div className="absolute inset-x-5 top-0 h-full rounded-[30px] border border-black/5 bg-black/[0.03]" />
                     <IdentityCard
+                      themeClassName={theme.primaryCard}
                       eyebrow="Role"
-                      title={roleMeta.roleLabel}
-                      description={roleMeta.roleDescription}
-                      icon={roleMeta.roleIcon}
-                      theme={theme}
-                      footer={role === ROLES.HITLER ? 'Special Role' : 'Public Goal Driven'}
+                      title={roleMeta.label}
+                      description={roleMeta.description}
+                      icon={roleMeta.icon}
+                      footer={role === ROLES.HITLER ? 'Special Role' : 'Role Card'}
+                      className="relative z-20"
                     />
                     <IdentityCard
+                      themeClassName={theme.secondaryCard}
                       eyebrow="Party Membership"
                       title={roleMeta.partyLabel}
                       description={roleMeta.partyDescription}
                       icon={roleMeta.partyLabel === 'Liberal' ? Shield : Skull}
-                      theme={theme}
                       assetSrc={theme.asset}
-                      footer="Win Condition Reference"
+                      footer="Membership Card"
+                      className="relative z-10 -mt-7 ml-auto w-[88%]"
                     />
                   </div>
 
-                  <div className="grid gap-4">
-                    <motion.div
-                      initial={{ opacity: 0, y: 18 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.32, ease: 'easeOut', delay: 0.04 }}
-                      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.frame}`}
-                    >
-                      <div className="absolute inset-0 paper-grain opacity-[0.08]" />
-                      <div className="relative z-10">
-                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/46">Before You Continue</p>
-                        <h3 className="mt-2 text-lg font-black uppercase tracking-[0.06em] text-white">Read, Memorize, Pass</h3>
-                        <ul className="mt-4 space-y-3 text-sm leading-relaxed text-white/68">
-                          <li>Memorize only what this screen tells you.</li>
-                          <li>Do not leave this view open when handing the phone over.</li>
-                          <li>Confirm once you are ready for the next player.</li>
-                        </ul>
-                      </div>
-                    </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 26 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.34, ease: 'easeOut', delay: 0.06 }}
+                    className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_44px_rgba(0,0,0,0.2)] ${theme.shell}`}
+                  >
+                    <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+                    <div className="relative z-10">
+                      <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/44">Before You Pass The Phone</p>
+                      <h3 className="mt-2 text-lg font-black uppercase tracking-[0.06em] text-white">Memorize And Close</h3>
+                      <p className="mt-3 text-sm leading-relaxed text-white/66">
+                        Keep only these cards in mind. Once you are done, confirm and hand the screen over.
+                      </p>
+                    </div>
+                  </motion.div>
 
-                    <KnownTeamPanel knownPlayers={knownPlayers} role={role} theme={theme} />
-                  </div>
+                  <KnownRoster knownPlayers={knownPlayers} role={role} theme={theme} />
                 </div>
               </div>
 
