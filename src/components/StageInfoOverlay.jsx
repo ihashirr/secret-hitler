@@ -144,7 +144,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                   ) : (
                     <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-sm leading-relaxed text-white/60">
-                        No extra instruction is needed right now. Follow the live board and wait for the next action.
+                        No action right now. Watch the board.
                       </p>
                     </div>
                   )}

@@ -82,7 +82,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
           </div>
 
           <p className="mt-3 text-sm leading-relaxed text-white/65">
-            Share the code, wait for everyone to join on their own phone, then start the match once the table is full enough.
+            Share the code and start when ready.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -113,7 +113,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
                 Operatives
               </p>
               <p className="mt-1 text-xs text-white/45">
-                {canStart ? 'Ready to start when the host is ready.' : `${playersNeeded} more needed to start.`}
+                {canStart ? 'Ready.' : `${playersNeeded} more to start.`}
               </p>
             </div>
             {isHost && (
@@ -230,7 +230,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
                 Waiting for Host
               </p>
               <p className="mt-2 text-sm leading-relaxed text-white/50">
-                The match will open once the host has enough players and starts the briefing.
+                Waiting for the host to start.
               </p>
             </div>
           )}

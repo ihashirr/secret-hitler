@@ -4,10 +4,10 @@ import { ArrowLeft, Download, Expand, Shield, Smartphone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const VIEW_COPY = {
-  GAME_OVER: 'Return to private mode before reviewing the full match debrief.',
-  LIVE_GAME: 'Lock the screen before continuing with live voting, nominations, and action prompts.',
-  LOBBY: 'Secure this device before the briefing continues so every player keeps their screen private.',
-  ROLE_REVEAL: 'Protect the next role briefing before anyone can glance at this screen.',
+  GAME_OVER: 'Open in app or fullscreen to continue.',
+  LIVE_GAME: 'Open in app or fullscreen to continue.',
+  LOBBY: 'Open in app or fullscreen to continue.',
+  ROLE_REVEAL: 'Secure this screen first.',
 };
 
 export default function MobileModeGate({ active, viewKey, onExitToConnect, accessState, installResumeUrl }) {
@@ -68,8 +68,8 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
       ? 'Enter Fullscreen'
       : 'Use Home Screen Install';
   const installInstructions = accessState?.isIos
-    ? 'iPhone/Safari: tap Share, choose Add to Home Screen, then reopen Eclipse from the app icon.'
-    : 'Open your browser menu and choose Install App or Add to Home Screen, then reopen Eclipse from the installed icon.';
+    ? 'Share -> Add to Home Screen.'
+    : 'Use the browser menu to install the app.';
   const isLaunchPending = launchState === 'launching';
   const showLaunchFallback = launchState === 'manual';
 
@@ -108,16 +108,13 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.28em] text-cyan-300/75">
                   <Shield size={14} />
-                  Mobile Access Lock
+                  Private Mode
                 </p>
                 <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em] text-paper-light">
                   {primaryActionLabel}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-paper-light/75">
                   {helperCopy}
-                </p>
-                <p className="mt-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-[#d4af37]">
-                  Installed app is the cleanest experience. Fullscreen is the fallback.
                 </p>
               </div>
 
@@ -128,29 +125,14 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
           </div>
 
           <div className="space-y-5 overflow-y-auto px-5 py-4 scrollbar-hide">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/35">Device</p>
-                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-white">Mobile</p>
-              </div>
-              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/35">Mode</p>
-                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-white">{detectedModeLabel}</p>
-              </div>
-              <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/35">Status</p>
-                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-red-200">Locked</p>
-              </div>
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
-              <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-200/75">
-                <Smartphone size={14} />
-                Why This Matters
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-paper-light/68">
-                Installed or fullscreen mode removes cheap browser chrome, prevents accidental page scroll, and keeps hidden-role prompts safer on shared tables.
-              </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/55">
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
+                <Smartphone size={12} className="mr-1 inline-block" />
+                Mobile
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
+                {detectedModeLabel}
+              </span>
             </div>
 
             <div className="grid gap-3">
@@ -188,12 +170,12 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
               {(isLaunchPending || showLaunchFallback) && (
                 <div className="rounded-[22px] border border-cyan-300/18 bg-cyan-400/10 px-4 py-4 text-left">
                   <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-100/80">
-                    {isLaunchPending ? 'Opening Installed App' : 'Installed App Ready'}
+                    {isLaunchPending ? 'Opening App' : 'App Installed'}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-cyan-50/85">
                     {isLaunchPending
-                      ? 'Trying to hand off this room into the installed app now.'
-                      : 'If the installed app did not open on its own, open Eclipse from your home screen or app launcher. Your active room will be restored.'}
+                      ? 'Trying to continue in the installed app.'
+                      : 'Open Eclipse from your home screen if it did not open automatically.'}
                   </p>
                   {showLaunchFallback && installResumeUrl && (
                     <button
@@ -201,7 +183,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                       onClick={() => window.location.assign(installResumeUrl)}
                       className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/24 bg-white/5 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100 transition-colors hover:bg-white/10"
                     >
-                      Try Open Installed App
+                      Try Again
                     </button>
                   )}
                 </div>
@@ -212,7 +194,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 onClick={accessState.refresh}
                 className="flex h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/80 transition-colors hover:bg-white/[0.08]"
               >
-                I Switched Modes
+                Refresh
               </button>
 
               <button
@@ -227,7 +209,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
             </div>
 
             <p className="text-center text-xs leading-relaxed text-paper-light/50">
-              The room stays locked until this phone is either installed as an app or switched into fullscreen.
+              Install is best. Fullscreen also works.
             </p>
           </div>
         </div>

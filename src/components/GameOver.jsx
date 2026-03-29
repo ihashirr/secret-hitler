@@ -282,7 +282,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
                 ) : (
                   <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
                     <p className="text-sm leading-relaxed text-white/50">
-                      No extra log data was captured for the final turns.
+                      No recent log entries.
                     </p>
                   </div>
                 )}
@@ -293,7 +293,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
 
         <div className="mt-4 shrink-0 pb-2 text-center">
           <p className="text-[11px] font-mono font-black uppercase tracking-[0.2em] text-white/35">
-            {me?.isHost ? 'Host controls remain in the top bar if you want a full room reset.' : 'Replay Game returns this device to the home screen.'}
+            {me?.isHost ? 'Host controls are in the top bar.' : 'Replay returns to home.'}
           </p>
         </div>
       </div>

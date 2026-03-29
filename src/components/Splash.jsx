@@ -34,10 +34,10 @@ export default function Splash({ onConnect, mobileAccess }) {
       ? 'Fullscreen'
       : 'Browser';
   const installHintCopy = mobileAccess?.isIos
-    ? 'Use Share, then Add to Home Screen. Installed mode is the cleanest mobile layout.'
+    ? 'Share -> Add to Home Screen.'
     : hasNativeInstallPrompt
-      ? 'Install from the browser prompt for the cleanest mobile experience.'
-      : 'Use the browser menu to Install App or Add to Home Screen if the prompt is not available yet.';
+      ? 'Install from the prompt.'
+      : 'Use the browser menu to install.';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -70,7 +70,7 @@ export default function Splash({ onConnect, mobileAccess }) {
             Eclipse
           </h1>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/68">
-            Join from your own phone, keep your role private, and let the room code handle the table.
+            Join on your own phone. Keep your role private.
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/55">
@@ -89,13 +89,10 @@ export default function Splash({ onConnect, mobileAccess }) {
               <div>
                 <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.24em] text-cyan-200/80">
                   <Shield size={14} />
-                  Private Play Mode
+                  Mobile Mode
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-white/75">
-                  After you join, this phone will switch to fullscreen or the installed app so role reveals stay private and the layout fits cleanly.
-                </p>
-                <p className="mt-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-[#d4af37]">
-                  Installed app is recommended. Fullscreen is still supported.
+                  Install the app or use fullscreen after you join.
                 </p>
               </div>
 
@@ -138,10 +135,10 @@ export default function Splash({ onConnect, mobileAccess }) {
 
             <p className="mt-3 text-xs leading-relaxed text-white/55">
               {showFullscreenHint || showInstallHint
-                ? `Optional before you join. ${installHintCopy}`
+                ? installHintCopy
                 : mobileAccess?.isIos
-                  ? 'iPhone/Safari: use Share, then Add to Home Screen before joining if you want the cleanest private layout.'
-                  : 'If install is unavailable here, the room will still try fullscreen when you continue.'}
+                  ? 'Share -> Add to Home Screen.'
+                  : 'Fullscreen still works if install is not available.'}
             </p>
           </section>
         )}
@@ -248,7 +245,7 @@ export default function Splash({ onConnect, mobileAccess }) {
               className="mt-2 h-14 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-center font-mono text-2xl font-black uppercase tracking-[0.4em] text-cyan-300 outline-none transition-colors placeholder:tracking-[0.18em] placeholder:text-white/25 focus:border-cyan-400/60 focus:bg-cyan-400/5"
             />
             <p className="mt-2 text-xs leading-relaxed text-white/45">
-              Enter a code to join an existing room, or leave it blank to create a fresh one.
+              Leave blank to create a room.
             </p>
           </div>
 
