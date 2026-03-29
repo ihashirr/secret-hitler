@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 const MOBILE_BREAKPOINT = 1024;
+const MAX_TOUCH_DEVICE_LONG_SIDE = 1400;
 
 const DEFAULT_STATE = {
   canFullscreen: false,
@@ -30,12 +31,17 @@ const getIsFullscreenMode = () => {
 const getIsMobileViewport = () => {
   if (typeof window === 'undefined') return false;
 
-  const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-  const hoverless = window.matchMedia('(hover: none)').matches;
+  const coarsePointer =
+    window.matchMedia('(pointer: coarse)').matches ||
+    window.matchMedia('(any-pointer: coarse)').matches;
   const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  const longSide = Math.max(window.innerWidth, window.innerHeight);
   const touchPoints = navigator.maxTouchPoints || 0;
+  const touchCapable = touchPoints > 0 || 'ontouchstart' in window;
+  const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|Mobile|Tablet|Silk/i.test(navigator.userAgent);
+  const fitsTouchLayout = shortSide <= MOBILE_BREAKPOINT && longSide <= MAX_TOUCH_DEVICE_LONG_SIDE;
 
-  return coarsePointer && hoverless && touchPoints > 0 && shortSide <= MOBILE_BREAKPOINT;
+  return mobileUserAgent || (touchCapable && coarsePointer && fitsTouchLayout);
 };
 
 const getIsIosDevice = () => {
