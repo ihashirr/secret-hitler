@@ -42,7 +42,7 @@ const getPlayerGridCols = (count) => {
   if (count === 5) return 'grid-cols-3 sm:grid-cols-5';
   if (count === 6) return 'grid-cols-3 sm:grid-cols-6';
   if (count <= 8) return 'grid-cols-4 sm:grid-cols-4';
-  return 'grid-cols-5 sm:grid-cols-5';
+  return 'grid-cols-4 sm:grid-cols-5';
 };
 
 const getPlayerCardSize = (count) => {
@@ -431,7 +431,7 @@ export default function GameBoard({
     const Icon = isFascist ? Skull : Shield;
 
     return (
-      <div className="rounded-[14px] border border-white/6 bg-black/18 px-3 py-2">
+      <div className="min-w-0 rounded-[14px] border border-white/6 bg-black/18 px-3 py-2">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className={`text-[8px] font-mono font-black uppercase tracking-[0.28em] ${accentTextClass}`}>
@@ -450,7 +450,7 @@ export default function GameBoard({
           </div>
         </div>
 
-        <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
+        <div className="mt-2 grid min-w-0 gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }}>
           {Array.from({ length: max }).map((_, index) => {
             const isActive = index < current;
             const slotMeta = getTrackSlotMeta(type, index);
@@ -493,9 +493,9 @@ export default function GameBoard({
   const renderBoardStage = () => {
     if (showVoteReveal) {
       return (
-        <div className="mx-auto w-full max-w-[1120px] px-4">
+        <div className="mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4">
           <div
-            className={`rounded-[30px] border px-4 py-4 shadow-[0_28px_64px_rgba(0,0,0,0.42)] ${
+            className={`min-w-0 rounded-[30px] border px-4 py-4 shadow-[0_28px_64px_rgba(0,0,0,0.42)] ${
               revealIsApproved
                 ? 'border-cyan-300/22 bg-[linear-gradient(180deg,rgba(8,17,24,0.98)_0%,rgba(8,13,19,0.96)_100%)]'
                 : 'border-red-400/22 bg-[linear-gradient(180deg,rgba(25,8,10,0.98)_0%,rgba(15,8,9,0.96)_100%)]'
@@ -558,8 +558,8 @@ export default function GameBoard({
 
     if (displayPhase === PHASES.VOTING && !showVoteReveal) {
       return (
-        <div className="mx-auto w-full max-w-[1120px] px-4">
-          <div className="rounded-[28px] border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(10,15,21,0.98)_0%,rgba(11,17,23,0.94)_100%)] px-4 py-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]">
+        <div className="mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4">
+          <div className="min-w-0 rounded-[28px] border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(10,15,21,0.98)_0%,rgba(11,17,23,0.94)_100%)] px-4 py-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <motion.span
@@ -666,7 +666,7 @@ export default function GameBoard({
     const isDimmed = displayPhase === PHASES.VOTING;
 
     return (
-      <div className={`mx-auto w-full max-w-[1120px] px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.84]'}`}>
+      <div className={`mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4 transition-all duration-700 ${isDimmed ? 'scale-[0.99] opacity-45' : 'opacity-[0.84]'}`}>
         <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="inline-flex min-w-max items-center gap-2 border border-white/6 bg-black/22 px-3 py-2 text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/68 shadow-[0_12px_24px_rgba(0,0,0,0.16)] sm:gap-3 sm:text-[11px]">
             <span className="text-cyan-100">LIB {gameState.liberalPolicies}/{LIBERAL_TO_WIN}</span>
@@ -695,7 +695,7 @@ export default function GameBoard({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <div className="mt-3 grid min-w-0 gap-2 md:grid-cols-2">
           {renderTrack(gameState.liberalPolicies, LIBERAL_TO_WIN, 'LIBERAL')}
           {renderTrack(gameState.fascistPolicies, FASCIST_TO_WIN, 'FASCIST')}
         </div>
@@ -733,14 +733,14 @@ export default function GameBoard({
     const dockTitle = 'Players';
     const dockBadgeLabel = isVotingPhase ? null : `${aliveCount}/${playerCount} Live`;
     const dockWrapperClass = isVoteRevealPhase
-      ? 'mx-auto w-full max-w-[1120px] px-4'
-      : 'mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 px-4';
+      ? 'mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4'
+      : 'mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 px-3 sm:px-4';
     const dockPanelClass = isVoteRevealPhase
-      ? 'relative w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4'
-      : 'relative h-full min-h-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4';
+      ? 'relative min-w-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4'
+      : 'relative h-full min-h-0 min-w-0 w-full overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4';
     const dockBodyClass = isVoteRevealPhase
-      ? 'relative z-10 pt-3'
-      : 'relative z-10 min-h-0 overflow-y-auto pt-3';
+      ? 'relative z-10 min-w-0 pt-3'
+      : 'relative z-10 min-h-0 min-w-0 overflow-y-auto pt-3';
 
     return (
       <div className={dockWrapperClass}>
@@ -899,7 +899,7 @@ export default function GameBoard({
                   ))}
                 </div>
               ) : (
-                <div className={`grid w-full content-start justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
+                <div className={`grid min-w-0 w-full content-start justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
                   {gameState.players.map((player) => {
                     const isSelf = player.id === myActualId;
                     const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
@@ -1054,7 +1054,7 @@ export default function GameBoard({
         onAcknowledgePeek={onAcknowledgePeek}
       />
 
-      <div className={`relative z-10 grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:gap-3 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
+      <div className={`relative z-10 grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:gap-3 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardContentTopClass} ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         {renderBoardStage()}
         {renderPlayerDock()}
       </div>
