@@ -36,16 +36,19 @@ const ROLE_COPY = {
     headline: 'You Are A Liberal',
     detail: 'Protect the Republic and keep Hitler away from power.',
     stamp: 'LIBERAL',
+    image: '/assets/role-liberal.png',
   },
   [ROLES.FASCIST]: {
     headline: 'You Are A Fascist',
     detail: 'Blend in, protect Hitler, and push the regime forward.',
     stamp: 'FASCIST',
+    image: '/assets/role-fascist.png',
   },
   [ROLES.HITLER]: {
     headline: 'You Are Hitler',
     detail: 'Stay trusted. Let the table bring you to power.',
     stamp: 'HITLER',
+    image: '/assets/role-hitler.png',
   },
 };
 
@@ -205,30 +208,41 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 1.02, y: -16 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className={`w-full rounded-[32px] border ${theme.frame} px-6 py-8 text-center shadow-[0_28px_84px_rgba(0,0,0,0.56)]`}
+                className={`w-full rounded-[32px] border ${theme.frame} px-6 py-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.6)]`}
               >
                 <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-white/32">
-                  Your Role
+                  Your Identity
                 </p>
-                <div className="mt-8">
-                  <div className={`mx-auto inline-flex rounded-full border px-4 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.26em] ${theme.panel}`}>
-                    {roleMeta.stamp}
+                <div className="mt-6">
+                  <div className="relative mx-auto aspect-[0.7] w-full max-w-[240px] overflow-hidden rounded-[24px] border border-white/15 bg-black/40 shadow-2xl">
+                    <div className="absolute inset-0 paper-grain opacity-20" />
+                    <img 
+                      src={roleMeta.image} 
+                      alt="" 
+                      className="h-full w-full object-cover transition-transform duration-[3000ms] hover:scale-105" 
+                      loading="eager"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1 text-[9px] font-mono font-black uppercase tracking-widest ${theme.chip}`}>
+                      {roleMeta.stamp}
+                    </div>
                   </div>
-                  <h2 className="mt-6 text-4xl font-black uppercase tracking-[0.08em] text-white sm:text-5xl">
+
+                  <h2 className="mt-6 text-3xl font-black uppercase tracking-tight text-white leading-none">
                     {roleMeta.headline}
                   </h2>
-                  <p className="mt-4 text-base leading-relaxed text-white/58">
+                  <p className="mt-4 text-sm leading-relaxed text-white/58 px-4">
                     {roleMeta.detail}
                   </p>
                 </div>
 
-                <div className="mt-10">
-                  <div className="mx-auto h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
+                <div className="mt-8">
+                  <div className="mx-auto h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-white/10">
                     <motion.div
                       initial={{ width: '0%' }}
                       animate={{ width: '100%' }}
                       transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: 'linear' }}
-                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-300' : 'bg-red-400'}`}
+                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'}`}
                     />
                   </div>
                   <button
@@ -236,7 +250,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                     onClick={showBriefingNow}
                     className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/40 transition-colors hover:text-white/70"
                   >
-                    Skip Ahead
+                    Skip to Briefing
                   </button>
                 </div>
               </motion.div>
@@ -253,31 +267,31 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
               >
                 <div className="text-center">
                   <p className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-white/30">
-                    Private Briefing
+                    Mission Dossier
                   </p>
                   <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.12em] text-white">
                     {roleMeta.headline}
                   </h2>
                 </div>
 
-                <div className="mt-5 flex flex-col items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/34">
-                      Party Membership
-                    </p>
-                    <img
-                      src={theme.partyImage}
-                      alt={theme.partyLabel}
-                      loading="eager"
-                      decoding="async"
-                      className="mx-auto mt-3 w-full max-w-[220px] rounded-[24px] shadow-[0_18px_42px_rgba(0,0,0,0.34)] sm:max-w-[250px]"
-                    />
-                    <p className={`mt-3 text-sm font-black uppercase tracking-[0.14em] ${theme.strongText}`}>
-                      {theme.partyLabel}
-                    </p>
+                <div className="mt-5 flex flex-col items-center gap-6">
+                  {/* Two Identity Cards Display */}
+                  <div className="flex w-full items-center justify-center gap-4">
+                    <div className="flex-1 flex flex-col items-center gap-2">
+                       <p className="text-[8px] font-mono font-black uppercase tracking-widest text-white/20">Secret Role</p>
+                       <div className="relative aspect-[0.7] w-full max-w-[110px] overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
+                          <img src={roleMeta.image} alt="" className="h-full w-full object-cover" />
+                       </div>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center gap-2">
+                       <p className="text-[8px] font-mono font-black uppercase tracking-widest text-white/20">Membership</p>
+                       <div className="relative aspect-[0.7] w-full max-w-[110px] overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
+                          <img src={theme.partyImage} alt="" className="h-full w-full object-cover" />
+                       </div>
+                    </div>
                   </div>
 
-                  <div className="w-full rounded-[24px] border border-white/8 bg-black/24 px-4 py-4 text-center">
+                  <div className="w-full rounded-[24px] border border-white/8 bg-black/32 px-4 py-4 text-center shadow-inner">
                     <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
                       {allyHeading}
                     </p>
