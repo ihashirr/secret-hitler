@@ -46,9 +46,9 @@ const getPlayerGridCols = (count) => {
 };
 
 const getPlayerCardSize = (count) => {
-  if (count >= 9) return 'h-[min(11.5vh,92px)] max-w-[78px] sm:h-[min(13vh,108px)] sm:max-w-[92px]';
-  if (count >= 7) return 'h-[min(12.5vh,102px)] max-w-[84px] sm:h-[min(14vh,116px)] sm:max-w-[100px]';
-  return 'h-[min(14vh,116px)] max-w-[96px] sm:h-[min(15vh,128px)] sm:max-w-[112px]';
+  if (count >= 9) return 'aspect-[0.85] max-w-[78px] sm:max-w-[92px]';
+  if (count >= 7) return 'aspect-[0.85] max-w-[84px] sm:max-w-[100px]';
+  return 'aspect-[0.85] max-w-[96px] sm:max-w-[112px]';
 };
 
 const getVotingPlayerCardSize = (count) => {

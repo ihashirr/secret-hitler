@@ -101,10 +101,9 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
 
       <div className="relative z-[181] w-full max-w-md">
         <div
-          className="tactical-panel overflow-hidden rounded-[30px] border border-cyan-400/30 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
-          style={{ maxHeight: 'calc(var(--app-vh) - 24px)' }}
+          className="tactical-panel flex max-h-[calc(var(--app-vh)-24px)] flex-col overflow-hidden rounded-[30px] border border-cyan-400/30 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
         >
-          <div className="border-b border-white/8 px-5 py-4">
+          <div className="shrink-0 border-b border-white/8 px-5 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.28em] text-cyan-300/75">
@@ -125,85 +124,87 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
             </div>
             </div>
 
-          <div className="space-y-5 overflow-y-auto px-5 py-4 scrollbar-hide">
-            <div className="grid gap-3">
-              {hasInstallPrompt ? (
-                <button
-                  type="button"
-                  onClick={handleInstall}
-                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-[#e2bd48]"
-                >
-                  <Download size={16} />
-                  Install App
-                </button>
-              ) : (
-                <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-left">
-                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-amber-100/80">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
+            <div className="space-y-5">
+              <div className="grid gap-3">
+                {hasInstallPrompt ? (
+                  <button
+                    type="button"
+                    onClick={handleInstall}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-[#e2bd48]"
+                  >
+                    <Download size={16} />
                     Install App
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-amber-50/85">
-                    {installInstructions}
-                  </p>
-                </div>
-              )}
+                  </button>
+                ) : (
+                  <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-left">
+                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-amber-100/80">
+                      Install App
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-amber-50/85">
+                      {installInstructions}
+                    </p>
+                  </div>
+                )}
 
-              {canFullscreen && (
+                {canFullscreen && (
+                  <button
+                    type="button"
+                    onClick={accessState.requestFullscreen}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400 px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-300"
+                  >
+                    <Expand size={16} />
+                    Enter Fullscreen
+                  </button>
+                )}
+
+                {(isLaunchPending || showLaunchFallback) && (
+                  <div className="rounded-[22px] border border-cyan-300/18 bg-cyan-400/10 px-4 py-4 text-left">
+                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-100/80">
+                      {isLaunchPending ? 'Opening App' : 'App Installed'}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-cyan-50/85">
+                      {isLaunchPending
+                        ? 'Trying to continue in the installed app.'
+                        : 'Open Eclipse from your home screen if it did not open automatically.'}
+                    </p>
+                    {showLaunchFallback && installResumeUrl && (
+                      <button
+                        type="button"
+                        onClick={() => window.location.assign(installResumeUrl)}
+                        className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/24 bg-white/5 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100 transition-colors hover:bg-white/10"
+                      >
+                        Try Again
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={accessState.requestFullscreen}
-                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400 px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-300"
+                  onClick={accessState.refresh}
+                  className="flex h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/80 transition-colors hover:bg-white/[0.08]"
                 >
-                  <Expand size={16} />
-                  Enter Fullscreen
+                  Refresh
                 </button>
-              )}
 
-              {(isLaunchPending || showLaunchFallback) && (
-                <div className="rounded-[22px] border border-cyan-300/18 bg-cyan-400/10 px-4 py-4 text-left">
-                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-100/80">
-                    {isLaunchPending ? 'Opening App' : 'App Installed'}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-cyan-50/85">
-                    {isLaunchPending
-                      ? 'Trying to continue in the installed app.'
-                      : 'Open Eclipse from your home screen if it did not open automatically.'}
-                  </p>
-                  {showLaunchFallback && installResumeUrl && (
-                    <button
-                      type="button"
-                      onClick={() => window.location.assign(installResumeUrl)}
-                      className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/24 bg-white/5 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100 transition-colors hover:bg-white/10"
-                    >
-                      Try Again
-                    </button>
-                  )}
-                </div>
-              )}
+                {viewKey !== 'CONNECT' && (
+                  <button
+                    type="button"
+                    onClick={handleBackToJoin}
+                    disabled={isLeaving}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/65 transition-colors hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ArrowLeft size={14} />
+                    {isLeaving ? 'Returning...' : 'Back to Join Screen'}
+                  </button>
+                )}
+              </div>
 
-              <button
-                type="button"
-                onClick={accessState.refresh}
-                className="flex h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/80 transition-colors hover:bg-white/[0.08]"
-              >
-                Refresh
-              </button>
-
-              {viewKey !== 'CONNECT' && (
-                <button
-                  type="button"
-                  onClick={handleBackToJoin}
-                  disabled={isLeaving}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent text-[11px] font-mono font-black uppercase tracking-[0.22em] text-paper-light/65 transition-colors hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ArrowLeft size={14} />
-                  {isLeaving ? 'Returning...' : 'Back to Join Screen'}
-                </button>
-              )}
+              <p className="text-center text-xs leading-relaxed text-paper-light/50">
+                Install is best. Fullscreen also works.
+              </p>
             </div>
-
-            <p className="text-center text-xs leading-relaxed text-paper-light/50">
-              Install is best. Fullscreen also works.
-            </p>
           </div>
         </div>
       </div>

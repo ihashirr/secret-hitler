@@ -57,10 +57,9 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            className="relative z-[151] flex w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
-            style={{ maxHeight: 'calc(var(--app-vh) - 24px)' }}
+            className="relative z-[151] flex max-h-[calc(var(--app-vh)-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
           >
-            <div className="border-b border-white/10 px-5 py-4 sm:px-6">
+            <div className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.26em] text-cyan-200/75">
@@ -89,7 +88,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
               </div>
             </div>
 
-            <div className="overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
               <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
                 {tabs.map((tab) => (
                   <button

@@ -410,11 +410,11 @@ export default function GameOverlay({
           transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
-          <div className="pointer-events-auto relative w-full max-w-[760px] overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">
+          <div className="pointer-events-auto relative flex max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-4 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-5 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]">
             <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
-            <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 rounded-full bg-black/10" />
+            <div className="relative z-10 mx-auto mb-3 h-1.5 w-14 shrink-0 rounded-full bg-black/10" />
 
-            <div className="relative z-10">
+            <div className="relative z-10 shrink-0">
               <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
                 <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
                   Action Desk
@@ -433,30 +433,32 @@ export default function GameOverlay({
               )}
             </div>
 
-            {actionContent && (
-              <div className="relative z-10 mt-4 flex justify-center">
-                {actionContent}
-              </div>
-            )}
+            <div className="relative z-10 mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
+              {actionContent && (
+                <div className="flex justify-center">
+                  {actionContent}
+                </div>
+              )}
 
-            {pendingSelection && (
-              <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={runWithHaptic(onConfirm, 'confirm')}
-                  className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
-                >
-                  Confirm
-                </button>
-                <button
-                  type="button"
-                  onClick={runWithHaptic(onCancel, 'soft')}
-                  className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+              {pendingSelection && (
+                <div className={`grid grid-cols-2 gap-3 ${actionContent ? 'mt-5' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={runWithHaptic(onConfirm, 'confirm')}
+                    className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runWithHaptic(onCancel, 'soft')}
+                    className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       )}
