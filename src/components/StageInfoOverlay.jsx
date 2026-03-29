@@ -1,8 +1,11 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Info, Lock, Unlock, X } from 'lucide-react';
 import FactionAccentText from './FactionAccentText';
 import StageTimeline from './StageTimeline';
+
+const DISMISS_DRAG_OFFSET = 120;
+const DISMISS_DRAG_VELOCITY = 720;
 
 const urgencyStyles = {
   high: 'border-red-400/25 bg-red-500/10 text-red-100',
@@ -12,19 +15,20 @@ const urgencyStyles = {
 
 export default function StageInfoOverlay({ open, onClose, directorState }) {
   const {
-    stageLabel,
-    stageTitle,
-    stageDescription,
-    publicInstructions,
-    privateInstructions,
-    facts,
-    intel,
-    timeline,
-    timelineVisible,
+    stageLabel = 'Live Match',
+    stageTitle = 'Match Guide',
+    stageDescription = '',
+    publicInstructions = [],
+    privateInstructions = [],
+    facts = [],
+    intel = [],
+    timeline = [],
+    timelineVisible = false,
   } = directorState || {};
   const [activeTab, setActiveTab] = useState('guide');
+  const dragControls = useDragControls();
   const allInstructions = useMemo(
-    () => [...(privateInstructions || []), ...(publicInstructions || [])],
+    () => [...privateInstructions, ...publicInstructions],
     [privateInstructions, publicInstructions],
   );
   const primaryInstruction = allInstructions[0] || null;
@@ -44,7 +48,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[150] flex items-end justify-center p-3 sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-[150] flex items-end justify-center p-2 pb-[calc(var(--app-safe-bottom)+8px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]">
           <motion.button
             type="button"
             initial={{ opacity: 0 }}
@@ -55,15 +59,42 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            className="relative z-[151] flex min-w-0 max-h-[calc(var(--app-vh)-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.18 }}
+            dragMomentum={false}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > DISMISS_DRAG_OFFSET || info.velocity.y > DISMISS_DRAG_VELOCITY) {
+                handleClose();
+              }
+            }}
+            className="relative z-[151] flex min-h-0 min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
           >
+            <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
+              <button
+                type="button"
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  dragControls.start(event);
+                }}
+                className="flex h-8 w-full max-w-[120px] items-center justify-center rounded-full"
+                aria-label="Swipe down to close stage information"
+                style={{ touchAction: 'none' }}
+              >
+                <span className="h-1.5 w-14 rounded-full bg-white/16" />
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleClose}
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-5"
+              className="absolute right-4 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-4"
               aria-label="Close stage information"
             >
               <X size={18} />
