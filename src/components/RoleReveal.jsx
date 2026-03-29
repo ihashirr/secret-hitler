@@ -1,29 +1,29 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Check, Info, Lock, Shield, Skull, Users } from 'lucide-react';
+import { Bot, Check, Eye, Shield, Skull, Users } from 'lucide-react';
 import { FACTIONS, ROLES } from '../lib/constants';
 
 const FACTION_THEME = {
   liberal: {
-    shell: 'from-[#0d1b2a] via-[#1b263b] to-[#0d1b2a]',
-    glow: 'rgba(74,158,255,0.22)',
-    border: 'border-blue-400/30',
-    dossier: 'bg-[#1b263b] border-blue-400/40 text-blue-100',
-    cardBack: 'bg-[#e0e1dd] text-[#1b263b]',
-    cardFront: 'bg-[linear-gradient(135deg,#f4f8fc_0%,#dcebf8_100%)] text-[#0d1b2a]',
-    accentText: 'text-blue-200',
-    stamp: 'border-blue-600/40 text-blue-800/60',
+    shell: 'from-[#081220] via-[#10233b] to-[#081220]',
+    glow: 'rgba(87,169,255,0.22)',
+    frame: 'border-cyan-300/18 bg-[rgba(8,17,28,0.78)]',
+    card: 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(247,251,255,0.98)_0%,rgba(223,236,248,0.98)_100%)] text-[#10233b]',
+    cardMuted: 'text-[#36506f]',
+    badge: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+    soft: 'border-cyan-300/14 bg-cyan-300/10 text-cyan-100/85',
+    button: 'bg-[linear-gradient(180deg,#3a82c7_0%,#214e7b_100%)] border-cyan-200/20 text-white',
     asset: '/assets/membership-liberal.png',
   },
   fascist: {
-    shell: 'from-[#1a0505] via-[#2d0a0a] to-[#1a0505]',
-    glow: 'rgba(255,74,74,0.22)',
-    border: 'border-red-400/30',
-    dossier: 'bg-[#2d0a0a] border-red-400/40 text-red-100',
-    cardBack: 'bg-[#2b2d42] text-[#edf2f4]',
-    cardFront: 'bg-[linear-gradient(135deg,#fff4f4_0%,#f5dede_100%)] text-[#7b1f24]',
-    accentText: 'text-red-200',
-    stamp: 'border-red-700/40 text-red-900/60',
+    shell: 'from-[#180607] via-[#2d0c10] to-[#160506]',
+    glow: 'rgba(255,101,101,0.22)',
+    frame: 'border-red-300/18 bg-[rgba(26,8,9,0.78)]',
+    card: 'border-red-300/18 bg-[linear-gradient(180deg,rgba(255,247,247,0.98)_0%,rgba(249,224,224,0.98)_100%)] text-[#4b1116]',
+    cardMuted: 'text-[#7a3438]',
+    badge: 'border-red-300/20 bg-red-400/10 text-red-100',
+    soft: 'border-red-300/14 bg-red-400/10 text-red-100/85',
+    button: 'bg-[linear-gradient(180deg,#b92a31_0%,#73141a_100%)] border-red-200/20 text-white',
     asset: '/assets/membership-fascist.png',
   },
 };
@@ -31,105 +31,138 @@ const FACTION_THEME = {
 const ROLE_COPY = {
   [ROLES.LIBERAL]: {
     roleLabel: 'Liberal',
-    roleSummary: 'Protect the republic and find the fascists before they seize the board.',
+    roleDescription: 'Pass liberal policies and keep Hitler away from the chancellorship.',
+    roleIcon: Shield,
     partyLabel: 'Liberal',
+    partyDescription: 'You are on the liberal team.',
   },
   [ROLES.FASCIST]: {
     roleLabel: 'Fascist',
-    roleSummary: 'Protect Hitler, bend the table, and keep your coalition hidden.',
+    roleDescription: 'Help fascist policies pass and protect Hitler until the table gives him power.',
+    roleIcon: Skull,
     partyLabel: 'Fascist',
+    partyDescription: 'You are on the fascist team.',
   },
   [ROLES.HITLER]: {
     roleLabel: 'Hitler',
-    roleSummary: 'Stay deniable and let the table clear a path for you.',
+    roleDescription: 'Stay concealed and let the table open a path for your election.',
+    roleIcon: Skull,
     partyLabel: 'Fascist',
+    partyDescription: 'Your party membership is fascist.',
   },
 };
 
-function FlipCard({ 
-  frontTitle, 
-  frontDescription, 
-  frontIcon: Icon, 
-  backLabel, 
-  isRevealed, 
-  onReveal, 
-  theme, 
-  membershipAsset,
-  delay = 0 
-}) {
-  const [isFlipped, setIsFlipped] = useState(false);
+function IdentityCard({ eyebrow, title, description, icon: Icon, theme, assetSrc, footer }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: 'easeOut' }}
+      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.card}`}
+    >
+      <div className="absolute inset-0 paper-grain opacity-[0.12]" />
+      {assetSrc && (
+        <img
+          src={assetSrc}
+          alt=""
+          className="pointer-events-none absolute -right-8 top-3 h-36 w-28 rotate-[10deg] object-contain opacity-[0.12] mix-blend-multiply"
+        />
+      )}
 
-  const handleFlip = () => {
-    if (isFlipped) return;
-    setIsFlipped(true);
-    if (onReveal) onReveal();
-  };
+      <div className="relative z-10 flex min-w-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-black/38">{eyebrow}</p>
+          <h2 className="mt-2 break-words text-[30px] font-black uppercase tracking-[0.04em] sm:text-[34px]">
+            {title}
+          </h2>
+        </div>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-black/10 bg-black/5">
+          <Icon size={24} />
+        </div>
+      </div>
+
+      <p className={`relative z-10 mt-5 text-sm leading-relaxed ${theme.cardMuted}`}>{description}</p>
+
+      {footer && (
+        <div className="relative z-10 mt-5 inline-flex rounded-full border border-black/10 bg-black/[0.04] px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-black/55">
+          {footer}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function KnownTeamPanel({ knownPlayers, role, theme }) {
+  if (!knownPlayers.length) return null;
 
   return (
-    <div className="perspective-1000 relative h-[180px] w-full max-w-[320px] cursor-pointer" onClick={handleFlip}>
-      <motion.div
-        initial={false}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.7, type: 'spring', stiffness: 260, damping: 20, delay }}
-        style={{ transformStyle: 'preserve-3d' }}
-        className="relative h-full w-full"
-      >
-        {/* Back of the Card (Visible First) */}
-        <div 
-          className={`absolute inset-0 flex flex-col items-center justify-center rounded-[24px] border border-white/10 ${theme.cardBack} shadow-[0_20px_40px_rgba(0,0,0,0.3)] backface-hidden`}
-        >
-          <div className="absolute inset-0 paper-grain opacity-[0.12]" />
-          <Lock className="opacity-20" size={40} />
-          <p className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.3em] opacity-40">
-            {backLabel}
-          </p>
-          <div className="absolute inset-x-4 top-4 flex justify-between opacity-10">
-            <div className="h-6 w-6 rounded-full border border-current" />
-            <div className="h-6 w-6 border-b border-r border-current" />
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: 'easeOut', delay: 0.06 }}
+      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.frame}`}
+    >
+      <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+      <div className="relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/10 bg-white/[0.05] text-white/82">
+            <Users size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/46">Known To You</p>
+            <h3 className="mt-1 text-lg font-black uppercase tracking-[0.06em] text-white">
+              {role === ROLES.HITLER ? 'Fascist Team' : 'Your Allies'}
+            </h3>
           </div>
         </div>
 
-        {/* Front of the Card (Hidden Back) */}
-        <div 
-          className={`absolute inset-0 overflow-hidden rounded-[24px] border border-white/10 ${theme.cardFront} px-6 py-6 shadow-[0_20px_40px_rgba(0,0,0,0.3)] [transform:rotateY(180deg)] backface-hidden`}
-        >
-          <div className="absolute inset-0 paper-grain opacity-[0.16]" />
-          
-          {membershipAsset && (
-            <img 
-              src={membershipAsset} 
-              alt="" 
-              className="absolute -right-8 -top-8 h-40 w-32 rotate-[12deg] object-contain opacity-[0.08] mix-blend-multiply transition-opacity hover:opacity-[0.12]"
-            />
-          )}
-
-          <div className="relative z-10 flex h-full flex-col">
-            <div className="flex items-start justify-between">
+        <div className="mt-4 space-y-2.5">
+          {knownPlayers.map((player) => (
+            <div
+              key={player.id}
+              className="flex items-center justify-between gap-3 rounded-[20px] border border-white/8 bg-black/18 px-4 py-3"
+            >
               <div className="min-w-0">
-                <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] opacity-40">
-                  Confirmed Identity
-                </p>
-                <h3 className="mt-2 text-3xl font-black uppercase tracking-[0.05em]">
-                  {frontTitle}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-black uppercase tracking-[0.05em] text-white/92">{player.name}</span>
+                  {player.isBot && <Bot size={12} className="shrink-0 text-white/28" />}
+                </div>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-black/10 bg-black/5">
-                <Icon size={24} />
-              </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${theme.soft}`}>
+                {player.role === ROLES.HITLER ? 'Hitler' : 'Fascist'}
+              </span>
             </div>
-            
-            <p className="mt-auto text-sm leading-relaxed opacity-70">
-              {frontDescription}
-            </p>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
-            <div className="mt-4 inline-flex self-start rounded-full border border-black/15 px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.15em] opacity-50">
-              Verified Dossier
-            </div>
-          </div>
+function ReadyState({ theme }) {
+  return (
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)]">
+      <div className="absolute inset-0 board-grid opacity-[0.04]" />
+      <div
+        className="pointer-events-none absolute inset-0 blur-[120px]"
+        style={{ background: `radial-gradient(circle at 50% 30%, ${theme.glow} 0%, transparent 60%)` }}
+      />
 
-          <div className={`absolute bottom-4 right-4 flex h-10 w-16 items-center justify-center rounded-[4px] border-2 uppercase rotate-[-12deg] font-black font-mono text-[9px] ${theme.stamp}`}>
-            CLASSIFIED
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className={`relative z-10 w-full max-w-md overflow-hidden rounded-[32px] border p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,0.56)] backdrop-blur-2xl ${theme.frame}`}
+      >
+        <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+        <div className="relative z-10">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-white/10 bg-white/[0.06]">
+            <Check className="text-white" size={30} />
           </div>
+          <p className="mt-6 text-[10px] font-mono font-black uppercase tracking-[0.28em] text-white/46">Identity Checked</p>
+          <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em] text-white">Ready</h2>
+          <p className="mx-auto mt-4 max-w-[22rem] text-sm leading-relaxed text-white/62">
+            Waiting for the rest of the table to finish their private reveal.
+          </p>
         </div>
       </motion.div>
     </div>
@@ -139,192 +172,183 @@ function FlipCard({
 export default function RoleReveal({ gameState, playerId, onReady }) {
   const myActualId = gameState?.myPlayerId || playerId;
   const me = gameState.players.find((player) => player.id === myActualId);
-  const knownPlayers = gameState.players.filter((candidate) => candidate.id !== myActualId && Boolean(candidate.role));
+  const role = me?.role || ROLES.LIBERAL;
+  const faction = me?.faction || (role === ROLES.LIBERAL ? FACTIONS.LIBERAL : FACTIONS.FASCIST);
+  const theme = faction === FACTIONS.LIBERAL ? FACTION_THEME.liberal : FACTION_THEME.fascist;
+  const roleMeta = ROLE_COPY[role] || ROLE_COPY[ROLES.LIBERAL];
+  const [isRevealed, setIsRevealed] = useState(false);
 
-  const [dossierOpened, setDossierOpened] = useState(false);
-  const [cardsRevealed, setCardsRevealed] = useState({ role: false, party: false });
-
-  const roleMeta = ROLE_COPY[me?.role] || ROLE_COPY[ROLES.LIBERAL];
-  const isLiberal = me?.faction === FACTIONS.LIBERAL || me?.role === ROLES.LIBERAL;
-  const theme = isLiberal ? FACTION_THEME.liberal : FACTION_THEME.fascist;
-  const roleIcon = me?.role === ROLES.HITLER ? Skull : me?.role === ROLES.FASCIST ? Skull : Shield;
-  const partyIcon = roleMeta.partyLabel === 'Liberal' ? Shield : Skull;
-
-  const bothRevealed = cardsRevealed.role && cardsRevealed.party;
-  const showKnown = bothRevealed && knownPlayers.length > 0;
+  const knownPlayers = useMemo(
+    () => gameState.players.filter((candidate) => candidate.id !== myActualId && Boolean(candidate.role)),
+    [gameState.players, myActualId],
+  );
 
   if (me?.isReady) {
-    return (
-      <div className={`relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)]`}>
-        <div className="absolute inset-0 board-grid opacity-[0.04]" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`relative z-10 w-full max-w-sm overflow-hidden rounded-[30px] border ${theme.border} bg-black/40 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,0.6)] backdrop-blur-2xl`}
-        >
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-            <Check className={theme.accentText} size={32} />
-          </div>
-          <h2 className="mt-6 text-2xl font-black uppercase tracking-widest text-white">Identity Secured</h2>
-          <p className="mt-4 text-sm leading-relaxed text-white/50 px-4">
-            Awaiting remaining operatives to verify their dossiers before the mission begins.
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <ReadyState theme={theme} />;
   }
 
+  const revealIdentity = () => setIsRevealed(true);
+  const sleeveLabel = isRevealed ? 'Identity Open' : 'Swipe Up To Reveal';
+
   return (
-    <div className={`relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+16px)] sm:px-6`}>
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+14px)] sm:px-6">
       <div className="absolute inset-0 board-grid opacity-[0.04]" />
-      
-      {/* Background Ambience */}
-      <div 
-        className="pointer-events-none absolute inset-0 blur-[120px] transition-all duration-[1500ms]"
-        style={{ 
-          background: dossierOpened 
-            ? `radial-gradient(circle at 50% 30%, ${theme.glow} 0%, transparent 60%)`
-            : 'none'
-        }} 
+      <div
+        className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,${theme.glow}_0%,transparent_58%)] blur-[120px] transition-opacity duration-700 ${isRevealed ? 'opacity-100' : 'opacity-70'}`}
       />
 
-      <AnimatePresence mode="wait">
-        {!dossierOpened ? (
-          <motion.div
-            key="closed-dossier"
-            initial={{ opacity: 0, y: 40, rotateX: 20 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0 }}
-            exit={{ opacity: 0, scale: 1.1, y: -20, transition: { duration: 0.6 } }}
-            className="flex flex-1 flex-col items-center justify-center pt-8"
-          >
-            <div className="text-center mb-8 max-w-[320px]">
-              <p className="text-[10px] font-mono font-black uppercase tracking-[0.4em] text-white/30">
-                Level 4 Clearance Required
-              </p>
-              <h1 className="mt-4 text-4xl font-black uppercase tracking-tighter text-white">
-                Briefing <br/><span className="text-white/30">Material</span>
-              </h1>
-            </div>
+      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+        <div className="shrink-0 text-center">
+          <p className="text-[10px] font-mono font-black uppercase tracking-[0.26em] text-white/42">Private Role Check</p>
+          <h1 className="mt-2 text-[28px] font-black uppercase tracking-[0.08em] text-white sm:text-[34px]">
+            Review Your Identity
+          </h1>
+          <p className="mx-auto mt-3 max-w-[28rem] text-sm leading-relaxed text-white/58">
+            Open the cover, read your role and party membership, then confirm when you are done.
+          </p>
+        </div>
 
+        <AnimatePresence mode="wait">
+          {!isRevealed ? (
             <motion.div
-              whileHover={{ scale: 1.02, rotate: 1 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setDossierOpened(true)}
-              className="relative aspect-[3/4] w-full max-w-[280px] cursor-pointer overflow-hidden rounded-[12px] border-l-[12px] border-r border-y border-white/5 bg-[linear-gradient(135deg,#343a40_0%,#212529_100%)] shadow-[20px_30px_60px_rgba(0,0,0,0.5)] transition-shadow hover:shadow-[30px_40px_70px_rgba(0,0,0,0.6)]"
+              key="concealed"
+              initial={{ opacity: 0, y: 26 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              className="flex min-h-0 flex-1 flex-col items-center justify-center py-6"
             >
-              <div className="absolute inset-0 leather-texture opacity-30" />
-              <div className="absolute inset-0 p-8 flex flex-col items-center justify-between text-white/70">
-                <div className="w-full h-px bg-white/10" />
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
-                    <Lock size={24} />
+              <div className="w-full max-w-[380px]">
+                <div className={`relative overflow-hidden rounded-[34px] border shadow-[0_32px_90px_rgba(0,0,0,0.44)] ${theme.frame}`}>
+                  <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+                  <div className="relative aspect-[0.78]">
+                    <div className="absolute inset-x-5 top-6 space-y-3">
+                      <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
+                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">Role</p>
+                        <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
+                        <div className="mt-2 h-3 rounded-full bg-white/[0.05]" />
+                      </div>
+                      <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
+                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">Party Membership</p>
+                        <div className="mt-3 h-10 rounded-2xl bg-white/[0.06]" />
+                        <div className="mt-2 h-3 rounded-full bg-white/[0.05]" />
+                      </div>
+                    </div>
+
+                    <motion.div
+                      drag="y"
+                      dragConstraints={{ top: -320, bottom: 0 }}
+                      dragElastic={{ top: 0.08, bottom: 0.02 }}
+                      dragMomentum={false}
+                      onDragEnd={(_, info) => {
+                        if (info.offset.y < -120 || info.velocity.y < -700) {
+                          revealIdentity();
+                        }
+                      }}
+                      onClick={revealIdentity}
+                      className="absolute inset-0 z-20 cursor-grab active:cursor-grabbing"
+                    >
+                      <motion.div
+                        animate={{ y: 0 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+                        className="flex h-full flex-col justify-between bg-[linear-gradient(180deg,rgba(9,11,14,0.88)_0%,rgba(6,8,11,0.94)_100%)] px-6 pb-7 pt-4 backdrop-blur-[20px]"
+                      >
+                        <div className="flex justify-center">
+                          <div className="h-1.5 w-16 rounded-full bg-white/20" />
+                        </div>
+
+                        <div className="flex flex-1 flex-col items-center justify-center text-center">
+                          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[26px] border border-white/10 bg-white/[0.05] shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                            <Eye className="text-white/88" size={30} />
+                          </div>
+                          <p className={`mt-6 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.2em] ${theme.badge}`}>
+                            {sleeveLabel}
+                          </p>
+                          <h2 className="mt-4 text-[30px] font-black uppercase tracking-[0.08em] text-white">
+                            Keep This Private
+                          </h2>
+                          <p className="mt-3 max-w-[17rem] text-sm leading-relaxed text-white/62">
+                            Swipe this cover upward to reveal your role card and party membership.
+                          </p>
+                        </div>
+
+                        <div className="text-center">
+                          <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/44">
+                            Swipe Up Or Tap To Open
+                          </p>
+                        </div>
+                      </motion.div>
+                    </motion.div>
                   </div>
-                  <p className="text-[11px] font-mono font-black mb-1">DOSSIDER CASE</p>
-                  <p className="text-[9px] opacity-40">REF: OPERATION_ECLIPSE</p>
-                </div>
-                <div className="w-full flex justify-between items-end">
-                  <div className="h-10 w-24 border-2 border-red-900/40 rounded flex items-center justify-center rotate-[-15deg] text-red-900/60 font-black text-[12px]">
-                    TOP SECRET
-                  </div>
-                  <Info size={18} className="opacity-30" />
                 </div>
               </div>
             </motion.div>
-            
-            <p className="mt-12 text-center text-sm font-black uppercase tracking-widest text-white/20 animate-pulse">
-              Click Folder To Open
-            </p>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="open-reveal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex-1 flex flex-col min-h-0 h-full"
-          >
-            <div className="shrink-0 text-center mb-6 pt-4">
-              <p className={`text-[10px] font-mono font-black uppercase tracking-[0.3em] ${theme.accentText}`}>
-                Identity Manifest
-              </p>
-              <h2 className="mt-1 text-xl font-black uppercase tracking-[0.05em] text-white">
-                Verify Your Assets
-              </h2>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 space-y-4 pb-8 flex flex-col items-center scrollbar-hide">
-              <FlipCard 
-                frontTitle={roleMeta.roleLabel}
-                frontDescription={roleMeta.roleSummary}
-                frontIcon={roleIcon}
-                backLabel="Role Assignment"
-                theme={theme}
-                onReveal={() => setCardsRevealed(prev => ({ ...prev, role: true }))}
-              />
-
-              <FlipCard 
-                frontTitle={roleMeta.partyLabel}
-                frontDescription={`Your party membership is ${roleMeta.partyLabel}. You win if ${roleMeta.partyLabel === 'Liberal' ? 'Liberals' : 'Fascists'} win.`}
-                frontIcon={partyIcon}
-                backLabel="Party Membership"
-                theme={theme}
-                membershipAsset={theme.asset}
-                onReveal={() => setCardsRevealed(prev => ({ ...prev, party: true }))}
-                delay={0.1}
-              />
-
-              {showKnown && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full max-w-[320px] rounded-3xl border border-white/5 bg-white/5 p-6 backdrop-blur-xl"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                      <Users size={18} className={theme.accentText} />
-                    </div>
-                    <p className={`text-[10px] font-mono font-black uppercase tracking-widest ${theme.accentText}`}>
-                      {me?.role === ROLES.HITLER ? 'Known Fascists' : 'Known Team'}
-                    </p>
+          ) : (
+            <motion.div
+              key="revealed"
+              initial={{ opacity: 0, y: 26 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              className="mt-5 flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto pb-6 scrollbar-hide">
+                <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
+                  <div className="grid gap-4">
+                    <IdentityCard
+                      eyebrow="Role"
+                      title={roleMeta.roleLabel}
+                      description={roleMeta.roleDescription}
+                      icon={roleMeta.roleIcon}
+                      theme={theme}
+                      footer={role === ROLES.HITLER ? 'Special Role' : 'Public Goal Driven'}
+                    />
+                    <IdentityCard
+                      eyebrow="Party Membership"
+                      title={roleMeta.partyLabel}
+                      description={roleMeta.partyDescription}
+                      icon={roleMeta.partyLabel === 'Liberal' ? Shield : Skull}
+                      theme={theme}
+                      assetSrc={theme.asset}
+                      footer="Win Condition Reference"
+                    />
                   </div>
-                  
-                  <div className="space-y-2">
-                    {knownPlayers.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-black/40 border border-white/5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="truncate text-sm font-black uppercase tracking-tight text-white/90">
-                            {p.name}
-                          </span>
-                          {p.isBot && <Bot size={12} className="text-white/20" />}
-                        </div>
-                        <span className={`text-[10px] font-black font-mono border border-current rounded-full px-2 py-0.5 ${theme.accentText}`}>
-                          {p.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
-                        </span>
+
+                  <div className="grid gap-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.32, ease: 'easeOut', delay: 0.04 }}
+                      className={`relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] ${theme.frame}`}
+                    >
+                      <div className="absolute inset-0 paper-grain opacity-[0.08]" />
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/46">Before You Continue</p>
+                        <h3 className="mt-2 text-lg font-black uppercase tracking-[0.06em] text-white">Read, Memorize, Pass</h3>
+                        <ul className="mt-4 space-y-3 text-sm leading-relaxed text-white/68">
+                          <li>Memorize only what this screen tells you.</li>
+                          <li>Do not leave this view open when handing the phone over.</li>
+                          <li>Confirm once you are ready for the next player.</li>
+                        </ul>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </div>
+                    </motion.div>
 
-            <div className="mt-auto pt-6 pb-2">
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: bothRevealed ? 1 : 0.3, y: bothRevealed ? 0 : 20 }}
-                disabled={!bothRevealed}
-                onClick={onReady}
-                whileTap={{ scale: 0.98 }}
-                className={`w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] transition-all ${
-                  bothRevealed 
-                    ? `bg-[linear-gradient(180deg,${isLiberal ? '#24507d' : '#8e111d'} 0%,${isLiberal ? '#163552' : '#5c0b12'} 100%)] text-white shadow-lg ${theme.border}`
-                    : 'bg-white/5 text-white/20 border border-white/10'
-                }`}
-              >
-                {bothRevealed ? 'Commit Identity' : 'Reveal All Cards'}
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    <KnownTeamPanel knownPlayers={knownPlayers} role={role} theme={theme} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-white/8 bg-black/12 px-1 pt-4 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={onReady}
+                  className={`flex h-14 w-full items-center justify-center rounded-[22px] border text-[11px] font-mono font-black uppercase tracking-[0.22em] shadow-[0_18px_34px_rgba(0,0,0,0.24)] transition-transform active:scale-[0.985] ${theme.button}`}
+                >
+                  Ready For The Table
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
