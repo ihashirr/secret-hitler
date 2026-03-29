@@ -259,23 +259,6 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
     fascistPower &&
     executivePower === fascistPower;
 
-  let statusLabel = 'Future Slot';
-  let statusDescription = 'Nothing has landed here yet. This shows what that board position will mean if play reaches it.';
-
-  if (isResolvingNow) {
-    statusLabel = 'Resolving Now';
-    statusDescription = 'This is the fascist slot that just landed, and its executive power is currently being resolved.';
-  } else if (isNext) {
-    statusLabel = 'Next Card Here';
-    statusDescription = 'If the next enacted policy matches this track, it lands in this exact slot.';
-  } else if (isCurrentEdge) {
-    statusLabel = 'Current Board Edge';
-    statusDescription = 'This is the latest policy already locked onto the board.';
-  } else if (isFilled) {
-    statusLabel = 'Already Locked';
-    statusDescription = 'This slot is already part of the permanent board state.';
-  }
-
   if (type === 'LIBERAL') {
     if (isVictorySlot) {
       return {
@@ -292,13 +275,8 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
         accentClassName: 'text-cyan-100',
         accentSurfaceClassName: 'border-cyan-300/18 bg-cyan-300/10',
         accentSoftClassName: 'border-cyan-300/14 bg-cyan-300/[0.08]',
-        statusLabel,
-        statusDescription,
         outcomeLabel: 'Immediate Liberal Victory',
         outcomeDescription: 'Placing a Liberal policy in this slot ends the match on the spot.',
-        summaryLine: isNext
-          ? 'One more Liberal policy wins the table immediately.'
-          : 'This is the victory space at the end of the Liberal track.',
       };
     }
 
@@ -316,13 +294,8 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
       accentClassName: 'text-cyan-100',
       accentSurfaceClassName: 'border-cyan-300/18 bg-cyan-300/10',
       accentSoftClassName: 'border-cyan-300/14 bg-cyan-300/[0.08]',
-      statusLabel,
-      statusDescription,
-      outcomeLabel: `Board Advances To ${slotNumber}/${max}`,
+      outcomeLabel: `Liberal Progress ${slotNumber}/${max}`,
       outcomeDescription: 'No executive power unlocks here. A Liberal card in this space is pure progress toward victory.',
-      summaryLine: isNext
-        ? `The next Liberal policy would move the republic to ${slotNumber}/${max}.`
-        : `This slot marks Liberal progress ${slotNumber} of ${max}.`,
     };
   }
 
@@ -341,13 +314,8 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
       accentClassName: 'text-red-100',
       accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
       accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
-      statusLabel,
-      statusDescription,
       outcomeLabel: 'Immediate Fascist Victory',
       outcomeDescription: 'Placing a Fascist policy in this slot ends the match immediately.',
-      summaryLine: isNext
-        ? 'The next Fascist policy would end the game instantly.'
-        : 'This is the final victory space on the Fascist track.',
     };
   }
 
@@ -366,13 +334,8 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
       accentClassName: 'text-red-100',
       accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
       accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
-      statusLabel,
-      statusDescription,
-      outcomeLabel: 'Board Pressure Only',
+      outcomeLabel: 'No Immediate Power',
       outcomeDescription: 'A Fascist card here advances the regime but does not unlock an executive power on this table size.',
-      summaryLine: isNext
-        ? 'The next Fascist policy would only add pressure here.'
-        : `This slot is plain Fascist progress ${slotNumber} of ${max}.`,
     };
   }
 
@@ -390,13 +353,8 @@ const getTrackSlotInsight = ({ type, slotIndex, current, max, playerCount, phase
     accentClassName: 'text-red-100',
     accentSurfaceClassName: 'border-red-400/18 bg-red-500/10',
     accentSoftClassName: 'border-red-400/14 bg-red-500/[0.08]',
-    statusLabel,
-    statusDescription,
     outcomeLabel: activePowerCopy.label,
     outcomeDescription: activePowerCopy.description,
-    summaryLine: isNext
-      ? `The next Fascist policy would unlock ${activePowerCopy.shortLabel.toLowerCase()}.`
-      : `This slot carries ${activePowerCopy.shortLabel.toLowerCase()} on this table size.`,
   };
 };
 
@@ -895,23 +853,16 @@ export default function GameBoard({
   };
 
   const renderTrackDetailOverlay = () => {
-    if (!isTrackDetailOpen || !selectedTrackInsight || selectedTrackProgress == null || selectedTrackMax == null) {
+    if (!isTrackDetailOpen || !selectedTrackInsight) {
       return null;
     }
 
-    const stageDescriptor = directorState?.timelinePositionLabel
-      ? `${directorState.timelinePositionLabel} ${directorState.stageLabel || 'Live Match'}`
-      : directorState?.stageLabel || 'Live Match';
-    const impactLabel = selectedTrackInsight.isResolvingNow
-      ? 'This slot is resolving right now.'
-      : selectedTrackInsight.isNext
-        ? 'The next matching policy lands here.'
-        : 'This slot shows what this board space means.';
+    const impactLabel = selectedTrackInsight.type === 'FASCIST' ? 'If a Fascist policy lands here' : 'If a Liberal policy lands here';
 
     return (
       <AnimatePresence>
         <motion.div
-          key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}-${selectedTrackProgress}-${displayPhase}-${gameState.executivePower || 'idle'}`}
+          key={`${selectedTrackInsight.type}-${selectedTrackInsight.slotNumber}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -984,9 +935,6 @@ export default function GameBoard({
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
                   Slot {selectedTrackInsight.slotNumber}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/60">
-                  {stageDescriptor}
-                </span>
               </div>
 
               <div className="mt-4 grid min-w-0 gap-4 min-[560px]:grid-cols-[120px,minmax(0,1fr)]">
@@ -1039,74 +987,8 @@ export default function GameBoard({
                   <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/68">
                     {selectedTrackInsight.outcomeDescription}
                   </FactionAccentText>
-                  <p className="mt-2 text-[11px] leading-relaxed text-white/44">
-                    {selectedTrackInsight.statusDescription}
-                  </p>
-                  <p className={`mt-3 inline-flex rounded-full border px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
-                    {selectedTrackInsight.summaryLine}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3">
-                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    On Board
-                  </p>
-                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                    {selectedTrackProgress}/{selectedTrackMax}
-                  </p>
-                </div>
-                <div className={`rounded-[18px] border px-3 py-3 ${selectedTrackInsight.accentSoftClassName}`}>
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    Selected Slot
-                  </p>
-                  <p className={`mt-2 text-sm font-black uppercase tracking-[0.08em] ${selectedTrackInsight.accentClassName}`}>
-                    {selectedTrackInsight.slotNumber}/{selectedTrackInsight.max}
-                  </p>
-                </div>
-                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    Current Stage
-                  </p>
-                  <FactionAccentText as="p" className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                    {directorState?.timelinePositionLabel || directorState?.stageLabel || 'Live Match'}
-                  </FactionAccentText>
-                </div>
-                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    Deck
-                  </p>
-                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                    {gameState.drawPileCount}
-                  </p>
-                </div>
-                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    Discard
-                  </p>
-                  <p className="mt-2 text-sm font-black uppercase tracking-[0.08em] text-white/88">
-                    {gameState.discardPileCount}
-                  </p>
-                </div>
-                <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                  <p className="text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/38">
-                    Election Tracker
-                  </p>
-                  <div className="mt-2 flex items-center gap-1">
-                    {Array.from({ length: MAX_ELECTION_TRACKER }).map((_, index) => (
-                      <span
-                        key={index}
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          index < gameState.electionTracker
-                            ? 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.38)]'
-                            : 'bg-white/14'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[10px] font-mono font-black uppercase tracking-[0.16em] text-white/58">
-                    {gameState.electionTracker}/{MAX_ELECTION_TRACKER}
+                  <p className={`mt-4 inline-flex rounded-full border px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${selectedTrackInsight.accentSoftClassName} ${selectedTrackInsight.accentClassName}`}>
+                    Policy consequence only
                   </p>
                 </div>
               </div>
