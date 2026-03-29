@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
+import StageSpotlight from './StageSpotlight';
 
 export default function GameOverlay({
   gameState,
@@ -343,62 +344,37 @@ export default function GameOverlay({
 
   const hasActionContent = Boolean(actionContent || pendingSelection);
   const suppressRevealBanner = Boolean(revealState) && !pendingSelection && !actionContent;
-  const suppressPassiveVotingBanner =
-    displayPhase === PHASES.VOTING &&
-    !revealState &&
-    !pendingSelection &&
-    !actionContent;
-  const toneClass =
+  const spotlightTone =
     pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
-      ? 'bg-[#c1272d]'
+      ? 'red'
       : displayPhase === PHASES.VOTING
-        ? 'bg-[#2b5c8f]'
-        : 'bg-[#d4c098]';
-  const toneBadgeClass =
-    pendingSelection || displayPhase === PHASES.EXECUTIVE_ACTION
-      ? 'border-[#c1272d]/25 bg-[#c1272d]/10 text-[#ffb2b5]'
-      : displayPhase === PHASES.VOTING
-        ? 'border-[#2b5c8f]/25 bg-[#2b5c8f]/10 text-cyan-100'
-        : 'border-[#d4c098]/20 bg-white/5 text-[#efe1c4]';
+        ? 'blue'
+        : 'neutral';
+  const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
+  const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'This Device' : 'Entire Table';
+  const spotlightKey =
+    !pendingSelection && !suppressRevealBanner
+      ? `${displayPhase}:${directorState?.stageLabel || ''}:${title}:${subtext}:${hasActionContent ? 'action' : 'passive'}:${spotlightAudienceLabel}`
+      : null;
+  const spotlightActions =
+    !pendingSelection && Array.isArray(primaryInstruction?.actions)
+      ? primaryInstruction.actions.map((action) => action.label)
+      : [];
 
   return (
     <AnimatePresence>
-      {!hasActionContent && !suppressPassiveVotingBanner && !suppressRevealBanner && (
-        <motion.div
-          key={`banner-${title}`}
-          initial={{ y: -24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -24, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          className="fixed inset-x-0 top-[calc(var(--app-header-offset)+10px)] z-[100] flex justify-center px-3 pointer-events-none"
-        >
-          <div className="relative w-full max-w-[520px] overflow-hidden rounded-[18px] border border-[#d4c098]/18 bg-[rgba(15,12,11,0.94)] shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-md">
-            <div className={`absolute inset-y-0 left-0 w-1 ${toneClass}`} />
-            <div className="absolute inset-0 paper-grain opacity-[0.08] pointer-events-none" />
-
-            <div className="relative z-10 px-4 py-2.5 sm:px-5 sm:py-3">
-              <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.24em] sm:text-[9px]">
-                <motion.span
-                  animate={displayPhase === PHASES.VOTING ? { opacity: [0.6, 1, 0.6] } : { opacity: 1 }}
-                  transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                  className={`rounded-full border px-2 py-0.5 ${toneBadgeClass}`}
-                >
-                  Live Briefing
-                </motion.span>
-              </div>
-
-              <h2 className="mt-1.5 text-[12px] font-serif font-black uppercase tracking-[0.14em] text-[#f4eee0] sm:text-[14px]">
-                {title}
-              </h2>
-
-              {subtext && (
-                <p className="mt-1 text-[10px] leading-relaxed text-[#d4c8b0] sm:text-[11px]">
-                  {subtext}
-                </p>
-              )}
-            </div>
-          </div>
-        </motion.div>
+      {spotlightKey && (
+        <StageSpotlight
+          key={spotlightKey}
+          stageLabel={directorState?.stageLabel || 'Live Match'}
+          timelineLabel={directorState?.timelinePositionLabel}
+          title={title}
+          description={subtext}
+          audienceLabel={spotlightAudienceLabel}
+          visibility={spotlightVisibility}
+          actionLabels={spotlightActions}
+          tone={spotlightTone}
+        />
       )}
 
       {hasActionContent && (
