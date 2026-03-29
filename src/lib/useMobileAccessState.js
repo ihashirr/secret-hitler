@@ -8,6 +8,7 @@ const DEFAULT_STATE = {
   isIos: false,
   isMobile: false,
   isReady: false,
+  isSafari: false,
   isStandalone: false,
   justInstalled: false,
 };
@@ -30,7 +31,11 @@ const getIsMobileViewport = () => {
   if (typeof window === 'undefined') return false;
 
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-  return coarsePointer && window.innerWidth <= MOBILE_BREAKPOINT;
+  const hoverless = window.matchMedia('(hover: none)').matches;
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  const touchPoints = navigator.maxTouchPoints || 0;
+
+  return coarsePointer && hoverless && touchPoints > 0 && shortSide <= MOBILE_BREAKPOINT;
 };
 
 const getIsIosDevice = () => {
@@ -42,12 +47,20 @@ const getIsIosDevice = () => {
   return appleMobileUserAgent || touchMac;
 };
 
+const getIsSafariBrowser = () => {
+  if (typeof navigator === 'undefined') return false;
+
+  const userAgent = navigator.userAgent;
+  return /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|YaBrowser/i.test(userAgent);
+};
+
 const getAccessSnapshot = () => ({
   canFullscreen: Boolean(document.documentElement?.requestFullscreen),
   isFullscreen: getIsFullscreenMode(),
   isIos: getIsIosDevice(),
   isMobile: getIsMobileViewport(),
   isReady: true,
+  isSafari: getIsSafariBrowser(),
   isStandalone: getIsStandaloneMode(),
 });
 

@@ -58,7 +58,7 @@ export default function GlobalControls({
         animate={{ y: 0, opacity: 1 }}
         className="fixed inset-x-0 top-0 z-[120] border-b border-white/10 bg-[rgba(6,7,8,0.82)] pt-[var(--app-safe-top)] backdrop-blur-xl"
       >
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-2 px-3 sm:px-4">
           <div className="min-w-0">
             <p className="text-[10px] font-mono font-black uppercase tracking-[0.28em] text-cyan-300/75">
               Room {gameState.roomId}
@@ -68,7 +68,7 @@ export default function GlobalControls({
             </p>
           </div>
 
-          <div className="min-w-0 flex-1 px-1">
+          <div className="min-w-0 flex-1 px-1 max-[380px]:hidden">
             {directorState?.timelineVisible ? (
               <StageTimeline timeline={directorState?.timeline} compact />
             ) : (
@@ -78,7 +78,7 @@ export default function GlobalControls({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {me.isHost && (
               <div className="relative">
                 <button
@@ -134,10 +134,10 @@ export default function GlobalControls({
             <button
               type="button"
               onClick={onExit}
-              className="flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-red-100 transition-colors hover:bg-red-500/15"
+              className="flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-red-100 transition-colors hover:bg-red-500/15 min-[480px]:px-4"
             >
               <LogOut size={16} />
-              Exit
+              <span className="max-[479px]:hidden">Exit</span>
             </button>
           </div>
         </div>

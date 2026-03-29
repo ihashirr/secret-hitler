@@ -63,14 +63,20 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
   const hasInstallPrompt = accessState?.canInstall;
   const canFullscreen = accessState?.canFullscreen;
   const helperCopy = VIEW_COPY[viewKey] || 'Secure the screen before continuing in the room.';
+  const needsSafariForInstall = accessState?.isIos && !accessState?.isSafari;
   const primaryActionLabel = hasInstallPrompt
     ? 'Install App'
-    : canFullscreen
-      ? 'Enter Fullscreen'
-      : 'Use Home Screen Install';
-  const installInstructions = accessState?.isIos
-    ? 'Share -> Add to Home Screen.'
+    : needsSafariForInstall
+      ? 'Open In Safari'
+      : canFullscreen
+        ? 'Enter Fullscreen'
+        : 'Add To Home Screen';
+  const installInstructions = needsSafariForInstall
+    ? 'Open this page in Safari first, then use Share -> Add to Home Screen.'
+    : accessState?.isIos
+      ? 'Safari -> Share -> Add to Home Screen.'
     : 'Use the browser menu to install the app.';
+  const installLabel = needsSafariForInstall ? 'Open In Safari' : 'Install App';
   const isLaunchPending = launchState === 'launching';
   const showLaunchFallback = launchState === 'manual';
 
@@ -139,7 +145,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 ) : (
                   <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-left">
                     <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-amber-100/80">
-                      Install App
+                      {installLabel}
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-amber-50/85">
                       {installInstructions}
