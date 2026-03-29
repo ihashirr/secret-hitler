@@ -171,6 +171,27 @@ const getVoteRevealGroups = (players, votes = {}) => {
 
 const VOTE_REVEAL_STAGE_DELAY_MS = 180;
 const VOTE_REVEAL_DURATION_MS = 3000;
+const GOVERNMENT_FORMATION_BANDS = [18, 32, 46, 60, 74];
+const GOVERNMENT_FORMATION_SPARKS = [
+  { left: '18%', top: '28%', delay: 0.08 },
+  { left: '29%', top: '64%', delay: 0.2 },
+  { left: '50%', top: '22%', delay: 0.32 },
+  { left: '68%', top: '58%', delay: 0.16 },
+  { left: '82%', top: '34%', delay: 0.28 },
+];
+const GOVERNMENT_FRACTURE_LINES = [
+  { top: '24%', left: '18%', width: '64%', rotate: -18, delay: 0.04 },
+  { top: '40%', left: '10%', width: '78%', rotate: 7, delay: 0.12 },
+  { top: '58%', left: '16%', width: '62%', rotate: -6, delay: 0.2 },
+  { top: '72%', left: '28%', width: '42%', rotate: 14, delay: 0.28 },
+];
+const GOVERNMENT_FRACTURE_SHARDS = [
+  { left: '16%', top: '22%', width: 34, height: 8, rotate: -28, x: -26, y: -18, delay: 0.08 },
+  { left: '26%', top: '68%', width: 40, height: 9, rotate: 18, x: -18, y: 24, delay: 0.18 },
+  { left: '48%', top: '18%', width: 30, height: 7, rotate: -8, x: 0, y: -22, delay: 0.12 },
+  { left: '62%', top: '60%', width: 42, height: 9, rotate: -16, x: 20, y: 20, delay: 0.22 },
+  { left: '78%', top: '30%', width: 36, height: 8, rotate: 26, x: 28, y: -14, delay: 0.16 },
+];
 
 export default function GameBoard({
   gameState,
@@ -538,20 +559,115 @@ export default function GameBoard({
       return (
         <div className="mx-auto w-full min-w-0 max-w-[1120px] px-3 sm:px-4">
           <div
-            className={`min-w-0 rounded-[30px] border px-4 py-4 shadow-[0_28px_64px_rgba(0,0,0,0.42)] ${
+            className={`relative min-w-0 overflow-hidden rounded-[30px] border px-4 py-4 shadow-[0_28px_64px_rgba(0,0,0,0.42)] ${
               revealIsApproved
                 ? 'border-cyan-300/22 bg-[linear-gradient(180deg,rgba(8,17,24,0.98)_0%,rgba(8,13,19,0.96)_100%)]'
                 : 'border-red-400/22 bg-[linear-gradient(180deg,rgba(25,8,10,0.98)_0%,rgba(15,8,9,0.96)_100%)]'
             }`}
           >
-            <div className="text-center">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {revealIsApproved ? (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.72 }}
+                    animate={{ opacity: [0, 0.42, 0.12], scale: [0.72, 1.14, 1.28] }}
+                    transition={{ duration: 1.3, ease: 'easeOut' }}
+                    className="absolute left-1/2 top-[36%] h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/18"
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: [0, 0.24, 0], scale: [0.8, 1.05, 1.2] }}
+                    transition={{ duration: 1.45, ease: 'easeOut', delay: 0.08 }}
+                    className="absolute left-1/2 top-[36%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10"
+                  />
+
+                  {GOVERNMENT_FORMATION_BANDS.map((top, index) => (
+                    <React.Fragment key={`formation-band-${top}`}>
+                      <motion.div
+                        initial={{ opacity: 0, scaleX: 0.2, x: -28 }}
+                        animate={{ opacity: [0, 0.5, 0.12], scaleX: [0.2, 1, 1], x: [ -28, 0, 0 ] }}
+                        transition={{ duration: 0.9, ease: 'easeOut', delay: index * 0.05 }}
+                        className="absolute left-0 h-px origin-right bg-[linear-gradient(90deg,transparent_0%,rgba(103,232,249,0.32)_100%)]"
+                        style={{ top: `${top}%`, width: '42%' }}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scaleX: 0.2, x: 28 }}
+                        animate={{ opacity: [0, 0.5, 0.12], scaleX: [0.2, 1, 1], x: [ 28, 0, 0 ] }}
+                        transition={{ duration: 0.9, ease: 'easeOut', delay: index * 0.05 }}
+                        className="absolute right-0 h-px origin-left bg-[linear-gradient(90deg,rgba(103,232,249,0.32)_0%,transparent_100%)]"
+                        style={{ top: `${top}%`, width: '42%' }}
+                      />
+                    </React.Fragment>
+                  ))}
+
+                  {GOVERNMENT_FORMATION_SPARKS.map((spark, index) => (
+                    <motion.span
+                      key={`formation-spark-${index}`}
+                      initial={{ opacity: 0, scale: 0.4, y: 10 }}
+                      animate={{ opacity: [0, 0.8, 0], scale: [0.4, 1, 0.7], y: [10, -8, -18] }}
+                      transition={{ duration: 1.05, ease: 'easeOut', delay: spark.delay }}
+                      className="absolute h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.6)]"
+                      style={{ left: spark.left, top: spark.top }}
+                    />
+                  ))}
+                </>
+              ) : (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.82 }}
+                    animate={{ opacity: [0, 0.22, 0], scale: [0.82, 1.18, 1.28] }}
+                    transition={{ duration: 0.9, ease: 'easeOut' }}
+                    className="absolute left-1/2 top-[38%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-300/10"
+                  />
+
+                  {GOVERNMENT_FRACTURE_LINES.map((line, index) => (
+                    <motion.div
+                      key={`fracture-line-${index}`}
+                      initial={{ opacity: 0, scaleX: 0.25 }}
+                      animate={{ opacity: [0, 0.5, 0.18], scaleX: [0.25, 1, 1.04] }}
+                      transition={{ duration: 0.75, ease: 'easeOut', delay: line.delay }}
+                      className="absolute h-px origin-center bg-[linear-gradient(90deg,transparent_0%,rgba(248,113,113,0.82)_20%,rgba(255,255,255,0.22)_50%,rgba(248,113,113,0.82)_80%,transparent_100%)]"
+                      style={{ top: line.top, left: line.left, width: line.width, rotate: `${line.rotate}deg` }}
+                    />
+                  ))}
+
+                  {GOVERNMENT_FRACTURE_SHARDS.map((shard, index) => (
+                    <motion.span
+                      key={`fracture-shard-${index}`}
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{
+                        opacity: [0, 0.55, 0],
+                        scale: [0.7, 1, 0.9],
+                        x: [0, shard.x],
+                        y: [0, shard.y],
+                        rotate: [shard.rotate, shard.rotate + (index % 2 === 0 ? -12 : 12)],
+                      }}
+                      transition={{ duration: 0.82, ease: 'easeOut', delay: shard.delay }}
+                      className="absolute rounded-full border border-red-200/12 bg-red-300/18 shadow-[0_0_20px_rgba(248,113,113,0.22)]"
+                      style={{
+                        left: shard.left,
+                        top: shard.top,
+                        width: `${shard.width}px`,
+                        height: `${shard.height}px`,
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+
+            <div className="relative z-10 text-center">
               <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-mono font-black uppercase tracking-[0.26em] text-white/65">
-                Vote Result
+                {revealIsApproved ? 'Government Formed' : 'Government Broken'}
               </span>
               <motion.h2
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
+                initial={{ opacity: 0, scale: 0.94, y: 10 }}
+                animate={
+                  revealIsApproved
+                    ? { opacity: 1, scale: [0.94, 1.03, 1], y: [10, -2, 0] }
+                    : { opacity: 1, scale: [0.94, 1.01, 1], y: [10, 0, 0], x: [0, -4, 3, 0] }
+                }
+                transition={{ duration: revealIsApproved ? 0.7 : 0.58, ease: 'easeOut' }}
                 className={`mt-3 text-xl font-black uppercase tracking-[0.14em] sm:text-2xl ${
                   revealIsApproved ? 'text-cyan-100' : 'text-red-100'
                 }`}
@@ -563,7 +679,7 @@ export default function GameBoard({
               </FactionAccentText>
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-white/8 bg-black/22 px-4 py-4">
+            <div className="relative z-10 mt-5 rounded-[22px] border border-white/8 bg-black/22 px-4 py-4">
               <div className="relative h-4 overflow-hidden rounded-full bg-white/8">
                 <motion.div
                   initial={false}
@@ -1165,10 +1281,10 @@ export default function GameBoard({
       initial={{ opacity: 0, scale: 0.98, filter: 'brightness(1.3)' }}
       animate={{
         opacity: 1,
-        scale: 1,
+        scale: revealStage === 1 && revealIsApproved ? [1.016, 1] : 1,
         filter: 'brightness(1)',
-        x: revealStage === 1 ? [-8, 8, -4, 4, 0] : 0,
-        y: revealStage === 1 ? [-4, 4, -2, 2, 0] : 0,
+        x: revealStage === 1 && !revealIsApproved ? [-8, 8, -4, 4, 0] : 0,
+        y: revealStage === 1 && !revealIsApproved ? [-4, 4, -2, 2, 0] : 0,
       }}
       transition={{
         duration: revealStage === 1 ? 0.4 : 0.55,
