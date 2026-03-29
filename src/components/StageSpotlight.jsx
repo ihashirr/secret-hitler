@@ -68,6 +68,26 @@ export default function StageSpotlight({
 
   const progressPercent = Math.max(0, Math.min(100, (remainingMs / AUTO_CLOSE_MS) * 100));
   const modeLabel = visibility === 'private' ? 'Private Briefing' : 'Table Briefing';
+  const handleHoldStart = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!isHolding) {
+      triggerHaptic('soft');
+    }
+
+    setIsHolding(true);
+  };
+  const handleHoldEnd = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isHolding) {
+      triggerHaptic('light');
+    }
+
+    setIsHolding(false);
+  };
 
   return (
     <AnimatePresence>
@@ -90,29 +110,15 @@ export default function StageSpotlight({
             animate={{ opacity: 1, scale: isHolding ? 1.02 : 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 16 }}
             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
-            onPointerDown={() => {
-              if (!isHolding) {
-                triggerHaptic('soft');
-              }
-              setIsHolding(true);
-            }}
-            onPointerUp={() => {
-              if (isHolding) {
-                triggerHaptic('light');
-              }
-              setIsHolding(false);
-            }}
-            onPointerLeave={() => {
-              setIsHolding(false);
-            }}
-            onPointerCancel={() => {
-              setIsHolding(false);
-            }}
-            className={`relative w-full max-w-2xl overflow-hidden rounded-[34px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
+            onContextMenu={(event) => event.preventDefault()}
+            className={`relative w-full max-w-2xl select-none overflow-hidden rounded-[34px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
             style={{
               boxShadow: isHolding
                 ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`
                 : `0 40px 120px rgba(0,0,0,0.62), 0 0 70px ${toneTheme.glow}`,
+              userSelect: 'none',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
             }}
           >
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${toneTheme.accentBar}`} />
@@ -182,19 +188,6 @@ export default function StageSpotlight({
                     ))}
                   </div>
                 )}
-
-                <motion.div
-                  animate={isHolding ? { scale: 1.03 } : { scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 240, damping: 20 }}
-                  className={`mx-auto mt-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
-                    isHolding
-                      ? 'border-white/18 bg-white/[0.08] text-white'
-                      : 'border-white/10 bg-white/[0.04] text-white/72'
-                  }`}
-                >
-                  <Hand size={14} />
-                  {isHolding ? 'Pinned While Pressed' : 'Hold To Keep Open'}
-                </motion.div>
               </div>
 
               <div className="mt-8 sm:mt-10">
@@ -216,6 +209,48 @@ export default function StageSpotlight({
                     />
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onPointerDown={handleHoldStart}
+                  onPointerUp={handleHoldEnd}
+                  onPointerLeave={handleHoldEnd}
+                  onPointerCancel={handleHoldEnd}
+                  onContextMenu={(event) => event.preventDefault()}
+                  className={`mt-4 flex w-full items-center justify-between gap-4 rounded-[24px] border px-4 py-4 text-left transition-all ${
+                    isHolding
+                      ? 'border-white/20 bg-white/[0.1] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+                      : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.06]'
+                  }`}
+                  style={{
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitUserSelect: 'none',
+                  }}
+                  aria-label="Press and hold to keep the stage spotlight open"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white">
+                      <Hand size={15} />
+                      <span>{isHolding ? 'Pinned While Pressed' : 'Press And Hold Here'}</span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-white/58">
+                      {isHolding
+                        ? 'Release this control when you want the countdown to continue.'
+                        : 'This pauses the auto-close timer without long-pressing the stage text.'}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${
+                      isHolding
+                        ? 'border-white/18 bg-white/[0.12] text-white'
+                        : 'border-white/10 bg-white/[0.04] text-white/70'
+                    }`}
+                  >
+                    {isHolding ? 'Pinned' : 'Hold'}
+                  </span>
+                </button>
               </div>
             </div>
           </motion.div>
