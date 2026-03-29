@@ -77,7 +77,7 @@ export default function StageSpotlight({
   }, [isVisible]);
 
   const progressPercent = Math.max(0, Math.min(100, (remainingMs / Math.max(1, autoCloseMs)) * 100));
-  const modeLabel = visibility === 'private' ? 'Private Briefing' : 'Table Briefing';
+  const modeLabel = visibility === 'private' ? 'Private' : 'Public';
   const autoCloseLabel = `${(autoCloseMs / 1000).toFixed(autoCloseMs % 1000 === 0 ? 0 : 1)}s`;
   const handleHoldStart = (event) => {
     event.preventDefault();

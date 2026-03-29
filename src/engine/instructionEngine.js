@@ -77,7 +77,7 @@ export function getInstructions(player, gameState) {
         instructions.push(
           createInstruction(
             'Wait For Start',
-            'Stay connected and keep your phone ready. The host will start once the table is full enough.',
+            'Stay ready. The host will start once the table is full enough.',
             'low',
             'public',
           ),
@@ -169,7 +169,7 @@ export function getInstructions(player, gameState) {
         instructions.push(
           createInstruction(
             'Vote JA Or NEIN',
-            `Approve or reject the government led by ${currentPresidentName} and ${currentChancellorName}. Vote on this phone now.`,
+            `Approve or reject the government led by ${currentPresidentName} and ${currentChancellorName}. Cast your vote now.`,
             'high',
             'private',
             [

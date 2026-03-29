@@ -373,7 +373,7 @@ export default function GameBoard({
   const voteStatusTitle = showVoteReveal
     ? 'Vote Result'
     : directorState?.primaryInstruction?.title ||
-      (me?.isAlive === false ? 'Observer Only' : me?.hasVoted ? 'Vote Locked' : 'Vote In Private');
+      (me?.isAlive === false ? 'Observer Only' : me?.hasVoted ? 'Vote Locked' : 'Cast Vote');
   const voteStatusCopy = showVoteReveal
     ? `${revealState?.ya || 0} Ja • ${revealState?.nein || 0} Nein`
     : directorState?.primaryInstruction?.description ||
@@ -381,7 +381,7 @@ export default function GameBoard({
         ? 'You have been eliminated. Watch the table, but you do not vote anymore.'
         : me?.hasVoted
           ? 'Your vote is in. Waiting for the rest of the table.'
-          : 'Cast your vote on this device now.');
+          : 'Cast your vote now.');
 
   const handleNominate = (id) => {
     triggerHaptic('selection');

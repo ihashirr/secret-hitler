@@ -109,7 +109,7 @@ export default function GameOverlay({
   let subtext = primaryInstruction?.description || '';
   let isActive = false;
   let actionContent = null;
-  let privateAudience = 'This Device';
+  let privateAudience = 'You';
 
   const displayPhase = revealState ? PHASES.VOTING : gameState.phase;
 
@@ -147,10 +147,10 @@ export default function GameOverlay({
           subtext = `${revealState.ya} Ja • ${revealState.nein} Nein`;
           isActive = true;
         } else if (me?.isAlive && !me?.hasVoted) {
-          title = activePendingVote ? 'Locking Vote' : 'Vote in Private';
+          title = activePendingVote ? 'Locking Vote' : 'Cast Vote';
           subtext = activePendingVote
-            ? `Submitting your ${activePendingVote === 'YA' ? 'Ja' : 'Nein'} vote now.`
-            : `Approve or reject ${currentChancellor?.name || 'the proposed government'} on this phone.`;
+            ? `Submitting ${activePendingVote === 'YA' ? 'Ja' : 'Nein'} now.`
+            : `Approve or reject ${currentChancellor?.name || 'the proposed government'}.`;
           isActive = true;
           actionContent = (
             <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-3">
@@ -196,7 +196,7 @@ export default function GameOverlay({
               {activePendingVote && (
                 <div className="col-span-2 flex items-center justify-center gap-2 pt-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#5f5449]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#2c2c2c]/50" />
-                  Vote sending...
+                  Sending vote...
                 </div>
               )}
             </div>
@@ -408,7 +408,7 @@ export default function GameOverlay({
         ? 'blue'
         : 'neutral';
   const spotlightVisibility = primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
-  const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'This Device' : 'Entire Table';
+  const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'You' : 'Table';
   const spotlightAutoCloseMs = hasActionContent ? 1050 : 2600;
   const spotlightActions =
     !pendingSelection && Array.isArray(primaryInstruction?.actions)

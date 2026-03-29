@@ -125,7 +125,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
             Waiting On The Table
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-white/52">
-            Your packet is sealed again. Waiting for every phone to finish the briefing.
+            Your packet is sealed again. Waiting for the rest of the table to finish the briefing.
           </p>
         </div>
       </div>
