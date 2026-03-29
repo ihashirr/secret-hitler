@@ -5,10 +5,12 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../backend/convex/_generated/api";
 import GlobalControls from '../components/GlobalControls';
 import MobileModeGate from '../components/MobileModeGate';
+import PullToRefreshIndicator from '../components/PullToRefreshIndicator';
 import StageInfoButton from '../components/StageInfoButton';
 import StageInfoOverlay from '../components/StageInfoOverlay';
 import { buildDirectorState } from '../engine/gameEngine';
 import useMobileAccessState from '../lib/useMobileAccessState';
+import usePullToRefresh from '../lib/usePullToRefresh';
 import useViewportShell from '../lib/useViewportShell';
 import PhaseRouter from '../phases/PhaseRouter';
 import { getPhaseViewKey } from '../phases/config';
@@ -26,6 +28,7 @@ export default function App() {
   const [playerId, setPlayerId] = useState(null);
   const [showStageInfo, setShowStageInfo] = useState(false);
   const mobileAccess = useMobileAccessState();
+  const pullToRefresh = usePullToRefresh();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -144,6 +147,7 @@ export default function App() {
   if (shouldRenderOnlyGate) {
     return (
       <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
+        <PullToRefreshIndicator {...pullToRefresh} />
         <MobileModeGate
           active
           viewKey={viewKey}
@@ -157,6 +161,7 @@ export default function App() {
 
   return (
     <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
+      <PullToRefreshIndicator {...pullToRefresh} />
       {showGlobalControls && (
         <GlobalControls 
           gameState={gameState} 
