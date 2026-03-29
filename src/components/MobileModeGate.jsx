@@ -33,11 +33,14 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
   const hasInstallPrompt = accessState?.canInstall;
   const canFullscreen = accessState?.canFullscreen;
   const helperCopy = VIEW_COPY[viewKey] || 'Secure the screen before continuing in the room.';
-  const primaryActionLabel = canFullscreen
-    ? 'Enter Fullscreen'
-    : hasInstallPrompt
-      ? 'Install App'
+  const primaryActionLabel = hasInstallPrompt
+    ? 'Install App'
+    : canFullscreen
+      ? 'Enter Fullscreen'
       : 'Use Home Screen Install';
+  const installInstructions = accessState?.isIos
+    ? 'iPhone/Safari: tap Share, choose Add to Home Screen, then reopen Eclipse from the app icon.'
+    : 'Open your browser menu and choose Install App or Add to Home Screen, then reopen Eclipse from the installed icon.';
 
   const handleBackToJoin = async () => {
     setIsLeaving(true);
@@ -70,6 +73,9 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-paper-light/75">
                   {helperCopy}
+                </p>
+                <p className="mt-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-[#d4af37]">
+                  Installed app is the cleanest experience. Fullscreen is the fallback.
                 </p>
               </div>
 
@@ -106,43 +112,35 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
             </div>
 
             <div className="grid gap-3">
-              {canFullscreen && (
-                <button
-                  type="button"
-                  onClick={accessState.requestFullscreen}
-                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-300"
-                >
-                  <Expand size={16} />
-                  Enter Fullscreen
-                </button>
-              )}
-
-              {hasInstallPrompt && (
+              {hasInstallPrompt ? (
                 <button
                   type="button"
                   onClick={accessState.promptInstall}
-                  className={`flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-mono font-black uppercase tracking-[0.22em] transition-colors ${
-                    canFullscreen
-                      ? 'border border-[#d4af37]/30 bg-[#d4af37] text-black hover:bg-[#e2bd48]'
-                      : 'bg-[#d4af37] text-black hover:bg-[#e2bd48]'
-                  }`}
+                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-[#e2bd48]"
                 >
                   <Download size={16} />
                   Install App
                 </button>
-              )}
-
-              {!canFullscreen && !hasInstallPrompt && (
+              ) : (
                 <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-left">
                   <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-amber-100/80">
-                    Manual Install
+                    Install App
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-amber-50/85">
-                    {accessState?.isIos
-                      ? 'iPhone/Safari: tap Share, choose Add to Home Screen, then reopen Eclipse from the app icon.'
-                      : 'Use your browser menu to install or add this app to your home screen, then reopen it there.'}
+                    {installInstructions}
                   </p>
                 </div>
+              )}
+
+              {canFullscreen && (
+                <button
+                  type="button"
+                  onClick={accessState.requestFullscreen}
+                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400 px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-300"
+                >
+                  <Expand size={16} />
+                  Enter Fullscreen
+                </button>
               )}
 
               <button
@@ -165,7 +163,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
             </div>
 
             <p className="text-center text-xs leading-relaxed text-paper-light/50">
-              Install or fullscreen only needs to happen once per session unless you exit the secure mode.
+              The room stays locked until this phone is either installed as an app or switched into fullscreen.
             </p>
           </div>
         </div>

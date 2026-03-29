@@ -5,6 +5,10 @@ export const metadata = {
   title: 'Eclipse',
   description: 'A mobile-first Secret Hitler clone built with Next.js and Convex.',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/assets/avatars/avatar_1.png',
+    apple: '/assets/avatars/avatar_1.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

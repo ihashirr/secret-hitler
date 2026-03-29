@@ -26,12 +26,18 @@ export default function Splash({ onConnect, mobileAccess }) {
   const [error, setError] = useState('');
   const showMobileHint = mobileAccess?.isMobile && !mobileAccess?.gateSatisfied;
   const showFullscreenHint = showMobileHint && mobileAccess.canFullscreen;
-  const showInstallHint = showMobileHint && mobileAccess.canInstall;
+  const showInstallHint = showMobileHint;
+  const hasNativeInstallPrompt = showMobileHint && mobileAccess.canInstall;
   const accessModeLabel = mobileAccess?.isStandalone
     ? 'Installed App'
     : mobileAccess?.isFullscreen
       ? 'Fullscreen'
       : 'Browser';
+  const installHintCopy = mobileAccess?.isIos
+    ? 'Use Share, then Add to Home Screen. Installed mode is the cleanest mobile layout.'
+    : hasNativeInstallPrompt
+      ? 'Install from the browser prompt for the cleanest mobile experience.'
+      : 'Use the browser menu to Install App or Add to Home Screen if the prompt is not available yet.';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -88,6 +94,9 @@ export default function Splash({ onConnect, mobileAccess }) {
                 <p className="mt-2 text-sm leading-relaxed text-white/75">
                   After you join, this phone will switch to fullscreen or the installed app so role reveals stay private and the layout fits cleanly.
                 </p>
+                <p className="mt-2 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-[#d4af37]">
+                  Installed app is recommended. Fullscreen is still supported.
+                </p>
               </div>
 
               <span className="shrink-0 rounded-full border border-cyan-300/20 bg-black/20 px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100">
@@ -109,21 +118,27 @@ export default function Splash({ onConnect, mobileAccess }) {
                 )}
 
                 {showInstallHint && (
-                  <button
-                    type="button"
-                    onClick={mobileAccess.promptInstall}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#d4af37]/30 bg-[#d4af37] px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-[#e2bd48]"
-                  >
-                    <Download size={14} />
-                    Install App
-                  </button>
+                  hasNativeInstallPrompt ? (
+                    <button
+                      type="button"
+                      onClick={mobileAccess.promptInstall}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#d4af37]/30 bg-[#d4af37] px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-[#e2bd48]"
+                    >
+                      <Download size={14} />
+                      Install App
+                    </button>
+                  ) : (
+                    <div className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[#d4af37]/20 bg-[#d4af37]/10 px-4 text-[11px] font-mono font-black uppercase tracking-[0.14em] text-[#f3d88b]">
+                      Install From Browser Menu
+                    </div>
+                  )
                 )}
               </div>
             )}
 
             <p className="mt-3 text-xs leading-relaxed text-white/55">
               {showFullscreenHint || showInstallHint
-                ? 'Optional before you join. The room will enforce a private mobile mode once you enter.'
+                ? `Optional before you join. ${installHintCopy}`
                 : mobileAccess?.isIos
                   ? 'iPhone/Safari: use Share, then Add to Home Screen before joining if you want the cleanest private layout.'
                   : 'If install is unavailable here, the room will still try fullscreen when you continue.'}
