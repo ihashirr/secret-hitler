@@ -37,24 +37,69 @@ const getTrackSlotMeta = (type, index) => {
   return `0${index + 1}`;
 };
 
-const getPlayerGridCols = (count) => {
-  if (count <= 4) return 'grid-cols-2 sm:grid-cols-4';
-  if (count === 5) return 'grid-cols-3 sm:grid-cols-5';
-  if (count === 6) return 'grid-cols-3 sm:grid-cols-6';
-  if (count <= 8) return 'grid-cols-4 sm:grid-cols-4';
-  return 'grid-cols-4 sm:grid-cols-5';
-};
-
-const getPlayerCardSize = (count) => {
-  if (count >= 9) return 'aspect-[0.85] max-w-[78px] sm:max-w-[92px]';
-  if (count >= 7) return 'aspect-[0.85] max-w-[84px] sm:max-w-[100px]';
-  return 'aspect-[0.85] max-w-[96px] sm:max-w-[112px]';
-};
-
 const getVotingPlayerCardSize = (count) => {
   if (count >= 9) return 'min-h-[104px] max-w-[72px] sm:min-h-[112px] sm:max-w-[78px]';
   if (count >= 7) return 'min-h-[110px] max-w-[78px] sm:min-h-[118px] sm:max-w-[86px]';
   return 'min-h-[116px] max-w-[84px] sm:min-h-[126px] sm:max-w-[92px]';
+};
+
+const getTablePlayers = (players) =>
+  [...players].sort((left, right) => (left.position || 0) - (right.position || 0));
+
+const getTableRingSeatClass = (count) => {
+  if (count >= 9) return 'h-[82px] w-[68px] sm:h-[90px] sm:w-[76px]';
+  if (count >= 7) return 'h-[88px] w-[74px] sm:h-[98px] sm:w-[82px]';
+  return 'h-[96px] w-[80px] sm:h-[108px] sm:w-[90px]';
+};
+
+const getTableRingSeatStyle = (index, total) => {
+  if (total <= 1) {
+    return {
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%, -50%)',
+    };
+  }
+
+  const angle = ((index / total) * Math.PI * 2) - Math.PI / 2;
+  const radius = total >= 9 ? 40 : total >= 7 ? 38 : 35;
+  const left = 50 + Math.cos(angle) * radius;
+  const top = 50 + Math.sin(angle) * radius;
+
+  return {
+    left: `${left}%`,
+    top: `${top}%`,
+    transform: 'translate(-50%, -50%)',
+  };
+};
+
+const getPresidencyQueue = (players, currentPresidentId, specialElectionCallerId) => {
+  const orderedAlivePlayers = getTablePlayers(players).filter((player) => player.isAlive);
+  if (!orderedAlivePlayers.length) {
+    return {
+      orderMap: new Map(),
+      nextPresidentId: null,
+      afterNextPresidentId: null,
+      originPresidentId: null,
+    };
+  }
+
+  const originPresidentId = specialElectionCallerId || currentPresidentId || orderedAlivePlayers[0].id;
+  const originIndex = orderedAlivePlayers.findIndex((player) => player.id === originPresidentId);
+  const safeOriginIndex = originIndex >= 0 ? originIndex : 0;
+  const orderMap = new Map();
+
+  for (let offset = 1; offset <= orderedAlivePlayers.length; offset += 1) {
+    const player = orderedAlivePlayers[(safeOriginIndex + offset) % orderedAlivePlayers.length];
+    orderMap.set(player.id, offset);
+  }
+
+  return {
+    orderMap,
+    nextPresidentId: orderedAlivePlayers[(safeOriginIndex + 1) % orderedAlivePlayers.length]?.id || null,
+    afterNextPresidentId: orderedAlivePlayers[(safeOriginIndex + 2) % orderedAlivePlayers.length]?.id || null,
+    originPresidentId,
+  };
 };
 
 const getVotingStatusMeta = (player, isRevealed, finalVote) => {
@@ -700,8 +745,19 @@ export default function GameBoard({
   const renderPlayerDock = () => {
     const isVotingPhase = displayPhase === PHASES.VOTING;
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
-    const gridColsClass = getPlayerGridCols(playerCount);
-    const playerCardSizeClass = isVotingPhase ? getVotingPlayerCardSize(playerCount) : getPlayerCardSize(playerCount);
+    const playerCardSizeClass = getVotingPlayerCardSize(playerCount);
+    const tablePlayers = getTablePlayers(gameState.players);
+    const {
+      orderMap: presidencyOrderMap,
+      nextPresidentId,
+      afterNextPresidentId,
+      originPresidentId,
+    } = getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId);
+    const currentPresidentPlayer = tablePlayers.find((player) => player.id === gameState.currentPresident);
+    const presidencyOriginPlayer = tablePlayers.find((player) => player.id === originPresidentId);
+    const nextPresidentPlayer = tablePlayers.find((player) => player.id === nextPresidentId);
+    const afterNextPresidentPlayer = tablePlayers.find((player) => player.id === afterNextPresidentId);
+    const ringSeatClass = getTableRingSeatClass(playerCount);
     const votingGroups = isVotingPhase
       ? showVoteReveal
         ? getVoteRevealGroups(gameState.players, revealState?.votes)
@@ -723,7 +779,7 @@ export default function GameBoard({
           ? null
           : isLegislativePhase
             ? 'Policy handoff in progress'
-            : 'Private phone table';
+            : 'Seat order drives the presidency';
     const dockTitle = 'Players';
     const dockBadgeLabel = isVotingPhase ? null : `${aliveCount}/${playerCount} Live`;
     const dockWrapperClass = isVoteRevealPhase
@@ -893,102 +949,194 @@ export default function GameBoard({
                   ))}
                 </div>
               ) : (
-                <div className={`grid min-w-0 w-full content-start justify-items-center gap-2 sm:gap-3 ${gridColsClass}`}>
-                  {gameState.players.map((player) => {
-                    const isSelf = player.id === myActualId;
-                    const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
-                    const isSelectable =
-                      (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
-                      (displayPhase === PHASES.EXECUTIVE_ACTION &&
-                        canExecutiveTarget &&
-                        player.isAlive &&
-                        !isSelf &&
-                        !(executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated));
-                    const isPending = pendingSelection?.id === player.id;
-                    const playerIsPresident = player.id === gameState.currentPresident;
-                    const playerIsChancellor = player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
-                    const isInactiveLegislator = isLegislativePhase && !playerIsPresident && !playerIsChancellor;
+                <div className="flex min-h-0 flex-col items-center gap-4">
+                  <div className="grid w-full max-w-[680px] grid-cols-1 gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-white/62 sm:grid-cols-3 sm:gap-3 sm:text-[10px]">
+                    <div className="rounded-[18px] border border-[#d4af37]/22 bg-[#d4af37]/10 px-3 py-2">
+                      <span className="block text-[#f3df9c]">Current President</span>
+                      <span className="mt-1 block truncate text-white">{currentPresidentPlayer?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/10 px-3 py-2">
+                      <span className="block text-cyan-100">Next President</span>
+                      <span className="mt-1 block truncate text-white">{nextPresidentPlayer?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-2">
+                      <span className="block text-white/55">{gameState.specialElectionCallerId ? 'Order Resumes After' : 'Then'}</span>
+                      <span className="mt-1 block truncate text-white">
+                        {gameState.specialElectionCallerId
+                          ? (presidencyOriginPlayer?.name || 'Current Rotation')
+                          : (afterNextPresidentPlayer?.name || 'Rotation Continues')}
+                      </span>
+                    </div>
+                  </div>
 
-                    return (
-                      <div key={player.id} className="relative flex w-full justify-center">
-                        <motion.button
-                          layout
-                          whileHover={isSelectable ? { y: -3 } : {}}
-                          whileTap={isSelectable ? { scale: 0.97 } : {}}
-                          onClick={() => {
-                            if (!isSelectable) return;
-                            if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
-                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.EXECUTION) handleKill(player.id);
-                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE) handleInvestigate(player.id);
-                            if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
-                          }}
-                          className={`group relative flex w-full flex-col overflow-hidden rounded-[20px] border border-[#d4c098] bg-[var(--color-paper-light)] p-1.5 text-center shadow-md outline-none transition-all duration-300 sm:p-2 ${playerCardSizeClass}
-                            ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
-                            ${isSelectable ? 'cursor-pointer ring-1 ring-transparent hover:border-[#b09868] hover:bg-[#fff9ed] hover:shadow-xl hover:ring-[var(--color-stamp-blue)]' : 'cursor-default'}
-                            ${!player.isAlive ? 'bg-[#d8d0c0] opacity-45 brightness-75' : ''}
-                            ${displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated ? 'opacity-45 grayscale-[0.3]' : ''}
-                            ${isPending ? 'z-20 scale-[1.03] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
-                          `}
-                        >
-                          {(playerIsPresident || playerIsChancellor) && (
-                            <span className={`absolute left-1.5 top-1.5 z-10 rounded-full px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.2em] ${
-                              playerIsPresident ? 'bg-[#d4af37] text-white' : 'bg-[#d9d9d9] text-[#2c2c2c]'
-                            }`}>
-                              {playerIsPresident ? 'PRES' : 'CHAN'}
-                            </span>
-                          )}
-
-                          {player.isBot && (
-                            <span className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-full border border-amber-700/35 bg-amber-300/14 px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-[#7a5412]">
-                              <Bot size={8} />
-                              Bot
-                            </span>
-                          )}
-
-                          <div className={`relative flex h-[58%] w-full items-end justify-center overflow-hidden rounded-[10px] border border-[#d4c098] shadow-inner ${
-                            !player.isAlive ? 'bg-[#b8b0a0]' : 'bg-[#e8dcc4]'
-                          }`}>
-                            {player.isAlive ? (
-                              <>
-                                <img
-                                  src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
-                                  alt="Operative Profile"
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="absolute inset-0 h-full w-full object-cover pointer-events-none opacity-80 mix-blend-multiply filter sepia-[0.2] contrast-125 brightness-90"
-                                />
-                                <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
-                              </>
-                            ) : (
-                              <Skull size={18} className="relative z-10 mb-2 text-[#2c2c2c] opacity-50 pointer-events-none" />
-                            )}
-                          </div>
-
-                          <span className={`mt-1 w-full truncate font-serif text-[9px] font-black tracking-tight sm:text-[10px] ${
-                            !player.isAlive ? 'text-[#6a6a6a] line-through' : 'text-[#2c2c2c]'
-                          }`}>
-                            {player.name}
+                  <div className="relative mx-auto w-full max-w-[390px]">
+                    <div className="relative aspect-square w-full">
+                      <div className="absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
+                      <div className="absolute inset-[22%] flex flex-col items-center justify-center rounded-full border border-[#d4c098]/18 bg-[linear-gradient(180deg,rgba(10,11,13,0.92)_0%,rgba(6,7,8,0.92)_100%)] px-4 text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                        <p className="text-[8px] font-mono font-black uppercase tracking-[0.32em] text-[#d4c098]/72">
+                          Presidency Order
+                        </p>
+                        <p className="mt-3 text-sm font-black uppercase tracking-[0.14em] text-white sm:text-base">
+                          {gameState.specialElectionCallerId ? 'Special Election' : 'Clockwise Rotation'}
+                        </p>
+                        <p className="mt-2 max-w-[15rem] text-[10px] leading-relaxed text-white/55 sm:text-[11px]">
+                          {gameState.specialElectionCallerId
+                            ? `Order resumes after ${presidencyOriginPlayer?.name || 'the calling president'}.`
+                            : 'Seat numbers show who becomes president next.'}
+                        </p>
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.2em] text-white/62">
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-[8px] text-black">
+                            1
                           </span>
-
-                          {isSelectable && displayPhase === PHASES.EXECUTIVE_ACTION && !isPending && (
-                            <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[var(--color-stamp-red)] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[var(--color-stamp-red)] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
-                              {executivePower === EXECUTIVE_POWERS.INVESTIGATE
-                                ? 'Investigate'
-                                : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
-                                  ? 'Elect'
-                                  : 'Eliminate'}
-                            </span>
-                          )}
-
-                          {isSelectable && displayPhase === PHASES.NOMINATION && !isPending && (
-                            <span className="absolute inset-x-0 bottom-1 mx-auto w-fit rounded-full border border-[#2b5c8f] px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.18em] text-[#2b5c8f] opacity-0 transition-all mix-blend-multiply group-hover:opacity-100">
-                              Nominate
-                            </span>
-                          )}
-                        </motion.button>
+                          Next President
+                        </div>
                       </div>
-                    );
-                  })}
+
+                      {tablePlayers.map((player, index) => {
+                        const isSelf = player.id === myActualId;
+                        const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
+                        const isSelectable =
+                          (displayPhase === PHASES.NOMINATION && canNominate && player.isAlive && !isSelf) ||
+                          (displayPhase === PHASES.EXECUTIVE_ACTION &&
+                            canExecutiveTarget &&
+                            player.isAlive &&
+                            !isSelf &&
+                            !(executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated));
+                        const isPending = pendingSelection?.id === player.id;
+                        const playerIsPresident = player.id === gameState.currentPresident;
+                        const playerIsChancellor = player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor;
+                        const isInactiveLegislator = isLegislativePhase && !playerIsPresident && !playerIsChancellor;
+                        const presidencyOrder = presidencyOrderMap.get(player.id);
+                        const isNextPresident = player.id === nextPresidentId;
+                        const isAfterNextPresident = player.id === afterNextPresidentId;
+
+                        return (
+                          <button
+                            key={player.id}
+                            type="button"
+                            onClick={() => {
+                              if (!isSelectable) return;
+                              if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
+                              if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.EXECUTION) handleKill(player.id);
+                              if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE) handleInvestigate(player.id);
+                              if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
+                            }}
+                            style={getTableRingSeatStyle(index, tablePlayers.length)}
+                            className={`group absolute flex flex-col items-center justify-start overflow-hidden rounded-[24px] border px-1.5 py-1.5 text-center shadow-[0_14px_26px_rgba(0,0,0,0.26)] outline-none transition-all duration-300 sm:px-2 sm:py-2 ${ringSeatClass}
+                              ${playerIsPresident ? 'border-[#d4af37]/80 bg-[linear-gradient(180deg,#fff2c2_0%,#d7ba67_100%)] text-[#2c2410]' : 'border-white/8 bg-[linear-gradient(180deg,rgba(18,20,24,0.96)_0%,rgba(11,12,14,0.94)_100%)] text-white'}
+                              ${playerIsChancellor && !playerIsPresident ? 'ring-2 ring-white/55' : ''}
+                              ${isNextPresident ? 'ring-2 ring-cyan-300 shadow-[0_0_0_1px_rgba(103,232,249,0.4),0_16px_30px_rgba(0,0,0,0.3)]' : ''}
+                              ${isAfterNextPresident ? 'shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_28px_rgba(0,0,0,0.28)]' : ''}
+                              ${isSelectable ? 'cursor-pointer hover:scale-[1.04] hover:border-[#d4c098] active:scale-[0.98]' : 'cursor-default'}
+                              ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
+                              ${!player.isAlive ? 'opacity-45 brightness-75' : ''}
+                              ${displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated ? 'opacity-45 grayscale-[0.3]' : ''}
+                              ${isPending ? 'z-20 scale-[1.06] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
+                              ${isSelf ? 'shadow-[0_0_0_1px_rgba(103,232,249,0.24),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
+                            `}
+                          >
+                            <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
+                              {player.isBot && (
+                                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[7px] ${
+                                  playerIsPresident ? 'bg-[#2c2410]/12 text-[#2c2410]' : 'bg-amber-400/14 text-amber-200'
+                                }`}>
+                                  <Bot size={8} />
+                                </span>
+                              )}
+                              {isSelf && (
+                                <span className={`rounded-full border px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] ${
+                                  playerIsPresident ? 'border-[#2c2410]/18 bg-[#2c2410]/10 text-[#2c2410]' : 'border-cyan-300/18 bg-cyan-400/10 text-cyan-100'
+                                }`}>
+                                  You
+                                </span>
+                              )}
+                            </div>
+
+                            {(playerIsPresident || playerIsChancellor) && (
+                              <span className={`absolute left-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.18em] ${
+                                playerIsPresident ? 'bg-[#2c2410] text-[#f3df9c]' : 'bg-white/16 text-white'
+                              }`}>
+                                {playerIsPresident ? 'PRES' : 'CHAN'}
+                              </span>
+                            )}
+
+                            {player.isAlive && !playerIsPresident && presidencyOrder ? (
+                              <span className={`absolute right-1.5 top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[8px] font-mono font-black ${
+                                isNextPresident
+                                  ? 'bg-cyan-300 text-black'
+                                  : 'bg-white/10 text-white/76'
+                              }`}>
+                                {presidencyOrder}
+                              </span>
+                            ) : null}
+
+                            <div className={`relative mt-1 flex h-10 w-10 items-end justify-center overflow-hidden rounded-[14px] border sm:h-12 sm:w-12 ${
+                              playerIsPresident
+                                ? 'border-[#2c2410]/14 bg-[#f7e7b0]'
+                                : !player.isAlive
+                                  ? 'border-white/8 bg-white/[0.04]'
+                                  : 'border-white/10 bg-white/[0.06]'
+                            }`}>
+                              {player.isAlive ? (
+                                <>
+                                  <img
+                                    src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
+                                    alt="Operative Profile"
+                                    loading="lazy"
+                                    decoding="async"
+                                    className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${
+                                      playerIsPresident
+                                        ? 'opacity-85 mix-blend-multiply sepia-[0.08] contrast-110'
+                                        : 'opacity-80 mix-blend-multiply sepia-[0.2] contrast-125 brightness-90'
+                                    }`}
+                                  />
+                                  <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
+                                </>
+                              ) : (
+                                <Skull size={16} className={`relative z-10 mb-1 ${playerIsPresident ? 'text-[#2c2410]/60' : 'text-white/35'}`} />
+                              )}
+                            </div>
+
+                            <span className={`mt-1 w-full truncate font-serif text-[8px] font-black tracking-tight sm:text-[9px] ${
+                              playerIsPresident
+                                ? 'text-[#2c2410]'
+                                : !player.isAlive
+                                  ? 'text-white/40 line-through'
+                                  : 'text-white'
+                            }`}>
+                              {player.name}
+                            </span>
+
+                            <span className={`mt-1 text-[6px] font-mono font-black uppercase tracking-[0.18em] ${
+                              isNextPresident
+                                ? 'text-cyan-100'
+                                : playerIsPresident
+                                  ? 'text-[#2c2410]/72'
+                                  : isSelectable
+                                    ? 'text-[#d4c098]'
+                                    : 'text-white/42'
+                            }`}>
+                              {isNextPresident
+                                ? 'Next Up'
+                                : isSelectable
+                                  ? displayPhase === PHASES.NOMINATION
+                                    ? 'Nominate'
+                                    : executivePower === EXECUTIVE_POWERS.INVESTIGATE
+                                      ? 'Investigate'
+                                      : executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+                                        ? 'Elect'
+                                        : executivePower === EXECUTIVE_POWERS.EXECUTION
+                                          ? 'Eliminate'
+                                          : 'Selectable'
+                                  : player.isAlive
+                                    ? 'In Rotation'
+                                    : 'Eliminated'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
