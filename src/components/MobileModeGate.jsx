@@ -10,14 +10,43 @@ const VIEW_COPY = {
   ROLE_REVEAL: 'Protect the next role briefing before anyone can glance at this screen.',
 };
 
-export default function MobileModeGate({ active, viewKey, onExitToConnect, accessState }) {
+export default function MobileModeGate({ active, viewKey, onExitToConnect, accessState, installResumeUrl }) {
   const [isLeaving, setIsLeaving] = useState(false);
+  const [launchState, setLaunchState] = useState('idle');
 
   useEffect(() => {
     if (!active) {
       setIsLeaving(false);
+      setLaunchState('idle');
     }
   }, [active]);
+
+  useEffect(() => {
+    if (!active || !accessState?.justInstalled || accessState?.isStandalone) return;
+
+    setLaunchState('launching');
+    accessState.clearJustInstalled?.();
+
+    const handoffTimer = window.setTimeout(() => {
+      if (installResumeUrl) {
+        window.location.assign(installResumeUrl);
+      }
+    }, 180);
+
+    const fallbackTimer = window.setTimeout(() => {
+      setLaunchState((current) => (current === 'launching' ? 'manual' : current));
+      accessState.refresh?.();
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(handoffTimer);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [
+    active,
+    accessState,
+    installResumeUrl,
+  ]);
 
   const isMobile = accessState?.isMobile;
   const gateSatisfied = accessState?.gateSatisfied;
@@ -41,6 +70,8 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
   const installInstructions = accessState?.isIos
     ? 'iPhone/Safari: tap Share, choose Add to Home Screen, then reopen Eclipse from the app icon.'
     : 'Open your browser menu and choose Install App or Add to Home Screen, then reopen Eclipse from the installed icon.';
+  const isLaunchPending = launchState === 'launching';
+  const showLaunchFallback = launchState === 'manual';
 
   const handleBackToJoin = async () => {
     setIsLeaving(true);
@@ -49,6 +80,17 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
       await onExitToConnect();
     } finally {
       setIsLeaving(false);
+    }
+  };
+
+  const handleInstall = async () => {
+    if (!hasInstallPrompt) return;
+
+    setLaunchState('installing');
+    const accepted = await accessState.promptInstall();
+
+    if (!accepted) {
+      setLaunchState('idle');
     }
   };
 
@@ -115,7 +157,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
               {hasInstallPrompt ? (
                 <button
                   type="button"
-                  onClick={accessState.promptInstall}
+                  onClick={handleInstall}
                   className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-4 text-sm font-mono font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-[#e2bd48]"
                 >
                   <Download size={16} />
@@ -141,6 +183,28 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
                   <Expand size={16} />
                   Enter Fullscreen
                 </button>
+              )}
+
+              {(isLaunchPending || showLaunchFallback) && (
+                <div className="rounded-[22px] border border-cyan-300/18 bg-cyan-400/10 px-4 py-4 text-left">
+                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-cyan-100/80">
+                    {isLaunchPending ? 'Opening Installed App' : 'Installed App Ready'}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-cyan-50/85">
+                    {isLaunchPending
+                      ? 'Trying to hand off this room into the installed app now.'
+                      : 'If the installed app did not open on its own, open Eclipse from your home screen or app launcher. Your active room will be restored.'}
+                  </p>
+                  {showLaunchFallback && installResumeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => window.location.assign(installResumeUrl)}
+                      className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-300/24 bg-white/5 px-4 text-[11px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100 transition-colors hover:bg-white/10"
+                    >
+                      Try Open Installed App
+                    </button>
+                  )}
+                </div>
               )}
 
               <button

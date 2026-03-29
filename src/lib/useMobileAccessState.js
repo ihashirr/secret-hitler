@@ -8,6 +8,7 @@ const DEFAULT_STATE = {
   isIos: false,
   isMobile: false,
   isStandalone: false,
+  justInstalled: false,
 };
 
 const getIsStandaloneMode = () => {
@@ -51,6 +52,7 @@ const getAccessSnapshot = () => ({
 export default function useMobileAccessState() {
   const [accessState, setAccessState] = useState(DEFAULT_STATE);
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
+  const [justInstalled, setJustInstalled] = useState(false);
 
   const refresh = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -66,6 +68,7 @@ export default function useMobileAccessState() {
 
     const onAppInstalled = () => {
       setInstallPromptEvent(null);
+      setJustInstalled(true);
       refresh();
     };
 
@@ -118,8 +121,14 @@ export default function useMobileAccessState() {
 
     try {
       await installPromptEvent.prompt();
-      await installPromptEvent.userChoice;
-      return true;
+      const choice = await installPromptEvent.userChoice;
+
+      if (choice?.outcome === 'accepted') {
+        setJustInstalled(true);
+        return true;
+      }
+
+      return false;
     } catch {
       return false;
     } finally {
@@ -128,10 +137,16 @@ export default function useMobileAccessState() {
     }
   };
 
+  const clearJustInstalled = () => {
+    setJustInstalled(false);
+  };
+
   return {
     ...accessState,
     canInstall: Boolean(installPromptEvent),
     gateSatisfied: accessState.isStandalone || accessState.isFullscreen,
+    justInstalled,
+    clearJustInstalled,
     promptInstall,
     refresh,
     requestFullscreen,

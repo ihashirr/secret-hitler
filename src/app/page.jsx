@@ -29,8 +29,36 @@ export default function App() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const savedRoom = sessionStorage.getItem(STORAGE_KEYS.roomId) || '';
-      const savedPlayer = sessionStorage.getItem(STORAGE_KEYS.playerId) || null;
+      const params = new URLSearchParams(window.location.search);
+      const urlRoom = params.get('room')?.toUpperCase().slice(0, 4) || '';
+      const urlPlayer = params.get('player') || null;
+      const savedRoom =
+        sessionStorage.getItem(STORAGE_KEYS.roomId) ||
+        localStorage.getItem(STORAGE_KEYS.roomId) ||
+        urlRoom ||
+        '';
+      const savedPlayer =
+        sessionStorage.getItem(STORAGE_KEYS.playerId) ||
+        localStorage.getItem(STORAGE_KEYS.playerId) ||
+        urlPlayer;
+
+      if (savedRoom) {
+        sessionStorage.setItem(STORAGE_KEYS.roomId, savedRoom);
+        localStorage.setItem(STORAGE_KEYS.roomId, savedRoom);
+      }
+
+      if (savedPlayer) {
+        sessionStorage.setItem(STORAGE_KEYS.playerId, savedPlayer);
+        localStorage.setItem(STORAGE_KEYS.playerId, savedPlayer);
+      }
+
+      if (urlPlayer) {
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('player');
+        cleanParams.delete('resume');
+        const nextSearch = cleanParams.toString();
+        window.history.replaceState(null, '', nextSearch ? `/?${nextSearch}` : '/');
+      }
 
       setMounted(true);
       setRoomId(savedRoom);
@@ -71,6 +99,8 @@ export default function App() {
       setPlayerId(result.playerId);
       sessionStorage.setItem(STORAGE_KEYS.roomId, rId);
       sessionStorage.setItem(STORAGE_KEYS.playerId, result.playerId);
+      localStorage.setItem(STORAGE_KEYS.roomId, rId);
+      localStorage.setItem(STORAGE_KEYS.playerId, result.playerId);
       return;
     }
 
@@ -84,6 +114,8 @@ export default function App() {
     setShowStageInfo(false);
     sessionStorage.removeItem(STORAGE_KEYS.roomId);
     sessionStorage.removeItem(STORAGE_KEYS.playerId);
+    localStorage.removeItem(STORAGE_KEYS.roomId);
+    localStorage.removeItem(STORAGE_KEYS.playerId);
     setRoomId('');
     setPlayerId(null);
     if (window.location.search) {
@@ -95,6 +127,10 @@ export default function App() {
   const directorState = buildDirectorState({ roomId, playerId, gameState, viewKey });
   const showGlobalControls = viewKey !== 'CONNECT' && viewKey !== 'LOADING';
   const mobileGateActive = Boolean(roomId) && viewKey !== 'CONNECT' && viewKey !== 'LOADING';
+  const installResumeUrl =
+    typeof window !== 'undefined' && roomId && playerId
+      ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}&player=${encodeURIComponent(playerId)}&resume=1`
+      : null;
 
   return (
     <div className="relative flex h-[var(--app-vh)] min-h-0 flex-col overflow-hidden bg-obsidian-950 text-white">
@@ -103,6 +139,7 @@ export default function App() {
         viewKey={viewKey}
         onExitToConnect={handleExit}
         accessState={mobileAccess}
+        installResumeUrl={installResumeUrl}
       />
 
       {showGlobalControls && (
@@ -118,6 +155,8 @@ export default function App() {
           onWipe={async () => {
             await wipeAllData();
             sessionStorage.clear();
+            localStorage.removeItem(STORAGE_KEYS.roomId);
+            localStorage.removeItem(STORAGE_KEYS.playerId);
             window.location.href = '/';
           }}
           onExit={handleExit}
