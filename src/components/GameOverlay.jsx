@@ -817,12 +817,13 @@ export default function GameOverlay({
                 setDismissedVoteDeskKey(votingDrawerKey);
               }
             }}
-            className={`pointer-events-auto relative flex min-w-0 max-h-[85dvh] w-full max-w-[760px] transform-gpu will-change-transform flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 ${
+            className={`pointer-events-auto relative flex min-w-0 w-full max-w-[760px] transform-gpu will-change-transform flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 ${
               displayPhase === PHASES.VOTING
                 ? 'border-cyan-500/20 bg-[linear-gradient(180deg,#0a1016_0%,#05080b_100%)]'
                 : 'border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)]'
             }`}
             style={{
+              maxHeight: 'calc(var(--app-vh) - var(--app-header-offset) - 10px)',
               boxShadow: displayPhase === PHASES.VOTING 
                 ? '0 -32px 80px rgba(0,0,0,0.7), 0 0 100px rgba(34,211,238,0.06)' 
                 : '0 -24px 60px rgba(0,0,0,0.55)'

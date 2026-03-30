@@ -422,13 +422,22 @@ export default function GameBoard({
         : playerCount >= 7
           ? 'min(100%, clamp(294px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 420px))'
           : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))';
+    const ringPanelMinHeight =
+      playerCount >= 9
+        ? 'clamp(352px, calc(var(--app-vh) - var(--app-header-offset) - 312px), 432px)'
+        : playerCount >= 7
+          ? 'clamp(364px, calc(var(--app-vh) - var(--app-header-offset) - 292px), 456px)'
+          : 'clamp(376px, calc(var(--app-vh) - var(--app-header-offset) - 272px), 480px)';
 
     return (
       <div className="flex w-full min-w-0 flex-1">
-        <div className="relative min-h-[420px] w-full min-w-0 overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:min-h-[480px] sm:p-4">
+        <div
+          className="relative w-full min-w-0 overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4"
+          style={{ minHeight: ringPanelMinHeight }}
+        >
           <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
 
-          <div className="relative z-10 flex min-h-full min-w-0 flex-col items-center justify-start gap-4 py-1 sm:gap-5">
+          <div className="relative z-10 flex min-h-full min-w-0 flex-col items-center justify-start gap-3 py-1 sm:gap-5">
             <div className="relative mx-auto w-full" style={{ width: ringShellWidth }}>
               <div className="relative aspect-square w-full">
                 <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />

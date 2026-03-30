@@ -41,6 +41,12 @@ export default function GameOver({ gameState, playerId, onReplay }) {
 
   useEffect(() => {
     const timers = [];
+    timers.push(window.setTimeout(() => {
+      setTypedTitle('');
+      setTypedReason('');
+      setRevealedCount(0);
+      setShowBreakdown(false);
+    }, 0));
     const titleTimers = typeText(winnerTitle, setTypedTitle, 220, 34);
     const titleDuration = 220 + winnerTitle.length * 34;
     const reasonTimers = typeText(gameState.winReason || '', setTypedReason, titleDuration + 260, 18);

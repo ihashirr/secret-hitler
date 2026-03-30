@@ -260,8 +260,8 @@ export default function StageSpotlight({
                 </span>
               </div>
 
-              <div className="app-scroll-y scrollbar-hide min-h-0 flex-1 pt-6 sm:pt-8">
-                <div className="mx-auto max-w-xl text-center">
+              <div className="flex min-h-0 flex-1 flex-col justify-center pt-5 sm:pt-7">
+                <div className="mx-auto flex max-w-xl flex-1 flex-col justify-center text-center">
                   <p className="text-[11px] font-mono font-black uppercase tracking-[0.42em] text-white/42">
                     Current Stage
                   </p>
@@ -294,10 +294,10 @@ export default function StageSpotlight({
                   )}
                 </div>
 
-                <div className="mt-8 sm:mt-10">
+                <div className="mt-6 sm:mt-8">
                   <div className="flex flex-col gap-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
-                    <span>{isHolding ? 'Holding spotlight' : `Auto closing in ${autoCloseLabel}`}</span>
-                    <span>{isHolding ? 'Release to resume' : 'Tap to reset • hold to pause'}</span>
+                    <span>{isHolding ? 'Pinned while pressed' : `Closing in ${autoCloseLabel}`}</span>
+                    <span>{isHolding ? 'Release to continue' : 'Tap resets • hold pauses'}</span>
                   </div>
                   <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
                     <motion.div
@@ -312,34 +312,6 @@ export default function StageSpotlight({
                         className="absolute inset-0 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.18)_0_10px,transparent_10px_20px)]"
                       />
                     )}
-                  </div>
-                  <div className={`mt-4 rounded-[24px] border px-4 py-4 text-left transition-all ${
-                    isHolding
-                      ? 'border-white/20 bg-white/[0.1] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-                      : 'border-white/10 bg-white/[0.04]'
-                  }`}>
-                    <div className="flex flex-col gap-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-mono font-black uppercase tracking-[0.18em] text-white">
-                          {isHolding ? 'Pinned While Pressed' : 'Whole Card Hold Surface'}
-                        </div>
-                        <p className="mt-1 text-xs leading-relaxed text-white/58">
-                          {isHolding
-                            ? 'The transparent overlay is keeping the spotlight pinned until you release.'
-                            : 'You can press and hold anywhere on this card. The overlay blocks text selection and long-press highlighting.'}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`self-start rounded-full border px-3 py-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] min-[360px]:shrink-0 ${
-                          isHolding
-                            ? 'border-white/18 bg-white/[0.12] text-white'
-                            : 'border-white/10 bg-white/[0.04] text-white/70'
-                        }`}
-                      >
-                        {isHolding ? 'Pinned' : 'Hold'}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
