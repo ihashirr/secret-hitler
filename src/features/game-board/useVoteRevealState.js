@@ -135,7 +135,7 @@ export default function useVoteRevealState(gameState) {
           ...current,
           [vote]: (current[vote] || 0) + 1,
         }));
-      }, 220 + index * 120),
+      }, 120 + index * 80),
     );
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));

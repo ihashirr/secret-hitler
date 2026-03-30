@@ -312,8 +312,9 @@ export default function GameBoard({
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.16, ease: 'easeOut' }}
         className="mx-auto w-full max-w-[860px] shrink-0"
       >
         <div
@@ -432,24 +433,16 @@ export default function GameBoard({
               <div className="relative aspect-square w-full">
                 <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
                 <div className="pointer-events-none absolute inset-[17%] rounded-full border border-dashed border-white/8 opacity-55" />
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: gameState.specialElectionCallerId ? 10 : 16, repeat: Infinity, ease: 'linear' }}
-                  className="pointer-events-none absolute inset-[17%]"
-                >
+                <div className="pointer-events-none absolute inset-[17%]">
                   <span className={`absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
                     gameState.specialElectionCallerId
                       ? 'bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.55)]'
                       : 'bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.55)]'
                   }`} />
-                </motion.div>
-                <motion.div
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
-                  className="pointer-events-none absolute inset-[23%]"
-                >
+                </div>
+                <div className="pointer-events-none absolute inset-[23%]">
                   <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.45)]" />
-                </motion.div>
+                </div>
                 <div className="pointer-events-none absolute inset-[27%] rounded-full border border-[#d4c098]/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06)_0%,rgba(10,11,13,0.88)_72%,rgba(6,7,8,0.94)_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
                   <div className="absolute inset-[18%] rounded-full border border-white/8" />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -472,27 +465,22 @@ export default function GameBoard({
                         if (!seat || !vote || !target) return null;
 
                         return (
-                          <motion.path
+                          <path
                             key={`vote-lane-${playerId}`}
                             d={getVoteLanePath(seat, target)}
-                            initial={{ pathLength: 0, opacity: 0.16 }}
-                            animate={{ pathLength: 1, opacity: 0.8 }}
-                            transition={{ duration: 0.32, ease: 'easeOut' }}
                             fill="none"
                             stroke={target.laneColor}
-                            strokeWidth="1.35"
+                            strokeWidth="1.2"
                             strokeLinecap="round"
+                            opacity="0.7"
                           />
                         );
                       })}
                     </svg>
 
                     {voteTargets.map((target) => (
-                      <motion.div
+                      <div
                         key={target.key}
-                        initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: 0.24, ease: 'easeOut' }}
                         className={`pointer-events-none absolute z-[2] min-w-[74px] rounded-[18px] border px-2.5 py-2 text-center ${target.accentClassName}`}
                         style={{
                           left: `${target.x}%`,
@@ -509,7 +497,7 @@ export default function GameBoard({
                             {revealedVoteTotals[target.key] || 0}
                           </span>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </>
                 )}
@@ -600,32 +588,16 @@ export default function GameBoard({
                               </>
                             )}
                             {selectionPhaseActive && isSelectable && !isPending && (
-                              <motion.div
-                                animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.97, 1.02, 0.97] }}
-                                transition={{ duration: 1.7, repeat: Infinity, ease: 'easeInOut' }}
-                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(212,192,152,0.18)_0%,rgba(212,192,152,0.08)_48%,transparent_76%)]"
-                              />
+                              <div className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(212,192,152,0.14)_0%,rgba(212,192,152,0.05)_48%,transparent_76%)]" />
                             )}
                             {playerIsPresident && (
-                              <motion.div
-                                animate={{ opacity: [0.1, 0.28, 0.1], scale: [0.94, 1.02, 0.94] }}
-                                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                                className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(255,243,194,0.36)_0%,rgba(255,243,194,0.08)_42%,transparent_72%)]"
-                              />
+                              <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(255,243,194,0.24)_0%,rgba(255,243,194,0.06)_42%,transparent_72%)]" />
                             )}
                             {isNextPresident && !playerIsPresident && (
-                              <motion.div
-                                animate={{ opacity: [0.14, 0.3, 0.14], scale: [0.96, 1.03, 0.96] }}
-                                transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
-                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_top,rgba(103,232,249,0.24)_0%,rgba(103,232,249,0.06)_42%,transparent_72%)]"
-                              />
+                              <div className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_top,rgba(103,232,249,0.16)_0%,rgba(103,232,249,0.04)_42%,transparent_72%)]" />
                             )}
                             {isVotePendingSeal && (
-                              <motion.div
-                                animate={{ opacity: [0.12, 0.26, 0.12] }}
-                                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
-                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(253,230,138,0.16)_0%,rgba(253,230,138,0.04)_56%,transparent_78%)]"
-                              />
+                              <div className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(253,230,138,0.12)_0%,rgba(253,230,138,0.03)_56%,transparent_78%)]" />
                             )}
 
                             <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
@@ -757,9 +729,9 @@ export default function GameBoard({
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 {revealedVote === 'YA' && (
                                   <motion.div
-                                    initial={{ scale: 2.4, opacity: 0, rotate: -18 }}
+                                    initial={{ scale: 1.08, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                    transition={{ duration: 0.16, ease: 'easeOut' }}
                                     className="rounded-sm border-2 border-[#2b5c8f] px-1 text-xs font-black uppercase tracking-[0.2em] text-[#2b5c8f] opacity-90 mix-blend-multiply sm:text-sm"
                                   >
                                     JA
@@ -768,9 +740,9 @@ export default function GameBoard({
 
                                 {revealedVote === 'NEIN' && (
                                   <motion.div
-                                    initial={{ scale: 2.4, opacity: 0, rotate: 18 }}
+                                    initial={{ scale: 1.08, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                    transition={{ duration: 0.16, ease: 'easeOut' }}
                                     className="rounded-sm border-2 border-[var(--color-stamp-red)] px-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--color-stamp-red)] opacity-90 mix-blend-multiply sm:text-sm"
                                   >
                                     NEIN
@@ -820,25 +792,22 @@ export default function GameBoard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98, filter: 'brightness(1.3)' }}
+      initial={{ opacity: 0, filter: 'brightness(1.08)' }}
       animate={{
         opacity: 1,
-        scale: revealStage === 1 && revealIsApproved ? [1.006, 1] : 1,
         filter: 'brightness(1)',
-        x: revealStage === 1 && !revealIsApproved ? [-3, 3, -1, 1, 0] : 0,
-        y: revealStage === 1 && !revealIsApproved ? [-2, 2, -1, 1, 0] : 0,
       }}
       transition={{
-        duration: revealStage === 1 ? 0.4 : 0.55,
+        duration: 0.28,
         ease: 'easeOut',
       }}
       className="relative h-full min-h-0 w-full overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
     >
       {revealStage === 1 && voteRevealActive && (
         <motion.div
-          initial={{ opacity: 0.42 }}
+          initial={{ opacity: 0.22 }}
           animate={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.34, ease: 'easeOut' }}
           className={`absolute inset-0 z-50 pointer-events-none ${revealState.result === 'APPROVED' ? 'bg-cyan-400' : 'bg-red-500'}`}
         />
       )}
