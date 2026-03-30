@@ -166,6 +166,24 @@ function StoryActionButton({ children, tone = 'neutral', onClick, disabled = fal
   );
 }
 
+const getMotionPresetForBeat = (kind) => {
+  switch (kind) {
+    case 'nomination-locked':
+      return 'directional';
+    case 'policy-president':
+    case 'policy-chancellor':
+    case 'policy-enacted':
+      return 'policy';
+    case 'veto-request':
+    case 'execution':
+    case 'game-over':
+    case 'hitler-elected':
+      return 'major';
+    default:
+      return 'standard';
+  }
+};
+
 export default function GameOverlay({
   gameState,
   playerId,
@@ -310,11 +328,13 @@ export default function GameOverlay({
   if (majorPublicBeat) {
     storyCard = (
       <StoryBeatCard
+        key={majorPublicBeat.key}
         cardKey={majorPublicBeat.key}
         stageLabel={majorPublicBeat.stageLabel}
         title={majorPublicBeat.title}
         description={majorPublicBeat.description}
         tone={majorPublicBeat.tone}
+        motionPreset={getMotionPresetForBeat(majorPublicBeat.kind)}
         chips={['Table']}
         visual={buildBeatVisual(majorPublicBeat)}
       />
@@ -324,6 +344,7 @@ export default function GameOverlay({
     const isApproved = revealState.result === 'APPROVED';
     storyCard = (
       <StoryBeatCard
+        key={`vote-result-intro:${voteRevealState.revealId}`}
         cardKey={`vote-result-intro:${voteRevealState.revealId}`}
         stageLabel="Vote Result"
         title={isApproved ? 'Government Elected' : 'Vote Failed'}
@@ -333,6 +354,7 @@ export default function GameOverlay({
             : 'The government was rejected. The table now resolves each ballot in order.'
         }
         tone={isApproved ? 'blue' : 'red'}
+        motionPreset="verdict"
         chips={[`${revealState.ya} Ja`, `${revealState.nein} Nein`]}
         visual={(
           <div className="grid w-full max-w-[18rem] grid-cols-2 gap-4">
@@ -352,6 +374,7 @@ export default function GameOverlay({
   } else if (pendingSelection) {
     storyCard = (
       <StoryBeatCard
+        key={`selection:${pendingSelection.type}:${pendingSelection.id}`}
         cardKey={`selection:${pendingSelection.type}:${pendingSelection.id}`}
         stageLabel="Confirm Action"
         title={
@@ -373,6 +396,7 @@ export default function GameOverlay({
                 : `${pendingSelection.name} will take the next presidency for one round.`
         }
         tone={pendingSelection.type === 'KILL' ? 'red' : 'neutral'}
+        motionPreset="decision"
         chips={['Private']}
         visual={<PortraitCard player={pendingSelection} label="Target" accent={pendingSelection.type === 'KILL' ? 'red' : 'neutral'} highlight />}
         actions={(
@@ -390,6 +414,7 @@ export default function GameOverlay({
   } else if (displayPhase === PHASES.VOTING && me?.isAlive && canShowPrivateDrawer) {
     storyCard = (
       <StoryBeatCard
+        key={`vote-card:${currentBallotKey}:${voteLocked ? 'locked' : 'open'}`}
         cardKey={`vote-card:${currentBallotKey}:${voteLocked ? 'locked' : 'open'}`}
         stageLabel="Voting"
         title={voteLocked ? 'Ballot Locked' : 'Cast Your Vote'}
@@ -399,6 +424,7 @@ export default function GameOverlay({
             : `${currentPresident?.name || 'The President'} nominated ${currentChancellor?.name || 'a Chancellor'}. Choose whether this government should proceed.`
         }
         tone={voteLocked ? (lockedVote === 'NEIN' ? 'red' : 'blue') : 'neutral'}
+        motionPreset="decision"
         chips={['Your Ballot']}
         visual={<PortraitCard player={currentChancellor} label="Nominee" accent="blue" highlight />}
         actions={voteLocked ? (
@@ -447,11 +473,13 @@ export default function GameOverlay({
   } else if (displayPhase === PHASES.LEGISLATIVE_PRESIDENT && isPresident && gameState.drawnCards?.length && canShowPrivateDrawer) {
     storyCard = (
       <StoryBeatCard
+        key={`president-hand:${(gameState.drawnCards || []).join('-')}:${gameState.drawPileCount}`}
         cardKey={`president-hand:${(gameState.drawnCards || []).join('-')}:${gameState.drawPileCount}`}
         stageLabel="President Review"
         title="Discard One Policy"
         description="Choose one policy to discard. The remaining two will be passed to the Chancellor."
         tone="neutral"
+        motionPreset="policy"
         chips={['President Only']}
         visual={<PortraitCard player={currentPresident} label="President" accent="gold" />}
         actions={(
@@ -471,11 +499,13 @@ export default function GameOverlay({
   } else if (displayPhase === PHASES.LEGISLATIVE_CHANCELLOR && isPresident && gameState.vetoRequested && canShowPrivateDrawer) {
     storyCard = (
       <StoryBeatCard
+        key={`veto-response:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}`}
         cardKey={`veto-response:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}`}
         stageLabel="Veto Decision"
         title="Respond To Veto"
         description={`${currentChancellor?.name || 'The Chancellor'} asked to discard both policies. Accept or reject the veto.`}
         tone="red"
+        motionPreset="major"
         chips={['President Only']}
         visual={(
           <div className="flex items-center justify-center gap-4">
@@ -499,6 +529,7 @@ export default function GameOverlay({
   } else if (displayPhase === PHASES.LEGISLATIVE_CHANCELLOR && isChancellor && gameState.drawnCards?.length && !gameState.vetoRequested && canShowPrivateDrawer) {
     storyCard = (
       <StoryBeatCard
+        key={`chancellor-hand:${(gameState.drawnCards || []).join('-')}:${gameState.vetoRequested ? 'veto' : 'live'}`}
         cardKey={`chancellor-hand:${(gameState.drawnCards || []).join('-')}:${gameState.vetoRequested ? 'veto' : 'live'}`}
         stageLabel="Chancellor Decision"
         title={gameState.vetoRejected ? 'Veto Rejected' : 'Enact One Policy'}
@@ -508,6 +539,7 @@ export default function GameOverlay({
             : 'Choose the final policy that will be enacted.'
         }
         tone="neutral"
+        motionPreset="policy"
         chips={['Chancellor Only']}
         visual={<PortraitCard player={currentChancellor} label="Chancellor" accent="blue" highlight />}
         actions={(
@@ -540,11 +572,13 @@ export default function GameOverlay({
   ) {
     storyCard = (
       <StoryBeatCard
+        key={`peek:${(gameState.peekedPolicies || []).join('-')}:${gameState.drawPileCount}`}
         cardKey={`peek:${(gameState.peekedPolicies || []).join('-')}:${gameState.drawPileCount}`}
         stageLabel="Policy Peek"
         title="Review Top Policies"
         description="These are the next three policies in order. They remain in the deck."
         tone="neutral"
+        motionPreset="policy"
         chips={['President Only']}
         visual={<PortraitCard player={currentPresident} label="President" accent="gold" />}
         actions={(

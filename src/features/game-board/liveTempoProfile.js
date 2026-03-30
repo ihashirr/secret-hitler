@@ -12,7 +12,8 @@ const STORY_READING_BASE_MS = 1250;
 const STORY_READING_VISUAL_BONUS_MS = 320;
 const STORY_READING_MAX_EXTRA_MS = 2600;
 const VOTE_REVEAL_EMISSION_MS = 1000;
-const VOTE_REVEAL_FINAL_HOLD_MS = 950;
+const VOTE_REVEAL_FINAL_HOLD_MS = 1100;
+const VOTE_REVEAL_INTRO_EXIT_MS = 320;
 const countWords = (text = '') =>
   text
     .trim()
@@ -21,11 +22,12 @@ const countWords = (text = '') =>
 
 const LIVE_TEMPO_PROFILES = {
   [TABLE_MODES.MIXED]: {
-    voteLockPulseMs: 540,
-    voteLockStaggerMs: 160,
-    voteLockStaggerMinMs: 120,
-    voteRevealStageDelayMs: 1450,
-    voteRevealStartDelayMs: 260,
+    voteLockPulseMs: 480,
+    voteLockStaggerMs: 140,
+    voteLockStaggerMinMs: 110,
+    voteRevealStageDelayMs: 1200,
+    voteRevealIntroExitMs: VOTE_REVEAL_INTRO_EXIT_MS,
+    voteRevealStartDelayMs: 340,
     voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
@@ -42,11 +44,12 @@ const LIVE_TEMPO_PROFILES = {
     healthCheckThrottleMs: 2200,
   },
   [TABLE_MODES.SOLO_HUMAN]: {
-    voteLockPulseMs: 620,
-    voteLockStaggerMs: 190,
-    voteLockStaggerMinMs: 135,
-    voteRevealStageDelayMs: 1650,
-    voteRevealStartDelayMs: 300,
+    voteLockPulseMs: 560,
+    voteLockStaggerMs: 170,
+    voteLockStaggerMinMs: 125,
+    voteRevealStageDelayMs: 1380,
+    voteRevealIntroExitMs: VOTE_REVEAL_INTRO_EXIT_MS,
+    voteRevealStartDelayMs: 380,
     voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
@@ -63,11 +66,12 @@ const LIVE_TEMPO_PROFILES = {
     healthCheckThrottleMs: 2000,
   },
   [TABLE_MODES.ALL_BOTS]: {
-    voteLockPulseMs: 420,
-    voteLockStaggerMs: 120,
-    voteLockStaggerMinMs: 90,
-    voteRevealStageDelayMs: 1180,
-    voteRevealStartDelayMs: 220,
+    voteLockPulseMs: 380,
+    voteLockStaggerMs: 100,
+    voteLockStaggerMinMs: 80,
+    voteRevealStageDelayMs: 1000,
+    voteRevealIntroExitMs: VOTE_REVEAL_INTRO_EXIT_MS,
+    voteRevealStartDelayMs: 280,
     voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
     voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
@@ -181,6 +185,7 @@ export function getVoteTempoProfile({
   });
   const expectedTotalDurationMs =
     tempo.voteRevealStageDelayMs +
+    tempo.voteRevealIntroExitMs +
     tempo.voteRevealStartDelayMs +
     Math.max(0, seatCount - 1) * voteRevealStepMs +
     voteRevealFinalHoldMs;
@@ -191,6 +196,7 @@ export function getVoteTempoProfile({
     voteLockPulseMs: tempo.voteLockPulseMs,
     voteLockStaggerMs,
     voteRevealStageDelayMs: tempo.voteRevealStageDelayMs,
+    voteRevealIntroExitMs: tempo.voteRevealIntroExitMs,
     voteRevealStartDelayMs: tempo.voteRevealStartDelayMs,
     voteRevealStepMs,
     voteRevealFinalHoldMs,

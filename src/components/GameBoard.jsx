@@ -476,7 +476,7 @@ export default function GameBoard({
   };
 
   const renderStatusRail = () => {
-    if (voteRevealActive && gatedRevealState && gatedRevealStage === 1) {
+    if (voteRevealActive && gatedRevealState && gatedRevealStage === 2) {
       return (
         <motion.div
           initial={{ opacity: 0 }}
@@ -502,7 +502,7 @@ export default function GameBoard({
               <span className="rounded-full border border-white/10 bg-black/18 px-2.5 py-1 text-white/72">
                 {gatedRevealedVoteTotals.YA} Ja • {gatedRevealedVoteTotals.NEIN} Nein
               </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56">
+              <span className="rounded-full border border-white/10 bg-white/4 px-2.5 py-1 text-white/56">
                 {gatedRevealProgressCount < aliveCount ? `Resolving ${gatedRevealProgressCount}/${aliveCount}` : 'Resolved'}
               </span>
             </div>
@@ -604,7 +604,7 @@ export default function GameBoard({
                   </div>
                 </div>
 
-                {voteRevealActive && gatedRevealStage === 1 && (
+                {voteRevealActive && gatedRevealStage === 2 && (
                   <>
                     <svg
                       viewBox="0 0 100 100"
@@ -628,14 +628,17 @@ export default function GameBoard({
                             strokeLinecap="round"
                             initial={{ pathLength: 0, opacity: 0 }}
                             animate={{ pathLength: 1, opacity: 0.72 }}
-                            transition={{ duration: 0.46, ease: 'easeOut' }}
+                            transition={{
+                              pathLength: { duration: 0.62, ease: [0.32, 0.72, 0.38, 1] },
+                              opacity: { duration: 0.48, ease: 'easeOut' },
+                            }}
                           />
                         );
                       })}
                     </svg>
 
                     {VOTE_TARGETS.map((target) => (
-                      <div
+                      <motion.div
                         key={target.key}
                         className={`pointer-events-none absolute z-[2] min-w-[74px] rounded-[18px] border px-2.5 py-2 text-center ${target.accentClassName}`}
                         style={{
@@ -643,17 +646,26 @@ export default function GameBoard({
                           top: `${target.y}%`,
                           transform: 'translate(-50%, -50%)',
                         }}
+                        initial={{ scale: 0.92, opacity: 0.5 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.32, ease: 'easeOut' }}
                       >
                         <div className="text-[7px] font-mono font-black uppercase tracking-[0.22em] text-white/62">
                           {target.label}
                         </div>
                         <div className="mt-1 flex items-center justify-center gap-1.5">
                           <span className={`h-2 w-2 rounded-full ${target.dotClassName}`} />
-                          <span className="text-[15px] font-black leading-none">
+                          <motion.span
+                            className="text-[15px] font-black leading-none"
+                            key={gatedRevealedVoteTotals[target.key]}
+                            initial={{ scale: 1.2, opacity: 0.6 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.24, ease: 'easeOut' }}
+                          >
                             {gatedRevealedVoteTotals[target.key] || 0}
-                          </span>
+                          </motion.span>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </>
                 )}
@@ -707,7 +719,7 @@ export default function GameBoard({
                         const isSeatInteractionDisabled = selectionPhaseActive && !isSelectable;
 
                         return (
-                          <button
+                          <motion.button
                             key={player.id}
                             type="button"
                             disabled={isSeatInteractionDisabled}
@@ -721,6 +733,14 @@ export default function GameBoard({
                               if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
                             }}
                             style={player.seatStyle}
+                            animate={{
+                              scale: isVoteRevealed ? 1.02 : 1,
+                              filter: isVoteRevealed ? 'brightness(1.1)' : 'brightness(1)',
+                            }}
+                            transition={{
+                              scale: { duration: 0.32, ease: 'easeOut' },
+                              filter: { duration: 0.32, ease: 'easeOut' },
+                            }}
                             className={`group absolute flex flex-col items-center justify-start overflow-hidden rounded-[24px] border px-1.5 py-1.5 text-center outline-none ${seatTransitionClass} ${baseSeatShadowClass} sm:px-2 sm:py-2 ${ringSeatClass}
                               ${playerIsPresident ? 'border-[#d4af37]/80 bg-[linear-gradient(180deg,#fff2c2_0%,#d7ba67_100%)] text-[#2c2410]' : 'border-white/8 bg-[linear-gradient(180deg,rgba(18,20,24,0.96)_0%,rgba(11,12,14,0.94)_100%)] text-white'}
                               ${playerIsChancellor && !playerIsPresident ? 'ring-2 ring-white/55' : ''}
@@ -918,7 +938,7 @@ export default function GameBoard({
                                 )}
                               </div>
                             )}
-                          </button>
+                          </motion.button>
                         );
                       })}
               </div>
@@ -977,7 +997,7 @@ export default function GameBoard({
       }}
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
     >
-      {gatedRevealStage === 1 && voteRevealActive && (
+      {gatedRevealStage === 2 && voteRevealActive && (
         <motion.div
           initial={{ opacity: 0.22 }}
           animate={{ opacity: 0 }}

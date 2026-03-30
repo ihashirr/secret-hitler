@@ -176,9 +176,17 @@ export default function useVoteRevealState(gameState, options = {}) {
 
     setRevealStage(0);
 
-    const revealTimer = window.setTimeout(() => {
+    const introExitTimer = window.setTimeout(() => {
       setRevealStage(1);
     }, revealState.tempo?.voteRevealStageDelayMs || voteTempo.voteRevealStageDelayMs);
+
+    const revealTimer = window.setTimeout(() => {
+      setRevealStage(2);
+    }, (
+      revealState.tempo?.voteRevealStageDelayMs || voteTempo.voteRevealStageDelayMs
+    ) + (
+      revealState.tempo?.voteRevealIntroExitMs || voteTempo.voteRevealIntroExitMs || 0
+    ));
 
     const cleanupTimer = window.setTimeout(() => {
       setRevealState((current) => (current?.id === revealState.id ? null : current));
@@ -186,18 +194,26 @@ export default function useVoteRevealState(gameState, options = {}) {
     }, revealState.expectedTotalDurationMs);
 
     return () => {
+      window.clearTimeout(introExitTimer);
       window.clearTimeout(revealTimer);
       window.clearTimeout(cleanupTimer);
     };
   }, [
     revealState?.expectedTotalDurationMs,
     revealState?.id,
+    revealState?.tempo?.voteRevealIntroExitMs,
     revealState?.tempo?.voteRevealStageDelayMs,
+    voteTempo.voteRevealIntroExitMs,
     voteTempo.voteRevealStageDelayMs,
   ]);
 
   React.useEffect(() => {
-    if (suppressTransitionEffects || gameState.phase === PHASES.VOTING || !revealState?.votes) {
+    if (
+      suppressTransitionEffects ||
+      gameState.phase === PHASES.VOTING ||
+      !revealState?.votes ||
+      revealStage < 2
+    ) {
       setRevealedVotes([]);
       return undefined;
     }
@@ -222,6 +238,7 @@ export default function useVoteRevealState(gameState, options = {}) {
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [
     gameState.phase,
+    revealStage,
     revealState,
     suppressTransitionEffects,
     voteTempo.voteRevealStartDelayMs,
