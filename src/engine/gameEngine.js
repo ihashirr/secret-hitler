@@ -51,6 +51,133 @@ const getPlayerName = (gameState, playerId, fallback = 'Unknown') =>
 const isTimelinePhase = (phase) =>
   IN_GAME_TIMELINE_STEPS.some((step) => step.key === phase);
 
+const createBoardStatus = ({ label, title, description, tone = 'neutral', chips = [] }) => ({
+  label,
+  title,
+  description,
+  tone,
+  chips,
+});
+
+const getBoardStatus = (gameState) => {
+  if (!gameState) return null;
+
+  const currentPresidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
+  const currentChancellorName = gameState.currentChancellor
+    ? getPlayerName(gameState, gameState.currentChancellor)
+    : gameState.nominatedChancellor
+      ? getPlayerName(gameState, gameState.nominatedChancellor)
+      : 'the Chancellor';
+  const alivePlayers = gameState.players.filter((candidate) => candidate.isAlive);
+  const lockedVoteCount = alivePlayers.filter((candidate) => candidate.hasVoted).length;
+  const votingChips = [];
+
+  if (gameState.phase === PHASES.VOTING) {
+    votingChips.push(`${lockedVoteCount}/${alivePlayers.length} locked`);
+
+    if (gameState.electionTracker === 2) {
+      votingChips.push('Chaos on next failed vote');
+    }
+
+    if (gameState.fascistPolicies >= 3) {
+      votingChips.push('Hitler elected as Chancellor loses the game');
+    }
+  }
+
+  switch (gameState.phase) {
+    case PHASES.NOMINATION:
+      if (gameState.nominatedChancellor) {
+        return createBoardStatus({
+          label: 'Nomination Locked',
+          title: `${currentPresidentName} nominated ${currentChancellorName}`,
+          description: 'The table is moving into a government vote.',
+          tone: 'blue',
+        });
+      }
+
+      return createBoardStatus({
+        label: 'Nomination',
+        title: `${currentPresidentName} is choosing a Chancellor`,
+        description: 'Watch the seat ring and wait for the nomination to lock.',
+      });
+
+    case PHASES.VOTING:
+      return createBoardStatus({
+        label: 'Vote',
+        title: `Ballots are open for ${currentPresidentName} / ${currentChancellorName}`,
+        description: 'Each living player is casting Ja or Nein on this government.',
+        tone: 'blue',
+        chips: votingChips,
+      });
+
+    case PHASES.LEGISLATIVE_PRESIDENT:
+      return createBoardStatus({
+        label: 'Legislative Session',
+        title: `${currentPresidentName} is reviewing three policies`,
+        description: `Two policies will be passed to ${currentChancellorName}.`,
+      });
+
+    case PHASES.LEGISLATIVE_CHANCELLOR:
+      if (gameState.vetoRequested) {
+        return createBoardStatus({
+          label: 'Veto Request',
+          title: `${currentChancellorName} asked for a veto`,
+          description: `${currentPresidentName} must accept or reject the request before play continues.`,
+          tone: 'red',
+        });
+      }
+
+      return createBoardStatus({
+        label: 'Legislative Session',
+        title: `${currentChancellorName} is choosing the final policy`,
+        description: 'One policy will be enacted from the remaining hand.',
+        tone: 'blue',
+      });
+
+    case PHASES.EXECUTIVE_ACTION:
+      switch (gameState.executivePower) {
+        case EXECUTIVE_POWERS.INVESTIGATE:
+          return createBoardStatus({
+            label: 'Executive Action',
+            title: `${currentPresidentName} is investigating loyalty`,
+            description: 'One player is being checked in private for party membership.',
+            tone: 'red',
+          });
+        case EXECUTIVE_POWERS.SPECIAL_ELECTION:
+          return createBoardStatus({
+            label: 'Executive Action',
+            title: `${currentPresidentName} is calling a special election`,
+            description: 'A temporary next president is being chosen for the following round.',
+            tone: 'red',
+          });
+        case EXECUTIVE_POWERS.PEEK:
+          return createBoardStatus({
+            label: 'Executive Action',
+            title: `${currentPresidentName} is reviewing the top policies`,
+            description: 'The next three cards are being inspected in private.',
+          });
+        case EXECUTIVE_POWERS.EXECUTION:
+          return createBoardStatus({
+            label: 'Executive Action',
+            title: `${currentPresidentName} is choosing an execution`,
+            description: 'One player will be eliminated from the table.',
+            tone: 'red',
+            chips: ['If Hitler dies, liberals win immediately'],
+          });
+        default:
+          return createBoardStatus({
+            label: 'Executive Action',
+            title: `${currentPresidentName} is resolving an executive power`,
+            description: 'The table is waiting for the President to finish the action.',
+            tone: 'red',
+          });
+      }
+
+    default:
+      return null;
+  }
+};
+
 const createStandaloneDirectorState = ({ roomId, stageKey, stage }) => ({
   stageLabel: stage.label,
   stageTitle: stage.title,
@@ -62,6 +189,7 @@ const createStandaloneDirectorState = ({ roomId, stageKey, stage }) => ({
   facts: [{ label: 'Room', value: roomId || (stageKey === 'LOADING' ? 'Rejoining' : 'Not connected') }],
   intel: [],
   currentAction: null,
+  boardStatus: null,
   ...EMPTY_TIMELINE_STATE,
 });
 
@@ -151,6 +279,7 @@ export function buildDirectorState({ roomId, playerId, gameState, viewKey }) {
     publicInstructions[0] ||
     null;
   const currentAction = getCurrentAction(player, gameState);
+  const boardStatus = getBoardStatus(gameState);
   const timelineState = buildTimeline(timelineCurrentKey);
   const intel = [];
 
@@ -236,6 +365,7 @@ export function buildDirectorState({ roomId, playerId, gameState, viewKey }) {
     facts,
     intel,
     currentAction,
+    boardStatus,
     ...timelineState,
   };
 }

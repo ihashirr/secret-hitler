@@ -43,6 +43,7 @@ export default function StageSpotlight({
   tone = 'neutral',
   autoCloseMs = DEFAULT_AUTO_CLOSE_MS,
   enforceMinimum = true,
+  compact = false,
   onDismiss,
 }) {
   const effectiveAutoCloseMs = enforceMinimum
@@ -149,7 +150,7 @@ export default function StageSpotlight({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[rgba(3,4,6,0.76)] backdrop-blur-[18px]"
+            className={compact ? 'absolute inset-0 bg-[rgba(3,4,6,0.58)] backdrop-blur-[12px]' : 'absolute inset-0 bg-[rgba(3,4,6,0.76)] backdrop-blur-[18px]'}
           />
 
           <motion.div
@@ -173,11 +174,11 @@ export default function StageSpotlight({
               }
             }}
             onContextMenu={(event) => event.preventDefault()}
-            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl transform-gpu will-change-transform select-none flex-col overflow-hidden rounded-[30px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'} sm:rounded-[34px]`}
+            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] ${compact ? 'max-w-xl' : 'max-w-2xl'} transform-gpu will-change-transform select-none flex-col overflow-hidden ${compact ? 'rounded-[26px] sm:rounded-[28px]' : 'rounded-[30px] sm:rounded-[34px]'} border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
             style={{
               boxShadow: isHolding
                 ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`
-                : `0 40px 120px rgba(0,0,0,0.62), 0 0 70px ${toneTheme.glow}`,
+                : `${compact ? '0 28px 74px rgba(0,0,0,0.46)' : '0 40px 120px rgba(0,0,0,0.62)'}, 0 0 ${compact ? '48px' : '70px'} ${toneTheme.glow}`,
               userSelect: 'none',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
@@ -244,7 +245,7 @@ export default function StageSpotlight({
               />
             )}
 
-            <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-4">
+            <div className={`pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden ${compact ? 'px-4 pb-4 pt-3 sm:px-5 sm:pb-5' : 'px-4 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-4'}`}>
               <div className="flex shrink-0 flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
                 <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
                   <FactionAccentText>

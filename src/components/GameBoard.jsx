@@ -88,6 +88,7 @@ export default function GameBoard({
     orderedRevealPlayerIds,
     revealProgressCount,
   } = useVoteRevealState(gameState);
+  const boardStatus = directorState?.boardStatus || null;
 
   React.useEffect(() => {
     setPendingSelection(null);
@@ -307,44 +308,94 @@ export default function GameBoard({
     );
   };
 
-  const renderVoteRibbon = () => {
-    if (!voteRevealActive || !revealState) return null;
+  const renderStatusRail = () => {
+    if (voteRevealActive && revealState) {
+      return (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          className="mx-auto w-full max-w-[860px] shrink-0"
+        >
+          <div
+            className={`rounded-[20px] border px-3 py-2.5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] backdrop-blur-sm sm:px-4 ${
+              revealIsApproved
+                ? 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(8,17,24,0.88)_0%,rgba(8,13,19,0.8)_100%)]'
+                : 'border-red-400/18 bg-[linear-gradient(180deg,rgba(25,8,10,0.88)_0%,rgba(15,8,9,0.8)_100%)]'
+            }`}
+          >
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
+              <span className={`rounded-full border px-2.5 py-1 ${
+                revealIsApproved
+                  ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
+                  : 'border-red-400/18 bg-red-500/10 text-red-100'
+              }`}>
+                {revealIsApproved ? 'Government Elected' : 'Vote Failed'}
+              </span>
+              <span className="rounded-full border border-white/10 bg-black/18 px-2.5 py-1 text-white/72">
+                {revealedVoteTotals.YA} Ja • {revealedVoteTotals.NEIN} Nein
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56">
+                {revealProgressCount < aliveCount ? `Resolving ${revealProgressCount}/${aliveCount}` : 'Resolved'}
+              </span>
+            </div>
+
+            <FactionAccentText as="p" className="mt-2 text-[10px] leading-relaxed text-white/66 sm:text-[11px]">
+              {revealProgressCount < orderedRevealPlayerIds.length
+                ? 'Votes are resolving one ballot at a time on the table.'
+                : revealNextStep}
+            </FactionAccentText>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (!boardStatus) return null;
+
+    const toneClassName =
+      boardStatus.tone === 'red'
+        ? 'border-red-400/16 bg-[linear-gradient(180deg,rgba(25,8,10,0.82)_0%,rgba(15,8,9,0.74)_100%)]'
+        : boardStatus.tone === 'blue'
+          ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(8,17,24,0.82)_0%,rgba(8,13,19,0.74)_100%)]'
+          : 'border-white/8 bg-[linear-gradient(180deg,rgba(10,13,18,0.76)_0%,rgba(8,11,14,0.68)_100%)]';
+    const badgeClassName =
+      boardStatus.tone === 'red'
+        ? 'border-red-400/18 bg-red-500/10 text-red-100'
+        : boardStatus.tone === 'blue'
+          ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
+          : 'border-white/10 bg-white/[0.04] text-white/72';
 
     return (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.16, ease: 'easeOut' }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         className="mx-auto w-full max-w-[860px] shrink-0"
       >
-        <div
-          className={`rounded-[20px] border px-3 py-2.5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] backdrop-blur-sm sm:px-4 ${
-            revealIsApproved
-              ? 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(8,17,24,0.88)_0%,rgba(8,13,19,0.8)_100%)]'
-              : 'border-red-400/18 bg-[linear-gradient(180deg,rgba(25,8,10,0.88)_0%,rgba(15,8,9,0.8)_100%)]'
-          }`}
-        >
+        <div className={`rounded-[18px] border px-3 py-2.5 shadow-[0_16px_32px_rgba(0,0,0,0.2)] backdrop-blur-sm sm:px-4 ${toneClassName}`}>
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
-            <span className={`rounded-full border px-2.5 py-1 ${
-              revealIsApproved
-                ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
-                : 'border-red-400/18 bg-red-500/10 text-red-100'
-            }`}>
-              {revealIsApproved ? 'Government Elected' : 'Vote Failed'}
+            <span className={`rounded-full border px-2.5 py-1 ${badgeClassName}`}>
+              {boardStatus.label}
             </span>
-            <span className="rounded-full border border-white/10 bg-black/18 px-2.5 py-1 text-white/72">
-              {revealedVoteTotals.YA} Ja • {revealedVoteTotals.NEIN} Nein
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56">
-              {revealProgressCount < aliveCount ? `Resolving ${revealProgressCount}/${aliveCount}` : 'Resolved'}
-            </span>
+            {boardStatus.chips?.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56"
+              >
+                {chip}
+              </span>
+            ))}
           </div>
 
-          <FactionAccentText as="p" className="mt-2 text-[10px] leading-relaxed text-white/66 sm:text-[11px]">
-            {revealProgressCount < orderedRevealPlayerIds.length
-              ? 'Votes are resolving one ballot at a time on the table.'
-              : revealNextStep}
+          <FactionAccentText as="h2" className="mt-2 text-[12px] font-black uppercase tracking-[0.14em] text-white/92 sm:text-[13px]">
+            {boardStatus.title}
           </FactionAccentText>
+
+          {boardStatus.description && (
+            <FactionAccentText as="p" className="mt-1 text-[10px] leading-relaxed text-white/62 sm:text-[11px]">
+              {boardStatus.description}
+            </FactionAccentText>
+          )}
         </div>
       </motion.div>
     );
@@ -857,7 +908,7 @@ export default function GameBoard({
       <div className={`app-scroll-y scrollbar-hide relative z-10 min-h-0 flex-1 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         <div className="mx-auto flex min-h-full w-full min-w-0 max-w-[1120px] flex-col gap-2 px-3 pt-16 sm:gap-3 sm:px-4 sm:pt-20">
           {renderBoardStage()}
-          {renderVoteRibbon()}
+          {renderStatusRail()}
           {renderPlayerDock()}
         </div>
       </div>
