@@ -9,13 +9,32 @@ export default function useVoteRevealState(gameState) {
   const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
   const [recentVoteIds, setRecentVoteIds] = React.useState([]);
-  const [revealedVoteIds, setRevealedVoteIds] = React.useState([]);
-  const [revealedVoteMap, setRevealedVoteMap] = React.useState({});
-  const [revealedVoteTotals, setRevealedVoteTotals] = React.useState({ YA: 0, NEIN: 0 });
+  const [revealedVotes, setRevealedVotes] = React.useState([]);
   const prevPhaseRef = React.useRef(gameState.phase);
   const prevVoteStateRef = React.useRef({});
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
+
+  const revealedVoteMap = React.useMemo(
+    () =>
+      revealedVotes.reduce((accumulator, voteEntry) => {
+        accumulator[voteEntry.playerId] = voteEntry.vote;
+        return accumulator;
+      }, {}),
+    [revealedVotes],
+  );
+
+  const revealedVoteTotals = React.useMemo(
+    () =>
+      revealedVotes.reduce(
+        (accumulator, voteEntry) => ({
+          ...accumulator,
+          [voteEntry.vote]: (accumulator[voteEntry.vote] || 0) + 1,
+        }),
+        { YA: 0, NEIN: 0 },
+      ),
+    [revealedVotes],
+  );
 
   React.useEffect(() => () => {
     voteHighlightTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -113,28 +132,20 @@ export default function useVoteRevealState(gameState) {
 
   React.useEffect(() => {
     if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
-      setRevealedVoteIds([]);
-      setRevealedVoteMap({});
-      setRevealedVoteTotals({ YA: 0, NEIN: 0 });
+      setRevealedVotes([]);
       return undefined;
     }
 
-    setRevealedVoteIds([]);
-    setRevealedVoteMap({});
-    setRevealedVoteTotals({ YA: 0, NEIN: 0 });
+    setRevealedVotes([]);
 
     const timers = (revealState.orderedRevealPlayerIds || []).map((playerId, index) =>
       window.setTimeout(() => {
         const vote = revealState.votes[playerId];
-        setRevealedVoteIds((current) => (current.includes(playerId) ? current : [...current, playerId]));
-        setRevealedVoteMap((current) => ({
-          ...current,
-          [playerId]: vote,
-        }));
-        setRevealedVoteTotals((current) => ({
-          ...current,
-          [vote]: (current[vote] || 0) + 1,
-        }));
+        setRevealedVotes((current) =>
+          current.some((entry) => entry.playerId === playerId)
+            ? current
+            : [...current, { playerId, vote }],
+        );
       }, 120 + index * 80),
     );
 
@@ -145,11 +156,10 @@ export default function useVoteRevealState(gameState) {
     recentVoteIds,
     revealStage,
     revealState,
-    revealedVoteIds,
     revealedVoteMap,
     revealedVoteTotals,
     orderedRevealPlayerIds: revealState?.orderedRevealPlayerIds || [],
-    revealProgressCount: revealedVoteIds.length,
+    revealProgressCount: revealedVotes.length,
     setRevealState,
   };
 }

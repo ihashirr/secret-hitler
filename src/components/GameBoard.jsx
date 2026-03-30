@@ -561,24 +561,24 @@ export default function GameBoard({
                               if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
                             }}
                             style={player.seatStyle}
-                            className={`group absolute flex flex-col items-center justify-start overflow-hidden rounded-[24px] border px-1.5 py-1.5 text-center shadow-[0_14px_26px_rgba(0,0,0,0.26)] outline-none transition-all duration-300 sm:px-2 sm:py-2 ${ringSeatClass}
+                            className={`group absolute flex flex-col items-center justify-start overflow-hidden rounded-[24px] border px-1.5 py-1.5 text-center outline-none ${seatTransitionClass} ${baseSeatShadowClass} sm:px-2 sm:py-2 ${ringSeatClass}
                               ${playerIsPresident ? 'border-[#d4af37]/80 bg-[linear-gradient(180deg,#fff2c2_0%,#d7ba67_100%)] text-[#2c2410]' : 'border-white/8 bg-[linear-gradient(180deg,rgba(18,20,24,0.96)_0%,rgba(11,12,14,0.94)_100%)] text-white'}
                               ${playerIsChancellor && !playerIsPresident ? 'ring-2 ring-white/55' : ''}
-                              ${isNextPresident ? 'ring-2 ring-cyan-300 shadow-[0_0_0_1px_rgba(103,232,249,0.4),0_16px_30px_rgba(0,0,0,0.3)]' : ''}
-                              ${isAfterNextPresident ? 'shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_28px_rgba(0,0,0,0.28)]' : ''}
-                              ${showSeatVoteStatus && player.hasVoted && !isVoteRevealed ? 'border-cyan-300/30 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
-                              ${isVotePendingSeal ? 'border-amber-200/32 shadow-[0_0_0_1px_rgba(253,230,138,0.18),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
-                              ${isVoteRevealed && revealedVote === 'YA' ? 'ring-2 ring-[#2b5c8f] shadow-[0_0_0_1px_rgba(103,232,249,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
-                              ${isVoteRevealed && revealedVote === 'NEIN' ? 'ring-2 ring-[var(--color-stamp-red)] shadow-[0_0_0_1px_rgba(248,113,113,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
-                              ${selectionPhaseActive && isSelectable ? 'border-[#d4c098]/65 shadow-[0_0_0_1px_rgba(212,192,152,0.25),0_18px_32px_rgba(0,0,0,0.3)]' : ''}
+                              ${isNextPresident ? 'ring-2 ring-cyan-300 shadow-[0_0_0_1px_rgba(103,232,249,0.28),0_10px_18px_rgba(0,0,0,0.22)]' : ''}
+                              ${isAfterNextPresident ? 'shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_10px_18px_rgba(0,0,0,0.22)]' : ''}
+                              ${showSeatVoteStatus && player.hasVoted && !isVoteRevealed ? 'border-cyan-300/30 shadow-[0_0_0_1px_rgba(103,232,249,0.14),0_10px_20px_rgba(0,0,0,0.22)]' : ''}
+                              ${isVotePendingSeal ? 'border-amber-200/32 shadow-[0_0_0_1px_rgba(253,230,138,0.14),0_10px_20px_rgba(0,0,0,0.22)]' : ''}
+                              ${isVoteRevealed && revealedVote === 'YA' ? 'ring-2 ring-[#2b5c8f] shadow-[0_0_0_1px_rgba(103,232,249,0.22),0_10px_20px_rgba(0,0,0,0.22)]' : ''}
+                              ${isVoteRevealed && revealedVote === 'NEIN' ? 'ring-2 ring-[var(--color-stamp-red)] shadow-[0_0_0_1px_rgba(248,113,113,0.22),0_10px_20px_rgba(0,0,0,0.22)]' : ''}
+                              ${selectionPhaseActive && isSelectable ? 'border-[#d4c098]/65 shadow-[0_0_0_1px_rgba(212,192,152,0.22),0_12px_22px_rgba(0,0,0,0.22)]' : ''}
                               ${selectionPhaseActive && !isSelectable ? 'border-red-400/18 bg-[linear-gradient(180deg,rgba(30,14,17,0.96)_0%,rgba(17,10,12,0.96)_100%)]' : ''}
                               ${isSelectable ? 'cursor-pointer hover:scale-[1.04] hover:border-[#d4c098] active:scale-[0.98]' : 'cursor-default'}
                               ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
                               ${!player.isAlive ? 'opacity-45 brightness-75' : ''}
                               ${displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated ? 'opacity-45 grayscale-[0.3]' : ''}
-                              ${isPending ? 'z-20 scale-[1.06] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-2xl' : ''}
-                              ${justVoted ? 'border-cyan-300/42 shadow-[0_0_0_1px_rgba(103,232,249,0.28),0_0_24px_rgba(103,232,249,0.18)]' : ''}
-                              ${isSelf ? 'shadow-[0_0_0_1px_rgba(103,232,249,0.24),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
+                              ${isPending ? 'z-20 scale-[1.04] !opacity-100 ring-4 ring-[var(--color-stamp-red)] shadow-[0_14px_28px_rgba(0,0,0,0.28)]' : ''}
+                              ${justVoted ? 'border-cyan-300/42 shadow-[0_0_0_1px_rgba(103,232,249,0.22),0_0_16px_rgba(103,232,249,0.14)]' : ''}
+                              ${isSelf ? 'shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_10px_20px_rgba(0,0,0,0.22)]' : ''}
                             `}
                           >
                             {selectionPhaseActive && !isSelectable && player.isAlive && (
@@ -651,11 +651,10 @@ export default function GameBoard({
                                     decoding="async"
                                     className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${
                                       playerIsPresident
-                                        ? 'opacity-85 mix-blend-multiply sepia-[0.08] contrast-110'
-                                        : 'opacity-80 mix-blend-multiply sepia-[0.2] contrast-125 brightness-90'
+                                        ? 'opacity-88'
+                                        : 'opacity-72 grayscale-[0.12]'
                                     }`}
                                   />
-                                  <div className="absolute inset-0 paper-grain pointer-events-none opacity-30 mix-blend-overlay" />
                                 </>
                               ) : (
                                 <Skull size={16} className={`relative z-10 mb-1 ${playerIsPresident ? 'text-[#2c2410]/60' : 'text-white/35'}`} />
@@ -789,6 +788,12 @@ export default function GameBoard({
       : displayPhase === PHASES.EXECUTIVE_ACTION
         ? 'from-red-900/40 via-transparent to-transparent'
         : 'from-transparent to-transparent';
+  const seatTransitionClass = voteRevealActive
+    ? 'transition-opacity duration-100'
+    : 'transition-[transform,opacity,border-color,ring-color] duration-150';
+  const baseSeatShadowClass = voteRevealActive
+    ? 'shadow-[0_8px_18px_rgba(0,0,0,0.18)]'
+    : 'shadow-[0_14px_26px_rgba(0,0,0,0.26)]';
 
   return (
     <motion.div
@@ -812,8 +817,8 @@ export default function GameBoard({
         />
       )}
 
-      <div className={`fixed inset-0 z-0 board-grid pointer-events-none transition-all duration-1000 ${displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR ? 'opacity-[0.03]' : 'opacity-[0.05]'}`} />
-      <div className={`absolute inset-0 z-0 pointer-events-none opacity-20 transition-all duration-1000 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] ${boardAuraClass}`} />
+      <div className={`fixed inset-0 z-0 board-grid pointer-events-none transition-opacity duration-300 ${displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR ? 'opacity-[0.03]' : 'opacity-[0.05]'}`} />
+      <div className={`absolute inset-0 z-0 pointer-events-none opacity-20 transition-opacity duration-300 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] ${boardAuraClass}`} />
 
       <GameOverlay
         gameState={gameState}
