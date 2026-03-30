@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 const REFRESH_THRESHOLD = 84;
 const MAX_PULL_DISTANCE = 120;
 const DRAG_RESISTANCE = 0.45;
-const EDGE_START_LIMIT = 96;
 const PULL_ACTIVATION_DISTANCE = 14;
 
 const isScrollableElement = (element) => {
@@ -24,18 +23,6 @@ const getScrollableParent = (target) => {
   }
 
   return null;
-};
-
-const parseCssPixels = (value) => {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const getActivationBandLimit = () => {
-  const styles = window.getComputedStyle(document.documentElement);
-  const safeTop = parseCssPixels(styles.getPropertyValue('--app-safe-top'));
-  const headerOffset = parseCssPixels(styles.getPropertyValue('--app-header-offset'));
-  return Math.max(EDGE_START_LIMIT, safeTop + 24, headerOffset + 16);
 };
 
 export default function usePullToRefresh() {
@@ -81,9 +68,8 @@ export default function usePullToRefresh() {
       const touch = event.touches[0];
       const scrollContainer = getScrollableParent(event.target);
       const canStartPull = !scrollContainer || scrollContainer.scrollTop <= 0;
-      const withinStartZone = touch.clientY <= getActivationBandLimit();
 
-      if (!canStartPull || !withinStartZone) {
+      if (!canStartPull) {
         gestureRef.current.tracking = false;
         return;
       }
