@@ -619,14 +619,16 @@ export default function GameBoard({
                         if (!seat || !vote || !target) return null;
 
                         return (
-                          <path
+                          <motion.path
                             key={`vote-lane-${playerId}`}
                             d={getVoteLanePath(seat, target)}
                             fill="none"
                             stroke={target.laneColor}
                             strokeWidth="1.2"
                             strokeLinecap="round"
-                            opacity="0.7"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 0.72 }}
+                            transition={{ duration: 0.46, ease: 'easeOut' }}
                           />
                         );
                       })}
@@ -753,7 +755,7 @@ export default function GameBoard({
                               <motion.div
                                 initial={{ opacity: 0.22, scale: 0.92 }}
                                 animate={{ opacity: 0, scale: 1.1 }}
-                                transition={{ duration: 0.5, ease: 'easeOut' }}
+                                transition={{ duration: 0.82, ease: 'easeOut' }}
                                 className="pointer-events-none absolute inset-0 z-0 rounded-[24px] border border-cyan-300/45"
                               />
                             )}
@@ -897,7 +899,7 @@ export default function GameBoard({
                                   <motion.div
                                     initial={{ scale: 1.08, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
-                                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                                    transition={{ duration: 0.34, ease: 'easeOut' }}
                                     className="rounded-sm border-2 border-[#2b5c8f] px-1 text-xs font-black uppercase tracking-[0.2em] text-[#2b5c8f] opacity-90 mix-blend-multiply sm:text-sm"
                                   >
                                     JA
@@ -908,7 +910,7 @@ export default function GameBoard({
                                   <motion.div
                                     initial={{ scale: 1.08, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
-                                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                                    transition={{ duration: 0.34, ease: 'easeOut' }}
                                     className="rounded-sm border-2 border-[var(--color-stamp-red)] px-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--color-stamp-red)] opacity-90 mix-blend-multiply sm:text-sm"
                                   >
                                     NEIN

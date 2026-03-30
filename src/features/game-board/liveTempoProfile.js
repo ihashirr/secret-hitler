@@ -11,6 +11,8 @@ const STORY_READING_MS_PER_WORD = 240;
 const STORY_READING_BASE_MS = 1250;
 const STORY_READING_VISUAL_BONUS_MS = 320;
 const STORY_READING_MAX_EXTRA_MS = 2600;
+const VOTE_REVEAL_EMISSION_MS = 1000;
+const VOTE_REVEAL_FINAL_HOLD_MS = 950;
 const countWords = (text = '') =>
   text
     .trim()
@@ -23,11 +25,11 @@ const LIVE_TEMPO_PROFILES = {
     voteLockStaggerMs: 160,
     voteLockStaggerMinMs: 120,
     voteRevealStageDelayMs: 1450,
-    voteRevealStartDelayMs: 180,
-    voteRevealStepMs: 210,
-    voteRevealStepMinMs: 145,
-    voteRevealFinalHoldMs: 430,
-    voteRevealFinalHoldMinMs: 340,
+    voteRevealStartDelayMs: 260,
+    voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
+    voteRevealFinalHoldMinMs: VOTE_REVEAL_FINAL_HOLD_MS,
     nominationLockedMs: 2200,
     policyHandoffMs: 2350,
     policyEnactedMs: 2250,
@@ -44,11 +46,11 @@ const LIVE_TEMPO_PROFILES = {
     voteLockStaggerMs: 190,
     voteLockStaggerMinMs: 135,
     voteRevealStageDelayMs: 1650,
-    voteRevealStartDelayMs: 220,
-    voteRevealStepMs: 225,
-    voteRevealStepMinMs: 165,
-    voteRevealFinalHoldMs: 520,
-    voteRevealFinalHoldMinMs: 430,
+    voteRevealStartDelayMs: 300,
+    voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
+    voteRevealFinalHoldMinMs: VOTE_REVEAL_FINAL_HOLD_MS,
     nominationLockedMs: 2350,
     policyHandoffMs: 2500,
     policyEnactedMs: 2380,
@@ -65,11 +67,11 @@ const LIVE_TEMPO_PROFILES = {
     voteLockStaggerMs: 120,
     voteLockStaggerMinMs: 90,
     voteRevealStageDelayMs: 1180,
-    voteRevealStartDelayMs: 160,
-    voteRevealStepMs: 175,
-    voteRevealStepMinMs: 125,
-    voteRevealFinalHoldMs: 330,
-    voteRevealFinalHoldMinMs: 270,
+    voteRevealStartDelayMs: 220,
+    voteRevealStepMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealStepMinMs: VOTE_REVEAL_EMISSION_MS,
+    voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
+    voteRevealFinalHoldMinMs: VOTE_REVEAL_FINAL_HOLD_MS,
     nominationLockedMs: 1850,
     policyHandoffMs: 1980,
     policyEnactedMs: 1880,
