@@ -532,7 +532,7 @@ export default function GameOverlay({
                 setDismissedVoteDeskKey(votingDrawerKey);
               }
             }}
-            className={`pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 pb-[calc(var(--app-safe-bottom)+1.2rem)] sm:px-6 sm:pt-3 sm:pb-[calc(var(--app-safe-bottom)+1.6rem)] transition-all ${
+            className={`pointer-events-auto relative flex min-w-0 max-h-[85dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 transition-all ${
               displayPhase === PHASES.VOTING
                 ? 'border-cyan-500/20 bg-[linear-gradient(180deg,#0a1016_0%,#05080b_100%)]'
                 : 'border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)]'
@@ -615,7 +615,10 @@ export default function GameOverlay({
               </div>
             </div>
 
-            <div className="relative z-10 mt-5 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
+            <div 
+              className="relative z-10 mt-5 min-h-0 flex-1 overflow-y-auto pr-1 pb-[calc(var(--app-safe-bottom)+2rem)]"
+              style={{ touchAction: 'pan-y' }}
+            >
               {actionContent && (
                 <div className="flex justify-center">
                   {actionContent}
