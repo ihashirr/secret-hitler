@@ -13,6 +13,7 @@ import GameOverlay from './GameOverlay';
 import PolicyTrack from '../features/game-board/PolicyTrack';
 import TrackDetailSheet from '../features/game-board/TrackDetailSheet';
 import useLiveTransitionGate from '../features/game-board/useLiveTransitionGate';
+import useLiveStateHealth from '../features/game-board/useLiveStateHealth';
 import useVoteRevealState from '../features/game-board/useVoteRevealState';
 import {
   getAvatarId,
@@ -24,6 +25,7 @@ import {
   getVotingStatusMeta,
   getVoteStampRotation,
 } from '../features/game-board/boardConfig';
+import { buildDirectorState } from '../engine/gameEngine';
 import { triggerHaptic } from '../lib/haptics';
 
 const VOTE_TARGETS = [
@@ -55,7 +57,7 @@ const getVoteLanePath = (seat, target) => {
 };
 
 export default function GameBoard({
-  gameState,
+  gameState: rawGameState,
   playerId,
   directorState,
   onNominate,
@@ -69,6 +71,29 @@ export default function GameBoard({
   onAcknowledgePeek,
   onKill,
 }) {
+  const {
+    effectiveGameState,
+    suppressCatchUpTransitions,
+  } = useLiveStateHealth({
+    roomId: rawGameState?.roomId,
+    playerId: rawGameState?.myPlayerId || playerId,
+    gameState: rawGameState,
+    liveViewKey: 'LIVE_GAME',
+  });
+  const gameState = effectiveGameState || rawGameState;
+  const liveDirectorState = React.useMemo(
+    () => (
+      gameState
+        ? buildDirectorState({
+            roomId: gameState.roomId,
+            playerId: gameState.myPlayerId || playerId,
+            gameState,
+            viewKey: 'LIVE_GAME',
+          })
+        : directorState
+    ),
+    [directorState, gameState, playerId],
+  );
   const myActualId = gameState?.myPlayerId || playerId;
   const me = gameState.players.find((player) => player.id === myActualId);
   const isPresident = gameState.amIPresident || myActualId === gameState.currentPresident;
@@ -119,8 +144,12 @@ export default function GameBoard({
     revealedVoteTotals,
     orderedRevealPlayerIds,
     revealProgressCount,
-  } = useVoteRevealState(gameState);
-  const rawBoardStatus = directorState?.boardStatus || null;
+    expectedTotalDurationMs,
+    voteRevealFinalHoldMs,
+  } = useVoteRevealState(gameState, {
+    suppressTransitionEffects: suppressCatchUpTransitions,
+  });
+  const rawBoardStatus = liveDirectorState?.boardStatus || null;
   const rawVoteReveal = revealId
     ? {
         revealId,
@@ -136,18 +165,19 @@ export default function GameBoard({
         revealProgressCount,
         isResolving,
         isComplete,
+        expectedTotalDurationMs,
+        voteRevealFinalHoldMs,
       }
     : null;
   const {
-    displayBoardStatus,
     displayVoteReveal,
     majorPublicBeat,
     canShowPrivateDrawer,
     completeBeat,
   } = useLiveTransitionGate({
     gameState,
-    boardStatus: rawBoardStatus,
     voteReveal: rawVoteReveal,
+    suppressCatchUpTransitions,
   });
 
   React.useEffect(() => {
@@ -488,18 +518,20 @@ export default function GameBoard({
       );
     }
 
-    if (!displayBoardStatus) return null;
+    if (majorPublicBeat) return null;
+
+    if (!rawBoardStatus) return null;
 
     const toneClassName =
-      displayBoardStatus.tone === 'red'
+      rawBoardStatus.tone === 'red'
         ? 'border-red-400/16 bg-[linear-gradient(180deg,rgba(25,8,10,0.82)_0%,rgba(15,8,9,0.74)_100%)]'
-        : displayBoardStatus.tone === 'blue'
+        : rawBoardStatus.tone === 'blue'
           ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(8,17,24,0.82)_0%,rgba(8,13,19,0.74)_100%)]'
           : 'border-white/8 bg-[linear-gradient(180deg,rgba(10,13,18,0.76)_0%,rgba(8,11,14,0.68)_100%)]';
     const badgeClassName =
-      displayBoardStatus.tone === 'red'
+      rawBoardStatus.tone === 'red'
         ? 'border-red-400/18 bg-red-500/10 text-red-100'
-        : displayBoardStatus.tone === 'blue'
+        : rawBoardStatus.tone === 'blue'
           ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
           : 'border-white/10 bg-white/[0.04] text-white/72';
 
@@ -513,9 +545,9 @@ export default function GameBoard({
         <div className={`rounded-[18px] border px-3 py-2.5 shadow-[0_16px_32px_rgba(0,0,0,0.2)] backdrop-blur-sm sm:px-4 ${toneClassName}`}>
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
               <span className={`rounded-full border px-2.5 py-1 ${badgeClassName}`}>
-                {displayBoardStatus.label}
+                {rawBoardStatus.label}
               </span>
-              {displayBoardStatus.chips?.map((chip) => (
+              {rawBoardStatus.chips?.map((chip) => (
                 <span
                   key={chip}
                   className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56"
@@ -526,12 +558,12 @@ export default function GameBoard({
           </div>
 
           <FactionAccentText as="h2" className="mt-2 text-[12px] font-black uppercase tracking-[0.14em] text-white/92 sm:text-[13px]">
-            {displayBoardStatus.title}
+            {rawBoardStatus.title}
           </FactionAccentText>
 
-          {displayBoardStatus.description && (
+          {rawBoardStatus.description && (
             <FactionAccentText as="p" className="mt-1 text-[10px] leading-relaxed text-white/62 sm:text-[11px]">
-              {displayBoardStatus.description}
+              {rawBoardStatus.description}
             </FactionAccentText>
           )}
         </div>
@@ -954,7 +986,7 @@ export default function GameBoard({
       <GameOverlay
         gameState={gameState}
         playerId={playerId}
-        directorState={directorState}
+        directorState={liveDirectorState}
         pendingSelection={pendingSelection}
         majorPublicBeat={majorPublicBeat}
         canShowPrivateDrawer={canShowPrivateDrawer}

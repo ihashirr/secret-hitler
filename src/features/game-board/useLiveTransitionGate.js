@@ -1,17 +1,16 @@
 import React from 'react';
 import { EXECUTIVE_POWERS, PHASES } from '../../lib/constants';
-
-const ROUTINE_BOARD_SETTLE_MS = 900;
-const VOTE_REVEAL_FINAL_HOLD_MS = 700;
-const NOMINATION_LOCKED_MS = 1500;
-const VETO_REQUEST_MS = 1800;
-const EXECUTION_BEAT_MS = 1800;
-const GAME_OVER_BEAT_MS = 2000;
+import {
+  getExpectedVoteRevealDurationMs,
+  getLiveTempoProfile,
+  getMajorBeatDurationMs,
+} from './liveTempoProfile';
 
 const getPlayerName = (gameState, playerId, fallback = 'Someone') =>
   gameState?.players?.find((player) => player.id === playerId)?.name || fallback;
 
 const createMajorBeat = ({
+  kind,
   key,
   stageLabel,
   title,
@@ -20,6 +19,7 @@ const createMajorBeat = ({
   autoCloseMs,
   compact = true,
 }) => ({
+  kind,
   key,
   stageLabel,
   title,
@@ -40,37 +40,24 @@ const createSnapshot = (gameState) => ({
   winReason: gameState.winReason || null,
 });
 
-const sameBoardStatus = (left, right) => {
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  return (
-    left.key === right.key &&
-    left.label === right.label &&
-    left.title === right.title &&
-    left.description === right.description &&
-    left.tone === right.tone &&
-    JSON.stringify(left.chips || []) === JSON.stringify(right.chips || [])
-  );
-};
-
-const createVoteBeatCandidate = (voteReveal) => ({
+const createVoteBeatCandidate = (voteReveal, players = []) => ({
   token: `vote:${voteReveal.revealId}`,
   type: 'vote-reveal',
-  minDuration: 0,
+  expectedDurationMs:
+    (voteReveal.expectedTotalDurationMs ||
+      getExpectedVoteRevealDurationMs({
+        players,
+        revealPlayerCount: voteReveal.orderedRevealPlayerIds?.length,
+      })) +
+    getLiveTempoProfile(players).voteRevealGraceMs,
   voteReveal,
 });
 
-const createRoutineBeatCandidate = (boardStatus) => ({
-  token: boardStatus.key,
-  type: 'routine',
-  minDuration: ROUTINE_BOARD_SETTLE_MS,
-  boardStatus,
-});
-
-const createMajorBeatCandidate = (majorBeat) => ({
+const createMajorBeatCandidate = (majorBeat, players = []) => ({
   token: majorBeat.key,
   type: 'major',
   minDuration: majorBeat.autoCloseMs,
+  expectedDurationMs: majorBeat.autoCloseMs + getLiveTempoProfile(players).majorBeatGraceMs,
   majorBeat,
 });
 
@@ -80,12 +67,13 @@ function getMajorBeatForExecution(gameState) {
   const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
 
   return createMajorBeat({
+    kind: 'execution',
     key: `major:executive-execution:${gameState.currentPresident || 'none'}`,
     stageLabel: 'Executive Action',
     title: `${presidentName} Is Choosing An Execution`,
     description: 'The President is eliminating one player from the table.',
     tone: 'red',
-    autoCloseMs: EXECUTION_BEAT_MS,
+    autoCloseMs: getMajorBeatDurationMs('execution', gameState.players),
   });
 }
 
@@ -102,23 +90,25 @@ function getMajorBeatFromTransition(previous, gameState) {
 
   if (previous.nominatedChancellor !== gameState.nominatedChancellor && gameState.nominatedChancellor) {
     return createMajorBeat({
+      kind: 'nomination-locked',
       key: `major:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
       stageLabel: 'Nomination Locked',
       title: `${presidentName} Nominated ${nomineeName}`,
       description: 'The ballot is locked. The table is moving into a government vote.',
       tone: 'blue',
-      autoCloseMs: NOMINATION_LOCKED_MS,
+      autoCloseMs: getMajorBeatDurationMs('nomination-locked', gameState.players),
     });
   }
 
   if (!previous.vetoRequested && gameState.vetoRequested) {
     return createMajorBeat({
+      kind: 'veto-request',
       key: `major:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
       stageLabel: 'Veto Request',
       title: `${chancellorName} Requested A Veto`,
       description: `${presidentName} must now accept or reject the veto request.`,
       tone: 'red',
-      autoCloseMs: VETO_REQUEST_MS,
+      autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
     });
   }
 
@@ -132,6 +122,7 @@ function getMajorBeatFromTransition(previous, gameState) {
       gameState.winReason.toLowerCase().includes('hitler was elected chancellor');
 
     return createMajorBeat({
+      kind: isHitlerElectionWin ? 'hitler-elected' : 'game-over',
       key: `major:game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
       stageLabel: isHitlerElectionWin ? 'Hitler Elected' : 'Game Over',
       title: isHitlerElectionWin
@@ -141,7 +132,10 @@ function getMajorBeatFromTransition(previous, gameState) {
           : 'Fascist Victory',
       description: gameState.winReason || 'The match has ended.',
       tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
-      autoCloseMs: GAME_OVER_BEAT_MS,
+      autoCloseMs: getMajorBeatDurationMs(
+        isHitlerElectionWin ? 'hitler-elected' : 'game-over',
+        gameState.players,
+      ),
     });
   }
 
@@ -151,6 +145,7 @@ function getMajorBeatFromTransition(previous, gameState) {
 function getInitialMajorBeat(gameState) {
   if (gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && gameState.vetoRequested) {
     return createMajorBeat({
+      kind: 'veto-request',
       key: `major:init-veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
       stageLabel: 'Veto Request',
       title: `${getPlayerName(
@@ -160,7 +155,7 @@ function getInitialMajorBeat(gameState) {
       )} Requested A Veto`,
       description: `${getPlayerName(gameState, gameState.currentPresident, 'The President')} must now accept or reject the veto request.`,
       tone: 'red',
-      autoCloseMs: VETO_REQUEST_MS,
+      autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
     });
   }
 
@@ -170,12 +165,13 @@ function getInitialMajorBeat(gameState) {
 
   if (gameState.phase === PHASES.GAME_OVER) {
     return createMajorBeat({
+      kind: 'game-over',
       key: `major:init-game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
       stageLabel: 'Game Over',
       title: gameState.winner === 'LIBERAL' ? 'Liberal Victory' : 'Fascist Victory',
       description: gameState.winReason || 'The match has ended.',
       tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
-      autoCloseMs: GAME_OVER_BEAT_MS,
+      autoCloseMs: getMajorBeatDurationMs('game-over', gameState.players),
     });
   }
 
@@ -185,51 +181,86 @@ function getInitialMajorBeat(gameState) {
 function isMajorBeatStillRelevant(beat, gameState) {
   if (!beat) return false;
 
-  if (beat.key.includes('nominated')) {
+  if (beat.kind === 'nomination-locked') {
     return (
       gameState.nominatedChancellor &&
       (gameState.phase === PHASES.VOTING || gameState.phase === PHASES.NOMINATION)
     );
   }
 
-  if (beat.key.includes('veto-request')) {
+  if (beat.kind === 'veto-request') {
     return Boolean(gameState.vetoRequested);
   }
 
-  if (beat.key.includes('executive-execution')) {
-    return gameState.phase === PHASES.EXECUTIVE_ACTION && gameState.executivePower === EXECUTIVE_POWERS.EXECUTION;
+  if (beat.kind === 'execution') {
+    return (
+      gameState.phase === PHASES.EXECUTIVE_ACTION &&
+      gameState.executivePower === EXECUTIVE_POWERS.EXECUTION
+    );
   }
 
-  if (beat.key.includes('game-over')) {
+  if (beat.kind === 'game-over' || beat.kind === 'hitler-elected') {
     return gameState.phase === PHASES.GAME_OVER;
   }
 
   return true;
 }
 
+function isQueuedBeatStillRelevant(beat, rawState, consumedVoteRevealIds) {
+  if (!beat) return false;
+
+  if (beat.type === 'major') {
+    return isMajorBeatStillRelevant(beat.majorBeat, rawState.gameState);
+  }
+
+  if (beat.type === 'vote-reveal') {
+    return (
+      rawState.voteReveal?.isResolving &&
+      rawState.voteReveal?.revealId === beat.voteReveal?.revealId &&
+      !consumedVoteRevealIds.has(beat.voteReveal?.revealId)
+    );
+  }
+
+  return false;
+}
+
 export default function useLiveTransitionGate({
   gameState,
-  boardStatus,
   voteReveal,
+  suppressCatchUpTransitions = false,
 }) {
-  const [displayBoardStatus, setDisplayBoardStatus] = React.useState(boardStatus || null);
   const [displayVoteReveal, setDisplayVoteReveal] = React.useState(null);
   const [displayMajorBeat, setDisplayMajorBeat] = React.useState(null);
   const [activeBeat, setActiveBeat] = React.useState(null);
   const [queuedBeat, setQueuedBeat] = React.useState(null);
-  const [canShowPrivateDrawer, setCanShowPrivateDrawer] = React.useState(false);
+  const [canShowPrivateDrawer, setCanShowPrivateDrawer] = React.useState(true);
+
   const activeBeatRef = React.useRef(null);
   const queuedBeatRef = React.useRef(null);
-  const displayBoardStatusRef = React.useRef(boardStatus || null);
   const displayVoteRevealRef = React.useRef(null);
-  const latestRawRef = React.useRef({ gameState, boardStatus, voteReveal });
+  const latestRawRef = React.useRef({ gameState, voteReveal, suppressCatchUpTransitions });
   const previousSnapshotRef = React.useRef(null);
-  const timerRef = React.useRef(null);
+  const completionTimerRef = React.useRef(null);
+  const watchdogTimerRef = React.useRef(null);
   const consumedVoteRevealIdsRef = React.useRef(new Set());
 
+  const clearCompletionTimer = React.useCallback(() => {
+    if (completionTimerRef.current) {
+      window.clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
+  }, []);
+
+  const clearWatchdogTimer = React.useCallback(() => {
+    if (watchdogTimerRef.current) {
+      window.clearTimeout(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+  }, []);
+
   React.useEffect(() => {
-    latestRawRef.current = { gameState, boardStatus, voteReveal };
-  }, [boardStatus, gameState, voteReveal]);
+    latestRawRef.current = { gameState, voteReveal, suppressCatchUpTransitions };
+  }, [gameState, suppressCatchUpTransitions, voteReveal]);
 
   React.useEffect(() => {
     activeBeatRef.current = activeBeat;
@@ -240,44 +271,16 @@ export default function useLiveTransitionGate({
   }, [queuedBeat]);
 
   React.useEffect(() => {
-    displayBoardStatusRef.current = displayBoardStatus;
-  }, [displayBoardStatus]);
-
-  React.useEffect(() => {
     displayVoteRevealRef.current = displayVoteReveal;
   }, [displayVoteReveal]);
 
-  const clearBeatTimer = React.useCallback(() => {
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const beginBeat = React.useCallback((token, type, minDuration, payload = {}) => {
-    clearBeatTimer();
-    setCanShowPrivateDrawer(false);
-
-    const nextBeat = { token, type, minDuration, ...payload };
-    setActiveBeat(nextBeat);
-
-    if (type === 'routine' && payload.boardStatus) {
-      setDisplayBoardStatus(payload.boardStatus);
-    }
-
-    if (type === 'vote-reveal' && payload.voteReveal) {
-      setDisplayVoteReveal(payload.voteReveal);
-    }
-
-    if (type === 'major' && payload.majorBeat) {
-      setDisplayMajorBeat(payload.majorBeat);
-    }
-  }, [clearBeatTimer]);
-
-  const completeBeat = React.useCallback((token) => {
+  const completeBeat = React.useCallback((token, options = {}) => {
+    const { consumeVoteReveal = true } = options;
     if (!activeBeatRef.current || activeBeatRef.current.token !== token) return;
 
-    clearBeatTimer();
+    clearCompletionTimer();
+    clearWatchdogTimer();
+
     const completedBeat = activeBeatRef.current;
 
     if (completedBeat.type === 'major') {
@@ -285,52 +288,78 @@ export default function useLiveTransitionGate({
     }
 
     if (completedBeat.type === 'vote-reveal') {
-      if (completedBeat.voteReveal?.revealId) {
+      if (consumeVoteReveal && completedBeat.voteReveal?.revealId) {
         consumedVoteRevealIdsRef.current.add(completedBeat.voteReveal.revealId);
       }
       setDisplayVoteReveal(null);
     }
 
     setActiveBeat(null);
-  }, [clearBeatTimer]);
+  }, [clearCompletionTimer, clearWatchdogTimer]);
+
+  const beginBeat = React.useCallback((candidate) => {
+    clearCompletionTimer();
+    clearWatchdogTimer();
+    setCanShowPrivateDrawer(false);
+
+    const nextBeat = {
+      ...candidate,
+      startedAt: Date.now(),
+    };
+
+    setActiveBeat(nextBeat);
+
+    if (candidate.type === 'major') {
+      setDisplayMajorBeat(candidate.majorBeat);
+    }
+
+    if (candidate.type === 'vote-reveal') {
+      setDisplayVoteReveal(candidate.voteReveal);
+    }
+  }, [clearCompletionTimer, clearWatchdogTimer]);
+
+  const forceReleaseActiveBeat = React.useCallback((_reason = 'manual') => {
+    if (!activeBeatRef.current) return;
+    completeBeat(activeBeatRef.current.token);
+  }, [completeBeat]);
 
   const resolveNextBeat = React.useCallback(() => {
     const raw = latestRawRef.current;
-    const pendingMajor =
-      queuedBeatRef.current && queuedBeatRef.current.type === 'major' && isMajorBeatStillRelevant(queuedBeatRef.current.majorBeat, raw.gameState)
-        ? queuedBeatRef.current
-        : null;
 
-    if (queuedBeatRef.current && !pendingMajor) {
+    if (raw.suppressCatchUpTransitions) {
+      setQueuedBeat(null);
+      setCanShowPrivateDrawer(true);
+      return;
+    }
+
+    const pendingQueuedBeat = isQueuedBeatStillRelevant(
+      queuedBeatRef.current,
+      raw,
+      consumedVoteRevealIdsRef.current,
+    )
+      ? queuedBeatRef.current
+      : null;
+
+    if (queuedBeatRef.current && !pendingQueuedBeat) {
       setQueuedBeat(null);
     }
 
     const voteCandidate =
       raw.voteReveal?.isResolving &&
-      raw.voteReveal.revealId &&
+      raw.voteReveal?.revealId &&
       !consumedVoteRevealIdsRef.current.has(raw.voteReveal.revealId) &&
       displayVoteRevealRef.current?.revealId !== raw.voteReveal.revealId
-        ? createVoteBeatCandidate(raw.voteReveal)
+        ? createVoteBeatCandidate(raw.voteReveal, raw.gameState.players)
         : null;
 
     if (voteCandidate) {
-      beginBeat(voteCandidate.token, voteCandidate.type, voteCandidate.minDuration, voteCandidate);
+      beginBeat(voteCandidate);
       return;
     }
 
-    if (pendingMajor) {
+    if (pendingQueuedBeat) {
       setQueuedBeat(null);
-      beginBeat(pendingMajor.token, pendingMajor.type, pendingMajor.minDuration, pendingMajor);
-      return;
-    }
-
-    if (
-      raw.boardStatus &&
-      raw.boardStatus.key &&
-      displayBoardStatusRef.current?.key !== raw.boardStatus.key
-    ) {
-      const routineCandidate = createRoutineBeatCandidate(raw.boardStatus);
-      beginBeat(routineCandidate.token, routineCandidate.type, routineCandidate.minDuration, routineCandidate);
+      beginBeat(pendingQueuedBeat);
       return;
     }
 
@@ -338,17 +367,31 @@ export default function useLiveTransitionGate({
   }, [beginBeat]);
 
   React.useEffect(() => {
+    if (!gameState) return;
+
+    if (suppressCatchUpTransitions) {
+      clearCompletionTimer();
+      clearWatchdogTimer();
+      setActiveBeat(null);
+      setQueuedBeat(null);
+      setDisplayMajorBeat(null);
+      setDisplayVoteReveal(null);
+      setCanShowPrivateDrawer(true);
+      previousSnapshotRef.current = createSnapshot(gameState);
+      return;
+    }
+
     const snapshot = createSnapshot(gameState);
 
     if (!previousSnapshotRef.current) {
       previousSnapshotRef.current = snapshot;
       const initialBeat = getInitialMajorBeat(gameState);
       if (initialBeat) {
-        const candidate = createMajorBeatCandidate(initialBeat);
+        const candidate = createMajorBeatCandidate(initialBeat, gameState.players);
         if (activeBeatRef.current) {
           setQueuedBeat(candidate);
         } else {
-          beginBeat(candidate.token, candidate.type, candidate.minDuration, candidate);
+          beginBeat(candidate);
         }
       }
       return;
@@ -359,50 +402,49 @@ export default function useLiveTransitionGate({
 
     if (!majorBeat) return;
 
-    const candidate = createMajorBeatCandidate(majorBeat);
+    const candidate = createMajorBeatCandidate(majorBeat, gameState.players);
     if (activeBeatRef.current) {
       setQueuedBeat(candidate);
       return;
     }
 
-    beginBeat(candidate.token, candidate.type, candidate.minDuration, candidate);
-  }, [beginBeat, gameState]);
-
-  React.useEffect(() => {
-    if (activeBeat?.type !== 'routine') return undefined;
-
-    clearBeatTimer();
-    timerRef.current = window.setTimeout(() => {
-      completeBeat(activeBeat.token);
-    }, activeBeat.minDuration);
-
-    return clearBeatTimer;
-  }, [activeBeat, clearBeatTimer, completeBeat]);
+    beginBeat(candidate);
+  }, [
+    beginBeat,
+    clearCompletionTimer,
+    clearWatchdogTimer,
+    gameState,
+    suppressCatchUpTransitions,
+  ]);
 
   React.useEffect(() => {
     if (activeBeat?.type !== 'vote-reveal') return undefined;
     if (!voteReveal?.isResolving || voteReveal.revealId !== activeBeat.voteReveal?.revealId) return undefined;
     if (!voteReveal.isComplete) return undefined;
 
-    clearBeatTimer();
-    timerRef.current = window.setTimeout(() => {
+    clearCompletionTimer();
+    completionTimerRef.current = window.setTimeout(() => {
       completeBeat(activeBeat.token);
-    }, VOTE_REVEAL_FINAL_HOLD_MS);
+    }, voteReveal.voteRevealFinalHoldMs || 0);
 
-    return clearBeatTimer;
-  }, [activeBeat, clearBeatTimer, completeBeat, voteReveal]);
+    return clearCompletionTimer;
+  }, [activeBeat, clearCompletionTimer, completeBeat, voteReveal]);
+
+  React.useEffect(() => {
+    if (!activeBeat?.expectedDurationMs) return undefined;
+
+    clearWatchdogTimer();
+    watchdogTimerRef.current = window.setTimeout(() => {
+      completeBeat(activeBeat.token);
+    }, activeBeat.expectedDurationMs);
+
+    return clearWatchdogTimer;
+  }, [activeBeat, clearWatchdogTimer, completeBeat]);
 
   React.useEffect(() => {
     if (activeBeat) return;
     resolveNextBeat();
-  }, [activeBeat, boardStatus, resolveNextBeat, voteReveal]);
-
-  React.useEffect(() => {
-    if (activeBeat) return;
-    if (!boardStatus || displayBoardStatusRef.current?.key !== boardStatus.key) return;
-    if (sameBoardStatus(displayBoardStatusRef.current, boardStatus)) return;
-    setDisplayBoardStatus(boardStatus);
-  }, [activeBeat, boardStatus]);
+  }, [activeBeat, resolveNextBeat, voteReveal]);
 
   React.useEffect(() => {
     if (!displayVoteRevealRef.current?.revealId || !voteReveal?.revealId) return;
@@ -416,18 +458,18 @@ export default function useLiveTransitionGate({
   }, [voteReveal]);
 
   React.useEffect(() => () => {
-    clearBeatTimer();
-  }, [clearBeatTimer]);
+    clearCompletionTimer();
+    clearWatchdogTimer();
+  }, [clearCompletionTimer, clearWatchdogTimer]);
 
   return {
     activeBeat,
     queuedBeat,
-    displayBoardStatus,
     displayVoteReveal,
     majorPublicBeat: displayMajorBeat,
     canShowPrivateDrawer,
-    canAdvanceRoutineStatus: !activeBeat,
     beginBeat,
     completeBeat,
+    forceReleaseActiveBeat,
   };
 }

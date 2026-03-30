@@ -1,40 +1,33 @@
 import React from 'react';
 import { PHASES } from '../../lib/constants';
 import {
-  VOTE_LOCK_PULSE_MS,
-  VOTE_LOCK_STAGGER_MS,
-  VOTE_REVEAL_STAGE_DELAY_MS,
-  VOTE_REVEAL_START_DELAY_MS,
-  VOTE_REVEAL_STEP_MS,
-  VOTE_REVEAL_FINAL_HOLD_MS,
-} from './boardConfig';
+  getExpectedVoteRevealDurationMs,
+  getLiveTempoProfile,
+} from './liveTempoProfile';
 
-const getVoteRevealTiming = (players) => {
-  const alivePlayers = players.filter((player) => player.isAlive);
-  const aliveHumanCount = alivePlayers.filter((player) => !player.isBot).length;
-
-  if (aliveHumanCount === 1) {
-    return {
-      voteLockPulseMs: 1150,
-      voteLockStaggerMs: 420,
-      voteRevealStageDelayMs: 240,
-      voteRevealStartDelayMs: 620,
-      voteRevealStepMs: 520,
-      voteRevealFinalHoldMs: 1900,
-    };
-  }
-
-  return {
-    voteLockPulseMs: VOTE_LOCK_PULSE_MS,
-    voteLockStaggerMs: VOTE_LOCK_STAGGER_MS,
-    voteRevealStageDelayMs: VOTE_REVEAL_STAGE_DELAY_MS,
-    voteRevealStartDelayMs: VOTE_REVEAL_START_DELAY_MS,
-    voteRevealStepMs: VOTE_REVEAL_STEP_MS,
-    voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
-  };
+const clearVoteHighlightTimers = (timersRef) => {
+  timersRef.current.forEach(({ startTimer, clearTimer }) => {
+    if (startTimer) window.clearTimeout(startTimer);
+    if (clearTimer) window.clearTimeout(clearTimer);
+  });
+  timersRef.current.clear();
 };
 
-export default function useVoteRevealState(gameState) {
+const createVoteRevealId = (gameState, orderedRevealPlayerIds) => {
+  const voteSignature = orderedRevealPlayerIds
+    .map((playerId) => `${playerId}:${gameState.lastVotes?.[playerId] || 'NONE'}`)
+    .join('|');
+
+  return [
+    'vote',
+    gameState.currentPresident || 'none',
+    gameState.currentChancellor || gameState.nominatedChancellor || 'none',
+    voteSignature || 'empty',
+  ].join(':');
+};
+
+export default function useVoteRevealState(gameState, options = {}) {
+  const { suppressTransitionEffects = false } = options;
   const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
   const [recentVoteIds, setRecentVoteIds] = React.useState([]);
@@ -43,7 +36,7 @@ export default function useVoteRevealState(gameState) {
   const prevVoteStateRef = React.useRef({});
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
-  const voteRevealTiming = React.useMemo(() => getVoteRevealTiming(gameState.players), [gameState.players]);
+  const liveTempo = React.useMemo(() => getLiveTempoProfile(gameState.players), [gameState.players]);
 
   const revealedVoteMap = React.useMemo(
     () =>
@@ -67,11 +60,7 @@ export default function useVoteRevealState(gameState) {
   );
 
   React.useEffect(() => () => {
-    voteHighlightTimersRef.current.forEach(({ startTimer, clearTimer }) => {
-      if (startTimer) window.clearTimeout(startTimer);
-      if (clearTimer) window.clearTimeout(clearTimer);
-    });
-    voteHighlightTimersRef.current.clear();
+    clearVoteHighlightTimers(voteHighlightTimersRef);
   }, []);
 
   React.useEffect(() => {
@@ -86,12 +75,15 @@ export default function useVoteRevealState(gameState) {
       return undefined;
     }
 
+    if (suppressTransitionEffects) {
+      clearVoteHighlightTimers(voteHighlightTimersRef);
+      setRecentVoteIds([]);
+      prevVoteStateRef.current = nextVoteState;
+      return undefined;
+    }
+
     if (gameState.phase !== PHASES.VOTING) {
-      voteHighlightTimersRef.current.forEach(({ startTimer, clearTimer }) => {
-        if (startTimer) window.clearTimeout(startTimer);
-        if (clearTimer) window.clearTimeout(clearTimer);
-      });
-      voteHighlightTimersRef.current.clear();
+      clearVoteHighlightTimers(voteHighlightTimersRef);
       setRecentVoteIds([]);
       prevVoteStateRef.current = nextVoteState;
       return undefined;
@@ -112,32 +104,44 @@ export default function useVoteRevealState(gameState) {
       if (existingTimers?.clearTimer) window.clearTimeout(existingTimers.clearTimer);
 
       const startTimer = window.setTimeout(() => {
-        setRecentVoteIds((current) =>
-          current.includes(id) ? current : [...current, id],
-        );
+        setRecentVoteIds((current) => (current.includes(id) ? current : [...current, id]));
 
         const clearTimer = window.setTimeout(() => {
           setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
           voteHighlightTimersRef.current.delete(id);
-        }, voteRevealTiming.voteLockPulseMs);
+        }, liveTempo.voteLockPulseMs);
 
         voteHighlightTimersRef.current.set(id, { startTimer: null, clearTimer });
-      }, index * voteRevealTiming.voteLockStaggerMs);
+      }, index * liveTempo.voteLockStaggerMs);
 
       voteHighlightTimersRef.current.set(id, { startTimer, clearTimer: null });
     });
 
     return undefined;
-  }, [gameState.phase, gameState.players, voteRevealTiming.voteLockPulseMs, voteRevealTiming.voteLockStaggerMs]);
+  }, [
+    gameState.phase,
+    gameState.players,
+    liveTempo.voteLockPulseMs,
+    liveTempo.voteLockStaggerMs,
+    suppressTransitionEffects,
+  ]);
 
   React.useEffect(() => {
+    if (suppressTransitionEffects) {
+      prevPhaseRef.current = gameState.phase;
+      setRevealState(null);
+      setRevealStage(0);
+      setRevealedVotes([]);
+      return;
+    }
+
     if (prevPhaseRef.current === PHASES.VOTING && gameState.phase !== PHASES.VOTING && gameState.lastVotes) {
       let ya = 0;
       let nein = 0;
 
       Object.values(gameState.lastVotes).forEach((vote) => {
         if (vote === 'YA') ya += 1;
-        else nein += 1;
+        else if (vote === 'NEIN') nein += 1;
       });
 
       const orderedRevealPlayerIds = [...gameState.players]
@@ -146,50 +150,45 @@ export default function useVoteRevealState(gameState) {
         .map((player) => player.id);
 
       setRevealState({
-        id: `${gameState.phase}-${Date.now()}`,
+        id: createVoteRevealId(gameState, orderedRevealPlayerIds),
         result: ya > nein ? 'APPROVED' : 'REJECTED',
         votes: gameState.lastVotes,
         ya,
         nein,
         orderedRevealPlayerIds,
+        expectedTotalDurationMs: getExpectedVoteRevealDurationMs({
+          players: gameState.players,
+          revealPlayerCount: orderedRevealPlayerIds.length,
+        }),
+        voteRevealFinalHoldMs: liveTempo.voteRevealFinalHoldMs,
       });
     }
 
     prevPhaseRef.current = gameState.phase;
-  }, [gameState.phase, gameState.lastVotes, gameState.players]);
+  }, [gameState, liveTempo.voteRevealFinalHoldMs, suppressTransitionEffects]);
 
   React.useEffect(() => {
     if (!revealState?.id) return undefined;
 
     setRevealStage(0);
 
-    const revealSeatCount = revealState.orderedRevealPlayerIds?.length || 0;
-    const dynamicRevealDuration =
-      voteRevealTiming.voteRevealStartDelayMs +
-      Math.max(0, revealSeatCount - 1) * voteRevealTiming.voteRevealStepMs +
-      voteRevealTiming.voteRevealFinalHoldMs;
+    const revealTimer = window.setTimeout(() => {
+      setRevealStage(1);
+    }, liveTempo.voteRevealStageDelayMs);
 
-    const revealTimer = window.setTimeout(() => setRevealStage(1), voteRevealTiming.voteRevealStageDelayMs);
     const cleanupTimer = window.setTimeout(() => {
       setRevealState((current) => (current?.id === revealState.id ? null : current));
       setRevealStage(0);
-    }, dynamicRevealDuration);
+    }, revealState.expectedTotalDurationMs);
 
     return () => {
       window.clearTimeout(revealTimer);
       window.clearTimeout(cleanupTimer);
     };
-  }, [
-    revealState?.id,
-    revealState?.orderedRevealPlayerIds?.length,
-    voteRevealTiming.voteRevealFinalHoldMs,
-    voteRevealTiming.voteRevealStageDelayMs,
-    voteRevealTiming.voteRevealStartDelayMs,
-    voteRevealTiming.voteRevealStepMs,
-  ]);
+  }, [liveTempo.voteRevealStageDelayMs, revealState?.expectedTotalDurationMs, revealState?.id]);
 
   React.useEffect(() => {
-    if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
+    if (suppressTransitionEffects || gameState.phase === PHASES.VOTING || !revealState?.votes) {
       setRevealedVotes([]);
       return undefined;
     }
@@ -204,11 +203,17 @@ export default function useVoteRevealState(gameState) {
             ? current
             : [...current, { playerId, vote }],
         );
-      }, voteRevealTiming.voteRevealStartDelayMs + index * voteRevealTiming.voteRevealStepMs),
+      }, liveTempo.voteRevealStartDelayMs + index * liveTempo.voteRevealStepMs),
     );
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [gameState.phase, revealState, voteRevealTiming.voteRevealStartDelayMs, voteRevealTiming.voteRevealStepMs]);
+  }, [
+    gameState.phase,
+    liveTempo.voteRevealStartDelayMs,
+    liveTempo.voteRevealStepMs,
+    revealState,
+    suppressTransitionEffects,
+  ]);
 
   return {
     recentVoteIds,
@@ -221,6 +226,8 @@ export default function useVoteRevealState(gameState) {
     revealedVoteTotals,
     orderedRevealPlayerIds: revealState?.orderedRevealPlayerIds || [],
     revealProgressCount: revealedVotes.length,
+    expectedTotalDurationMs: revealState?.expectedTotalDurationMs || 0,
+    voteRevealFinalHoldMs: revealState?.voteRevealFinalHoldMs || liveTempo.voteRevealFinalHoldMs,
     setRevealState,
   };
 }
