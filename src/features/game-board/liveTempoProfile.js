@@ -13,13 +13,15 @@ const LIVE_TEMPO_PROFILES = {
     voteLockPulseMs: 540,
     voteLockStaggerMs: 160,
     voteLockStaggerMinMs: 120,
-    voteRevealStageDelayMs: 90,
+    voteRevealStageDelayMs: 420,
     voteRevealStartDelayMs: 180,
     voteRevealStepMs: 210,
     voteRevealStepMinMs: 145,
     voteRevealFinalHoldMs: 430,
     voteRevealFinalHoldMinMs: 340,
     nominationLockedMs: 950,
+    policyHandoffMs: 980,
+    policyEnactedMs: 1120,
     vetoRequestMs: 1250,
     executionMs: 1350,
     gameOverMs: 1650,
@@ -32,13 +34,15 @@ const LIVE_TEMPO_PROFILES = {
     voteLockPulseMs: 620,
     voteLockStaggerMs: 190,
     voteLockStaggerMinMs: 135,
-    voteRevealStageDelayMs: 110,
+    voteRevealStageDelayMs: 520,
     voteRevealStartDelayMs: 220,
     voteRevealStepMs: 225,
     voteRevealStepMinMs: 165,
     voteRevealFinalHoldMs: 520,
     voteRevealFinalHoldMinMs: 430,
     nominationLockedMs: 1100,
+    policyHandoffMs: 1080,
+    policyEnactedMs: 1220,
     vetoRequestMs: 1400,
     executionMs: 1500,
     gameOverMs: 1750,
@@ -51,13 +55,15 @@ const LIVE_TEMPO_PROFILES = {
     voteLockPulseMs: 420,
     voteLockStaggerMs: 120,
     voteLockStaggerMinMs: 90,
-    voteRevealStageDelayMs: 70,
+    voteRevealStageDelayMs: 320,
     voteRevealStartDelayMs: 160,
     voteRevealStepMs: 175,
     voteRevealStepMinMs: 125,
     voteRevealFinalHoldMs: 330,
     voteRevealFinalHoldMinMs: 270,
     nominationLockedMs: 800,
+    policyHandoffMs: 820,
+    policyEnactedMs: 920,
     vetoRequestMs: 1000,
     executionMs: 1150,
     gameOverMs: 1350,
@@ -194,6 +200,11 @@ export function getMajorBeatDurationMs(kind, players = []) {
   switch (kind) {
     case 'nomination-locked':
       return tempo.nominationLockedMs;
+    case 'policy-president':
+    case 'policy-chancellor':
+      return tempo.policyHandoffMs;
+    case 'policy-enacted':
+      return tempo.policyEnactedMs;
     case 'veto-request':
       return tempo.vetoRequestMs;
     case 'execution':

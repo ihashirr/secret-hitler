@@ -173,7 +173,6 @@ export default function GameBoard({
     displayVoteReveal,
     majorPublicBeat,
     canShowPrivateDrawer,
-    completeBeat,
   } = useLiveTransitionGate({
     gameState,
     voteReveal: rawVoteReveal,
@@ -477,7 +476,7 @@ export default function GameBoard({
   };
 
   const renderStatusRail = () => {
-    if (voteRevealActive && gatedRevealState) {
+    if (voteRevealActive && gatedRevealState && gatedRevealStage === 1) {
       return (
         <motion.div
           initial={{ opacity: 0 }}
@@ -605,7 +604,7 @@ export default function GameBoard({
                   </div>
                 </div>
 
-                {voteRevealActive && (
+                {voteRevealActive && gatedRevealStage === 1 && (
                   <>
                     <svg
                       viewBox="0 0 100 100"
@@ -991,11 +990,10 @@ export default function GameBoard({
       <GameOverlay
         gameState={gameState}
         playerId={playerId}
-        directorState={liveDirectorState}
         pendingSelection={pendingSelection}
         majorPublicBeat={majorPublicBeat}
+        voteRevealState={displayVoteReveal}
         canShowPrivateDrawer={canShowPrivateDrawer}
-        onCompleteMajorBeat={completeBeat}
         onConfirm={confirmSelection}
         onCancel={cancelSelection}
         onVote={onVote}

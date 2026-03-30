@@ -9,7 +9,7 @@ import {
 const getPlayerName = (gameState, playerId, fallback = 'Someone') =>
   gameState?.players?.find((player) => player.id === playerId)?.name || fallback;
 
-const createMajorBeat = ({
+const createStoryBeat = ({
   kind,
   key,
   stageLabel,
@@ -17,7 +17,10 @@ const createMajorBeat = ({
   description,
   tone = 'neutral',
   autoCloseMs,
-  compact = true,
+  compact = false,
+  actorId = null,
+  subjectId = null,
+  policyType = null,
 }) => ({
   kind,
   key,
@@ -27,6 +30,9 @@ const createMajorBeat = ({
   tone,
   autoCloseMs,
   compact,
+  actorId,
+  subjectId,
+  policyType,
 });
 
 const createSnapshot = (gameState) => ({
@@ -38,6 +44,9 @@ const createSnapshot = (gameState) => ({
   vetoRequested: Boolean(gameState.vetoRequested),
   winner: gameState.winner || null,
   winReason: gameState.winReason || null,
+  liberalPolicies: gameState.liberalPolicies || 0,
+  fascistPolicies: gameState.fascistPolicies || 0,
+  electionTracker: gameState.electionTracker || 0,
 });
 
 const createVoteBeatCandidate = (voteReveal, players = []) => ({
@@ -53,67 +62,143 @@ const createVoteBeatCandidate = (voteReveal, players = []) => ({
   voteReveal,
 });
 
-const createMajorBeatCandidate = (majorBeat, players = []) => ({
+const createStoryBeatCandidate = (majorBeat, players = []) => ({
   token: majorBeat.key,
   type: 'major',
-  minDuration: majorBeat.autoCloseMs,
   expectedDurationMs: majorBeat.autoCloseMs + getLiveTempoProfile(players).majorBeatGraceMs,
   majorBeat,
 });
 
-function getMajorBeatForExecution(gameState) {
+function getExecutionBeat(gameState) {
   if (gameState.executivePower !== EXECUTIVE_POWERS.EXECUTION) return null;
 
   const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
 
-  return createMajorBeat({
+  return createStoryBeat({
     kind: 'execution',
     key: `major:executive-execution:${gameState.currentPresident || 'none'}`,
     stageLabel: 'Executive Action',
     title: `${presidentName} Is Choosing An Execution`,
-    description: 'The President is eliminating one player from the table.',
+    description: 'One player will be eliminated from the table.',
     tone: 'red',
     autoCloseMs: getMajorBeatDurationMs('execution', gameState.players),
+    actorId: gameState.currentPresident || null,
   });
 }
 
-function getMajorBeatFromTransition(previous, gameState) {
-  if (!previous) return null;
+function getPolicyBeat(gameState, policyType) {
+  if (!policyType) return null;
 
+  const isLiberal = policyType === 'LIBERAL';
+  const executiveCopy =
+    !isLiberal && gameState.phase === PHASES.EXECUTIVE_ACTION
+      ? gameState.executivePower === EXECUTIVE_POWERS.EXECUTION
+        ? 'An execution power is now live.'
+        : gameState.executivePower === EXECUTIVE_POWERS.PEEK
+          ? 'The President now reviews the top three policies.'
+          : gameState.executivePower === EXECUTIVE_POWERS.INVESTIGATE
+            ? 'The President now investigates one player.'
+            : gameState.executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION
+              ? 'A special election must now be called.'
+              : 'The fascist track advances.'
+      : gameState.phase === PHASES.GAME_OVER
+        ? 'The match has reached its ending state.'
+        : isLiberal
+          ? 'The liberal track advances by one.'
+          : 'The fascist track advances by one.';
+
+  return createStoryBeat({
+    kind: 'policy-enacted',
+    key: `major:policy-enacted:${policyType}:${gameState.liberalPolicies}:${gameState.fascistPolicies}:${gameState.phase}`,
+    stageLabel: 'Policy Enacted',
+    title: isLiberal ? 'Liberal Policy Enacted' : 'Fascist Policy Enacted',
+    description: executiveCopy,
+    tone: isLiberal ? 'blue' : 'red',
+    autoCloseMs: getMajorBeatDurationMs('policy-enacted', gameState.players),
+    policyType,
+  });
+}
+
+function getStoryBeatsFromTransition(previous, gameState) {
+  if (!previous) return [];
+
+  const beats = [];
   const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
   const nomineeName = getPlayerName(gameState, gameState.nominatedChancellor, 'the nominee');
-  const chancellorName = getPlayerName(
-    gameState,
-    gameState.currentChancellor || gameState.nominatedChancellor,
-    'The Chancellor',
-  );
+  const chancellorId = gameState.currentChancellor || gameState.nominatedChancellor || null;
+  const chancellorName = getPlayerName(gameState, chancellorId, 'The Chancellor');
+  const liberalAdvanced = previous.liberalPolicies !== gameState.liberalPolicies;
+  const fascistAdvanced = previous.fascistPolicies !== gameState.fascistPolicies;
 
   if (previous.nominatedChancellor !== gameState.nominatedChancellor && gameState.nominatedChancellor) {
-    return createMajorBeat({
+    beats.push(createStoryBeat({
       kind: 'nomination-locked',
       key: `major:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
       stageLabel: 'Nomination Locked',
       title: `${presidentName} Nominated ${nomineeName}`,
-      description: 'The ballot is locked. The table is moving into a government vote.',
+      description: 'The table is moving into a government vote.',
       tone: 'blue',
       autoCloseMs: getMajorBeatDurationMs('nomination-locked', gameState.players),
-    });
+      actorId: gameState.currentPresident || null,
+      subjectId: gameState.nominatedChancellor || null,
+    }));
+  }
+
+  if (previous.phase !== gameState.phase && gameState.phase === PHASES.LEGISLATIVE_PRESIDENT) {
+    beats.push(createStoryBeat({
+      kind: 'policy-president',
+      key: `major:policy-president:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}:${gameState.liberalPolicies}:${gameState.fascistPolicies}`,
+      stageLabel: 'Policy Review',
+      title: `${presidentName} Is Reviewing Three Policies`,
+      description: `Two policies will be passed to ${chancellorName}.`,
+      tone: 'neutral',
+      autoCloseMs: getMajorBeatDurationMs('policy-president', gameState.players),
+      actorId: gameState.currentPresident || null,
+      subjectId: chancellorId,
+    }));
+  }
+
+  if (
+    previous.phase !== gameState.phase &&
+    gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR &&
+    !gameState.vetoRequested
+  ) {
+    beats.push(createStoryBeat({
+      kind: 'policy-chancellor',
+      key: `major:policy-chancellor:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}:${gameState.liberalPolicies}:${gameState.fascistPolicies}`,
+      stageLabel: 'Final Decision',
+      title: `${chancellorName} Is Choosing The Final Policy`,
+      description: 'One of the remaining policies will be enacted.',
+      tone: 'neutral',
+      autoCloseMs: getMajorBeatDurationMs('policy-chancellor', gameState.players),
+      actorId: chancellorId,
+      subjectId: gameState.currentPresident || null,
+    }));
+  }
+
+  if (liberalAdvanced || fascistAdvanced) {
+    beats.push(getPolicyBeat(gameState, liberalAdvanced ? 'LIBERAL' : 'FASCIST'));
   }
 
   if (!previous.vetoRequested && gameState.vetoRequested) {
-    return createMajorBeat({
+    beats.push(createStoryBeat({
       kind: 'veto-request',
-      key: `major:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
+      key: `major:veto-request:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}`,
       stageLabel: 'Veto Request',
       title: `${chancellorName} Requested A Veto`,
-      description: `${presidentName} must now accept or reject the veto request.`,
+      description: `${presidentName} must now accept or reject the request.`,
       tone: 'red',
       autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
-    });
+      actorId: chancellorId,
+      subjectId: gameState.currentPresident || null,
+    }));
   }
 
   if (previous.phase !== gameState.phase && gameState.phase === PHASES.EXECUTIVE_ACTION) {
-    return getMajorBeatForExecution(gameState);
+    const executionBeat = getExecutionBeat(gameState);
+    if (executionBeat) {
+      beats.push(executionBeat);
+    }
   }
 
   if (previous.phase !== PHASES.GAME_OVER && gameState.phase === PHASES.GAME_OVER) {
@@ -121,7 +206,7 @@ function getMajorBeatFromTransition(previous, gameState) {
       typeof gameState.winReason === 'string' &&
       gameState.winReason.toLowerCase().includes('hitler was elected chancellor');
 
-    return createMajorBeat({
+    beats.push(createStoryBeat({
       kind: isHitlerElectionWin ? 'hitler-elected' : 'game-over',
       key: `major:game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
       stageLabel: isHitlerElectionWin ? 'Hitler Elected' : 'Game Over',
@@ -136,81 +221,60 @@ function getMajorBeatFromTransition(previous, gameState) {
         isHitlerElectionWin ? 'hitler-elected' : 'game-over',
         gameState.players,
       ),
-    });
+    }));
   }
 
-  return null;
+  return beats.filter(Boolean);
 }
 
-function getInitialMajorBeat(gameState) {
+function getInitialStoryBeats(gameState) {
   if (gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && gameState.vetoRequested) {
-    return createMajorBeat({
-      kind: 'veto-request',
-      key: `major:init-veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
-      stageLabel: 'Veto Request',
-      title: `${getPlayerName(
-        gameState,
-        gameState.currentChancellor || gameState.nominatedChancellor,
-        'The Chancellor',
-      )} Requested A Veto`,
-      description: `${getPlayerName(gameState, gameState.currentPresident, 'The President')} must now accept or reject the veto request.`,
-      tone: 'red',
-      autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
-    });
+    return [
+      createStoryBeat({
+        kind: 'veto-request',
+        key: `major:init-veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
+        stageLabel: 'Veto Request',
+        title: `${getPlayerName(
+          gameState,
+          gameState.currentChancellor || gameState.nominatedChancellor,
+          'The Chancellor',
+        )} Requested A Veto`,
+        description: `${getPlayerName(gameState, gameState.currentPresident, 'The President')} must now accept or reject the request.`,
+        tone: 'red',
+        autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
+        actorId: gameState.currentChancellor || gameState.nominatedChancellor || null,
+        subjectId: gameState.currentPresident || null,
+      }),
+    ];
   }
 
   if (gameState.phase === PHASES.EXECUTIVE_ACTION) {
-    return getMajorBeatForExecution(gameState);
+    const executionBeat = getExecutionBeat(gameState);
+    return executionBeat ? [executionBeat] : [];
   }
 
   if (gameState.phase === PHASES.GAME_OVER) {
-    return createMajorBeat({
-      kind: 'game-over',
-      key: `major:init-game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
-      stageLabel: 'Game Over',
-      title: gameState.winner === 'LIBERAL' ? 'Liberal Victory' : 'Fascist Victory',
-      description: gameState.winReason || 'The match has ended.',
-      tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
-      autoCloseMs: getMajorBeatDurationMs('game-over', gameState.players),
-    });
+    return [
+      createStoryBeat({
+        kind: 'game-over',
+        key: `major:init-game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
+        stageLabel: 'Game Over',
+        title: gameState.winner === 'LIBERAL' ? 'Liberal Victory' : 'Fascist Victory',
+        description: gameState.winReason || 'The match has ended.',
+        tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
+        autoCloseMs: getMajorBeatDurationMs('game-over', gameState.players),
+      }),
+    ];
   }
 
-  return null;
-}
-
-function isMajorBeatStillRelevant(beat, gameState) {
-  if (!beat) return false;
-
-  if (beat.kind === 'nomination-locked') {
-    return (
-      gameState.nominatedChancellor &&
-      (gameState.phase === PHASES.VOTING || gameState.phase === PHASES.NOMINATION)
-    );
-  }
-
-  if (beat.kind === 'veto-request') {
-    return Boolean(gameState.vetoRequested);
-  }
-
-  if (beat.kind === 'execution') {
-    return (
-      gameState.phase === PHASES.EXECUTIVE_ACTION &&
-      gameState.executivePower === EXECUTIVE_POWERS.EXECUTION
-    );
-  }
-
-  if (beat.kind === 'game-over' || beat.kind === 'hitler-elected') {
-    return gameState.phase === PHASES.GAME_OVER;
-  }
-
-  return true;
+  return [];
 }
 
 function isQueuedBeatStillRelevant(beat, rawState, consumedVoteRevealIds) {
   if (!beat) return false;
 
   if (beat.type === 'major') {
-    return isMajorBeatStillRelevant(beat.majorBeat, rawState.gameState);
+    return true;
   }
 
   if (beat.type === 'vote-reveal') {
@@ -232,11 +296,11 @@ export default function useLiveTransitionGate({
   const [displayVoteReveal, setDisplayVoteReveal] = React.useState(null);
   const [displayMajorBeat, setDisplayMajorBeat] = React.useState(null);
   const [activeBeat, setActiveBeat] = React.useState(null);
-  const [queuedBeat, setQueuedBeat] = React.useState(null);
+  const [queuedBeats, setQueuedBeats] = React.useState([]);
   const [canShowPrivateDrawer, setCanShowPrivateDrawer] = React.useState(true);
 
   const activeBeatRef = React.useRef(null);
-  const queuedBeatRef = React.useRef(null);
+  const queuedBeatsRef = React.useRef([]);
   const displayVoteRevealRef = React.useRef(null);
   const latestRawRef = React.useRef({ gameState, voteReveal, suppressCatchUpTransitions });
   const previousSnapshotRef = React.useRef(null);
@@ -267,8 +331,8 @@ export default function useLiveTransitionGate({
   }, [activeBeat]);
 
   React.useEffect(() => {
-    queuedBeatRef.current = queuedBeat;
-  }, [queuedBeat]);
+    queuedBeatsRef.current = queuedBeats;
+  }, [queuedBeats]);
 
   React.useEffect(() => {
     displayVoteRevealRef.current = displayVoteReveal;
@@ -327,21 +391,17 @@ export default function useLiveTransitionGate({
     const raw = latestRawRef.current;
 
     if (raw.suppressCatchUpTransitions) {
-      setQueuedBeat(null);
+      setQueuedBeats([]);
       setCanShowPrivateDrawer(true);
       return;
     }
 
-    const pendingQueuedBeat = isQueuedBeatStillRelevant(
-      queuedBeatRef.current,
-      raw,
-      consumedVoteRevealIdsRef.current,
-    )
-      ? queuedBeatRef.current
-      : null;
+    const pendingQueuedBeats = (queuedBeatsRef.current || []).filter((beat) =>
+      isQueuedBeatStillRelevant(beat, raw, consumedVoteRevealIdsRef.current),
+    );
 
-    if (queuedBeatRef.current && !pendingQueuedBeat) {
-      setQueuedBeat(null);
+    if (pendingQueuedBeats.length !== queuedBeatsRef.current.length) {
+      setQueuedBeats(pendingQueuedBeats);
     }
 
     const voteCandidate =
@@ -357,9 +417,10 @@ export default function useLiveTransitionGate({
       return;
     }
 
-    if (pendingQueuedBeat) {
-      setQueuedBeat(null);
-      beginBeat(pendingQueuedBeat);
+    if (pendingQueuedBeats.length) {
+      const [nextBeat, ...remainingBeats] = pendingQueuedBeats;
+      setQueuedBeats(remainingBeats);
+      beginBeat(nextBeat);
       return;
     }
 
@@ -373,7 +434,7 @@ export default function useLiveTransitionGate({
       clearCompletionTimer();
       clearWatchdogTimer();
       setActiveBeat(null);
-      setQueuedBeat(null);
+      setQueuedBeats([]);
       setDisplayMajorBeat(null);
       setDisplayVoteReveal(null);
       setCanShowPrivateDrawer(true);
@@ -385,30 +446,38 @@ export default function useLiveTransitionGate({
 
     if (!previousSnapshotRef.current) {
       previousSnapshotRef.current = snapshot;
-      const initialBeat = getInitialMajorBeat(gameState);
-      if (initialBeat) {
-        const candidate = createMajorBeatCandidate(initialBeat, gameState.players);
-        if (activeBeatRef.current) {
-          setQueuedBeat(candidate);
-        } else {
-          beginBeat(candidate);
-        }
+      const initialCandidates = getInitialStoryBeats(gameState).map((beat) =>
+        createStoryBeatCandidate(beat, gameState.players),
+      );
+
+      if (!initialCandidates.length) return;
+
+      if (activeBeatRef.current) {
+        setQueuedBeats(initialCandidates);
+      } else {
+        const [firstBeat, ...remainingBeats] = initialCandidates;
+        beginBeat(firstBeat);
+        setQueuedBeats(remainingBeats);
       }
       return;
     }
 
-    const majorBeat = getMajorBeatFromTransition(previousSnapshotRef.current, gameState);
+    const transitionCandidates = getStoryBeatsFromTransition(previousSnapshotRef.current, gameState)
+      .map((beat) => createStoryBeatCandidate(beat, gameState.players));
     previousSnapshotRef.current = snapshot;
 
-    if (!majorBeat) return;
+    if (!transitionCandidates.length) return;
 
-    const candidate = createMajorBeatCandidate(majorBeat, gameState.players);
     if (activeBeatRef.current) {
-      setQueuedBeat(candidate);
+      setQueuedBeats((current) => [...current, ...transitionCandidates]);
       return;
     }
 
-    beginBeat(candidate);
+    const [firstBeat, ...remainingBeats] = transitionCandidates;
+    beginBeat(firstBeat);
+    if (remainingBeats.length) {
+      setQueuedBeats((current) => [...current, ...remainingBeats]);
+    }
   }, [
     beginBeat,
     clearCompletionTimer,
@@ -416,6 +485,18 @@ export default function useLiveTransitionGate({
     gameState,
     suppressCatchUpTransitions,
   ]);
+
+  React.useEffect(() => {
+    if (activeBeat?.type !== 'major') return undefined;
+    if (!activeBeat.majorBeat?.autoCloseMs) return undefined;
+
+    clearCompletionTimer();
+    completionTimerRef.current = window.setTimeout(() => {
+      completeBeat(activeBeat.token);
+    }, activeBeat.majorBeat.autoCloseMs);
+
+    return clearCompletionTimer;
+  }, [activeBeat, clearCompletionTimer, completeBeat]);
 
   React.useEffect(() => {
     if (activeBeat?.type !== 'vote-reveal') return undefined;
@@ -464,7 +545,7 @@ export default function useLiveTransitionGate({
 
   return {
     activeBeat,
-    queuedBeat,
+    queuedBeat: queuedBeats[0] || null,
     displayVoteReveal,
     majorPublicBeat: displayMajorBeat,
     canShowPrivateDrawer,
