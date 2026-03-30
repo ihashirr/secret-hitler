@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { EXECUTIVE_POWERS, PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
 
-const NOMINATION_LOCKED_MS = 1500;
-const VETO_REQUEST_MS = 1700;
-const EXECUTION_BEAT_MS = 1800;
 const SHEET_DISMISS_DRAG_OFFSET = 120;
 const SHEET_DISMISS_DRAG_VELOCITY = 720;
 const SHEET_ENTER_Y = 64;
@@ -19,103 +16,14 @@ const SHEET_MOTION_TRANSITION = {
   ease: SHEET_MOTION_EASE,
 };
 
-const getPlayerName = (gameState, playerId, fallback = 'Someone') =>
-  gameState?.players?.find((player) => player.id === playerId)?.name || fallback;
-
-const createStoryBeat = ({ key, stageLabel, title, description, tone = 'neutral', autoCloseMs, compact = true }) => ({
-  key,
-  stageLabel,
-  title,
-  description,
-  tone,
-  autoCloseMs,
-  compact,
-});
-
-function getExecutiveBeat(gameState) {
-  if (gameState.executivePower !== EXECUTIVE_POWERS.EXECUTION) {
-    return null;
-  }
-
-  const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
-
-  switch (gameState.executivePower) {
-    case EXECUTIVE_POWERS.EXECUTION:
-      return createStoryBeat({
-        key: `story:executive-execution:${gameState.currentPresident || 'none'}`,
-        stageLabel: 'Executive Action',
-        title: `${presidentName} Is Choosing An Execution`,
-        description: 'The President is eliminating one player from the table.',
-        tone: 'red',
-        autoCloseMs: EXECUTION_BEAT_MS,
-      });
-    default:
-      return null;
-  }
-}
-
-function getStoryBeatFromTransition(previous, gameState) {
-  if (!previous) return null;
-
-  const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
-  const nomineeName = getPlayerName(gameState, gameState.nominatedChancellor, 'the nominee');
-  const chancellorName = getPlayerName(gameState, gameState.currentChancellor || gameState.nominatedChancellor, 'the Chancellor');
-
-  if (previous.nominatedChancellor !== gameState.nominatedChancellor && gameState.nominatedChancellor) {
-    return createStoryBeat({
-      key: `story:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
-      stageLabel: 'Nomination Locked',
-      title: `${presidentName} Nominated ${nomineeName}`,
-      description: 'The ballot is locked. The table is moving into a government vote.',
-      tone: 'blue',
-      autoCloseMs: NOMINATION_LOCKED_MS,
-    });
-  }
-
-  if (!previous.vetoRequested && gameState.vetoRequested) {
-    return createStoryBeat({
-      key: `story:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
-      stageLabel: 'Veto Request',
-      title: `${chancellorName} Requested A Veto`,
-      description: `${presidentName} must now accept or reject the veto request.`,
-      tone: 'red',
-      autoCloseMs: VETO_REQUEST_MS,
-    });
-  }
-
-  if (previous.phase !== gameState.phase && gameState.phase === PHASES.EXECUTIVE_ACTION) {
-    return getExecutiveBeat(gameState);
-  }
-
-  return null;
-}
-
-function getInitialStoryBeat(gameState) {
-  switch (gameState.phase) {
-    case PHASES.LEGISLATIVE_CHANCELLOR:
-      return gameState.vetoRequested
-        ? createStoryBeat({
-            key: `story:init-veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
-            stageLabel: 'Veto Request',
-            title: `${getPlayerName(gameState, gameState.currentChancellor || gameState.nominatedChancellor, 'The Chancellor')} Requested A Veto`,
-            description: `${getPlayerName(gameState, gameState.currentPresident, 'The President')} must now accept or reject the veto request.`,
-            tone: 'red',
-            autoCloseMs: VETO_REQUEST_MS,
-          })
-        : null;
-    case PHASES.EXECUTIVE_ACTION:
-      return getExecutiveBeat(gameState);
-    default:
-      return null;
-  }
-}
-
 export default function GameOverlay({
   gameState,
   playerId,
   directorState,
-  voteRevealActive = false,
   pendingSelection,
+  majorPublicBeat = null,
+  canShowPrivateDrawer = true,
+  onCompleteMajorBeat,
   onConfirm,
   onCancel,
   onVote,
@@ -137,10 +45,6 @@ export default function GameOverlay({
   const currentBallotKey = `${gameState.phase}:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || gameState.currentChancellor || 'none'}`;
   const [pendingVote, setPendingVote] = useState(null);
   const [dismissedVoteDeskKey, setDismissedVoteDeskKey] = useState(null);
-  const [storyBeatQueue, setStoryBeatQueue] = useState([]);
-  const [activeStoryBeat, setActiveStoryBeat] = useState(null);
-  const activeStoryBeatRef = useRef(null);
-  const storySnapshotRef = useRef(null);
   const displayPhase = gameState.phase;
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
@@ -148,77 +52,6 @@ export default function GameOverlay({
     !me?.hasVoted
       ? pendingVote.vote
       : null;
-
-  useEffect(() => {
-    activeStoryBeatRef.current = activeStoryBeat;
-  }, [activeStoryBeat]);
-
-  useEffect(() => {
-    const snapshot = {
-      phase: gameState.phase,
-      currentPresident: gameState.currentPresident || null,
-      nominatedChancellor: gameState.nominatedChancellor || null,
-      currentChancellor: gameState.currentChancellor || null,
-      executivePower: gameState.executivePower || null,
-      vetoRequested: Boolean(gameState.vetoRequested),
-      drawPileCount: gameState.drawPileCount,
-      roomId: gameState.roomId || null,
-    };
-
-    if (!storySnapshotRef.current) {
-      storySnapshotRef.current = snapshot;
-      const initialBeat = getInitialStoryBeat(gameState);
-      if (initialBeat) {
-        const timer = window.setTimeout(() => {
-          setStoryBeatQueue((current) => (current.length ? current : [initialBeat]));
-        }, 0);
-
-        return () => window.clearTimeout(timer);
-      }
-      return;
-    }
-
-    const beat = getStoryBeatFromTransition(storySnapshotRef.current, gameState);
-    storySnapshotRef.current = snapshot;
-
-    if (!beat) return;
-
-    const timer = window.setTimeout(() => {
-      setStoryBeatQueue((current) => {
-        if (activeStoryBeatRef.current?.key === beat.key || current.some((entry) => entry.key === beat.key)) {
-          return current;
-        }
-
-        return [...current, beat];
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    gameState,
-    gameState.currentChancellor,
-    gameState.currentPresident,
-    gameState.drawPileCount,
-    gameState.executivePower,
-    gameState.nominatedChancellor,
-    gameState.phase,
-    gameState.roomId,
-    gameState.vetoRequested,
-  ]);
-
-  const visibleActiveStoryBeat = activeStoryBeat;
-
-  useEffect(() => {
-    if (visibleActiveStoryBeat || !storyBeatQueue.length || voteRevealActive || (displayPhase === PHASES.VOTING && me?.hasVoted)) return;
-
-    const [nextBeat] = storyBeatQueue;
-    const timer = window.setTimeout(() => {
-      setActiveStoryBeat(nextBeat);
-      setStoryBeatQueue((current) => current.filter((entry) => entry.key !== nextBeat.key));
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [displayPhase, me?.hasVoted, storyBeatQueue, visibleActiveStoryBeat, voteRevealActive]);
 
   const handleVoteSelection = async (approve) => {
     if (activePendingVote || me?.hasVoted) return;
@@ -537,35 +370,41 @@ export default function GameOverlay({
     displayPhase === PHASES.VOTING && me?.isAlive && !me?.hasVoted && hasActionContent
       ? `vote:${currentBallotKey}`
       : null;
-  const spotlightVisible = Boolean(visibleActiveStoryBeat);
+  const spotlightVisible = Boolean(majorPublicBeat);
   const votingDeskDismissible = Boolean(votingDrawerKey);
-  const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === votingDrawerKey;
+  const activeDismissedVoteDeskKey =
+    votingDrawerKey && dismissedVoteDeskKey === votingDrawerKey ? dismissedVoteDeskKey : null;
+  const voteDeskHidden = votingDeskDismissible && activeDismissedVoteDeskKey === votingDrawerKey;
   const deskBadgeLabel = displayPhase === PHASES.VOTING ? 'Vote Desk' : 'Action Desk';
   const deskScopeLabel =
     displayPhase === PHASES.VOTING
       ? 'Board Overlay — Live Ballot'
       : `Private Channel — ${privateAudience}`;
   const reopenChipLabel = 'Open Vote';
-  const showActionDesk = hasActionContent && !spotlightVisible && !voteDeskHidden;
-  const showVoteDeskReopenChip = voteDeskHidden && !spotlightVisible;
+  const showActionDesk =
+    hasActionContent &&
+    !spotlightVisible &&
+    !voteDeskHidden &&
+    (Boolean(pendingSelection) || canShowPrivateDrawer);
+  const showVoteDeskReopenChip = voteDeskHidden && !spotlightVisible && canShowPrivateDrawer;
 
-  if (!visibleActiveStoryBeat && !showActionDesk && !showVoteDeskReopenChip) return null;
+  if (!majorPublicBeat && !showActionDesk && !showVoteDeskReopenChip) return null;
 
   return (
     <AnimatePresence>
-      {visibleActiveStoryBeat && (
+      {majorPublicBeat && (
         <StageSpotlight
-          key={visibleActiveStoryBeat.key}
-          stageLabel={visibleActiveStoryBeat.stageLabel}
-          title={visibleActiveStoryBeat.title}
-          description={visibleActiveStoryBeat.description}
+          key={majorPublicBeat.key}
+          stageLabel={majorPublicBeat.stageLabel}
+          title={majorPublicBeat.title}
+          description={majorPublicBeat.description}
           audienceLabel="Table"
           visibility="public"
-          tone={visibleActiveStoryBeat.tone}
-          autoCloseMs={visibleActiveStoryBeat.autoCloseMs}
-          compact={visibleActiveStoryBeat.compact}
+          tone={majorPublicBeat.tone}
+          autoCloseMs={majorPublicBeat.autoCloseMs}
+          compact={majorPublicBeat.compact}
           enforceMinimum={false}
-          onDismiss={() => setActiveStoryBeat(null)}
+          onDismiss={() => onCompleteMajorBeat?.(majorPublicBeat.key)}
         />
       )}
 

@@ -12,6 +12,7 @@ import FactionAccentText from './FactionAccentText';
 import GameOverlay from './GameOverlay';
 import PolicyTrack from '../features/game-board/PolicyTrack';
 import TrackDetailSheet from '../features/game-board/TrackDetailSheet';
+import useLiveTransitionGate from '../features/game-board/useLiveTransitionGate';
 import useVoteRevealState from '../features/game-board/useVoteRevealState';
 import {
   getAvatarId,
@@ -81,14 +82,45 @@ export default function GameBoard({
   const trackDetailDragControls = useDragControls();
   const {
     recentVoteIds,
+    revealId,
     revealStage,
     revealState,
+    isResolving,
+    isComplete,
     revealedVoteMap,
     revealedVoteTotals,
     orderedRevealPlayerIds,
     revealProgressCount,
   } = useVoteRevealState(gameState);
-  const boardStatus = directorState?.boardStatus || null;
+  const rawBoardStatus = directorState?.boardStatus || null;
+  const rawVoteReveal = revealId
+    ? {
+        revealId,
+        revealStage,
+        revealState,
+        result: revealState?.result || null,
+        votes: revealState?.votes || null,
+        ya: revealState?.ya || 0,
+        nein: revealState?.nein || 0,
+        revealedVoteMap,
+        revealedVoteTotals,
+        orderedRevealPlayerIds,
+        revealProgressCount,
+        isResolving,
+        isComplete,
+      }
+    : null;
+  const {
+    displayBoardStatus,
+    displayVoteReveal,
+    majorPublicBeat,
+    canShowPrivateDrawer,
+    completeBeat,
+  } = useLiveTransitionGate({
+    gameState,
+    boardStatus: rawBoardStatus,
+    voteReveal: rawVoteReveal,
+  });
 
   React.useEffect(() => {
     setPendingSelection(null);
@@ -98,12 +130,19 @@ export default function GameBoard({
     setIsTrackDetailOpen(false);
   }, [gameState.phase]);
 
-  const voteRevealActive = Boolean(revealState);
-  const voteFeedbackActive = gameState.phase === PHASES.VOTING || voteRevealActive;
+  const gatedRevealStage = displayVoteReveal?.revealStage || 0;
+  const gatedRevealState = displayVoteReveal?.revealState || null;
+  const gatedRevealedVoteMap = displayVoteReveal?.revealedVoteMap || {};
+  const gatedRevealedVoteTotals = displayVoteReveal?.revealedVoteTotals || { YA: 0, NEIN: 0 };
+  const gatedOrderedRevealPlayerIds = displayVoteReveal?.orderedRevealPlayerIds || [];
+  const gatedRevealProgressCount = displayVoteReveal?.revealProgressCount || 0;
+  const voteRevealActive = Boolean(gatedRevealState);
+  const voteRevealPending = Boolean(rawVoteReveal) && !voteRevealActive;
+  const voteFeedbackActive = gameState.phase === PHASES.VOTING || voteRevealActive || voteRevealPending;
   const displayPhase = gameState.phase;
   const playerCount = gameState.players.length;
   const aliveCount = gameState.players.filter((player) => player.isAlive).length;
-  const revealIsApproved = revealState?.result === 'APPROVED';
+  const revealIsApproved = gatedRevealState?.result === 'APPROVED';
   const revealNextStep =
     revealIsApproved
       ? gameState.phase === PHASES.GAME_OVER
@@ -309,7 +348,7 @@ export default function GameBoard({
   };
 
   const renderStatusRail = () => {
-    if (voteRevealActive && revealState) {
+    if (voteRevealActive && gatedRevealState) {
       return (
         <motion.div
           initial={{ opacity: 0 }}
@@ -333,15 +372,15 @@ export default function GameBoard({
                 {revealIsApproved ? 'Government Elected' : 'Vote Failed'}
               </span>
               <span className="rounded-full border border-white/10 bg-black/18 px-2.5 py-1 text-white/72">
-                {revealedVoteTotals.YA} Ja • {revealedVoteTotals.NEIN} Nein
+                {gatedRevealedVoteTotals.YA} Ja • {gatedRevealedVoteTotals.NEIN} Nein
               </span>
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56">
-                {revealProgressCount < aliveCount ? `Resolving ${revealProgressCount}/${aliveCount}` : 'Resolved'}
+                {gatedRevealProgressCount < aliveCount ? `Resolving ${gatedRevealProgressCount}/${aliveCount}` : 'Resolved'}
               </span>
             </div>
 
             <FactionAccentText as="p" className="mt-2 text-[10px] leading-relaxed text-white/66 sm:text-[11px]">
-              {revealProgressCount < orderedRevealPlayerIds.length
+              {gatedRevealProgressCount < gatedOrderedRevealPlayerIds.length
                 ? 'Votes are resolving one ballot at a time on the table.'
                 : revealNextStep}
             </FactionAccentText>
@@ -350,18 +389,18 @@ export default function GameBoard({
       );
     }
 
-    if (!boardStatus) return null;
+    if (!displayBoardStatus) return null;
 
     const toneClassName =
-      boardStatus.tone === 'red'
+      displayBoardStatus.tone === 'red'
         ? 'border-red-400/16 bg-[linear-gradient(180deg,rgba(25,8,10,0.82)_0%,rgba(15,8,9,0.74)_100%)]'
-        : boardStatus.tone === 'blue'
+        : displayBoardStatus.tone === 'blue'
           ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(8,17,24,0.82)_0%,rgba(8,13,19,0.74)_100%)]'
           : 'border-white/8 bg-[linear-gradient(180deg,rgba(10,13,18,0.76)_0%,rgba(8,11,14,0.68)_100%)]';
     const badgeClassName =
-      boardStatus.tone === 'red'
+      displayBoardStatus.tone === 'red'
         ? 'border-red-400/18 bg-red-500/10 text-red-100'
-        : boardStatus.tone === 'blue'
+        : displayBoardStatus.tone === 'blue'
           ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
           : 'border-white/10 bg-white/[0.04] text-white/72';
 
@@ -373,14 +412,14 @@ export default function GameBoard({
         className="mx-auto w-full max-w-[860px] shrink-0"
       >
         <div className={`rounded-[18px] border px-3 py-2.5 shadow-[0_16px_32px_rgba(0,0,0,0.2)] backdrop-blur-sm sm:px-4 ${toneClassName}`}>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
-            <span className={`rounded-full border px-2.5 py-1 ${badgeClassName}`}>
-              {boardStatus.label}
-            </span>
-            {boardStatus.chips?.map((chip) => (
-              <span
-                key={chip}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56"
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
+              <span className={`rounded-full border px-2.5 py-1 ${badgeClassName}`}>
+                {displayBoardStatus.label}
+              </span>
+              {displayBoardStatus.chips?.map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56"
               >
                 {chip}
               </span>
@@ -388,12 +427,12 @@ export default function GameBoard({
           </div>
 
           <FactionAccentText as="h2" className="mt-2 text-[12px] font-black uppercase tracking-[0.14em] text-white/92 sm:text-[13px]">
-            {boardStatus.title}
+            {displayBoardStatus.title}
           </FactionAccentText>
 
-          {boardStatus.description && (
+          {displayBoardStatus.description && (
             <FactionAccentText as="p" className="mt-1 text-[10px] leading-relaxed text-white/62 sm:text-[11px]">
-              {boardStatus.description}
+              {displayBoardStatus.description}
             </FactionAccentText>
           )}
         </div>
@@ -517,9 +556,9 @@ export default function GameBoard({
                       className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible"
                       preserveAspectRatio="none"
                     >
-                      {orderedRevealPlayerIds.map((playerId) => {
+                      {gatedOrderedRevealPlayerIds.map((playerId) => {
                         const seat = seatLayouts.find((candidate) => candidate.id === playerId);
-                        const vote = revealedVoteMap[playerId];
+                        const vote = gatedRevealedVoteMap[playerId];
                         const target = voteTargetLookup.get(vote);
 
                         if (!seat || !vote || !target) return null;
@@ -554,7 +593,7 @@ export default function GameBoard({
                         <div className="mt-1 flex items-center justify-center gap-1.5">
                           <span className={`h-2 w-2 rounded-full ${target.dotClassName}`} />
                           <span className="text-[15px] font-black leading-none">
-                            {revealedVoteTotals[target.key] || 0}
+                            {gatedRevealedVoteTotals[target.key] || 0}
                           </span>
                         </div>
                       </div>
@@ -586,8 +625,8 @@ export default function GameBoard({
                         const isSelf = player.id === myActualId;
                         const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
                         const selectionMeta = getSeatSelectionMeta(player);
-                        const finalVote = revealState?.votes?.[player.id] || null;
-                        const revealedVote = revealedVoteMap[player.id] || null;
+                        const finalVote = gatedRevealState?.votes?.[player.id] || null;
+                        const revealedVote = gatedRevealedVoteMap[player.id] || null;
                         const isVoteRevealed = Boolean(revealedVote);
                         const voteStatus = getVotingStatusMeta(player, isVoteRevealed, revealedVote);
                         const isVotePendingSeal = voteRevealActive && Boolean(finalVote) && !isVoteRevealed;
@@ -876,12 +915,12 @@ export default function GameBoard({
       }}
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
     >
-      {revealStage === 1 && voteRevealActive && (
+      {gatedRevealStage === 1 && voteRevealActive && (
         <motion.div
           initial={{ opacity: 0.22 }}
           animate={{ opacity: 0 }}
           transition={{ duration: 0.34, ease: 'easeOut' }}
-          className={`absolute inset-0 z-50 pointer-events-none ${revealState.result === 'APPROVED' ? 'bg-cyan-400' : 'bg-red-500'}`}
+          className={`absolute inset-0 z-50 pointer-events-none ${gatedRevealState?.result === 'APPROVED' ? 'bg-cyan-400' : 'bg-red-500'}`}
         />
       )}
 
@@ -892,8 +931,10 @@ export default function GameBoard({
         gameState={gameState}
         playerId={playerId}
         directorState={directorState}
-        voteRevealActive={voteRevealActive}
         pendingSelection={pendingSelection}
+        majorPublicBeat={majorPublicBeat}
+        canShowPrivateDrawer={canShowPrivateDrawer}
+        onCompleteMajorBeat={completeBeat}
         onConfirm={confirmSelection}
         onCancel={cancelSelection}
         onVote={onVote}

@@ -212,8 +212,11 @@ export default function useVoteRevealState(gameState) {
 
   return {
     recentVoteIds,
+    revealId: revealState?.id || null,
     revealStage,
     revealState,
+    isResolving: Boolean(revealState),
+    isComplete: Boolean(revealState) && revealedVotes.length >= (revealState?.orderedRevealPlayerIds?.length || 0),
     revealedVoteMap,
     revealedVoteTotals,
     orderedRevealPlayerIds: revealState?.orderedRevealPlayerIds || [],

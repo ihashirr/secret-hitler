@@ -51,7 +51,8 @@ const getPlayerName = (gameState, playerId, fallback = 'Unknown') =>
 const isTimelinePhase = (phase) =>
   IN_GAME_TIMELINE_STEPS.some((step) => step.key === phase);
 
-const createBoardStatus = ({ label, title, description, tone = 'neutral', chips = [] }) => ({
+const createBoardStatus = ({ key, label, title, description, tone = 'neutral', chips = [] }) => ({
+  key,
   label,
   title,
   description,
@@ -88,6 +89,7 @@ const getBoardStatus = (gameState) => {
     case PHASES.NOMINATION:
       if (gameState.nominatedChancellor) {
         return createBoardStatus({
+          key: `routine:nomination-locked:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
           label: 'Nomination Locked',
           title: `${currentPresidentName} nominated ${currentChancellorName}`,
           description: 'The table is moving into a government vote.',
@@ -96,6 +98,7 @@ const getBoardStatus = (gameState) => {
       }
 
       return createBoardStatus({
+        key: `routine:nomination:${gameState.currentPresident || 'none'}`,
         label: 'Nomination',
         title: `${currentPresidentName} is choosing a Chancellor`,
         description: 'Watch the seat ring and wait for the nomination to lock.',
@@ -103,6 +106,7 @@ const getBoardStatus = (gameState) => {
 
     case PHASES.VOTING:
       return createBoardStatus({
+        key: `routine:voting:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor || 'none'}`,
         label: 'Vote',
         title: `Ballots are open for ${currentPresidentName} / ${currentChancellorName}`,
         description: 'Each living player is casting Ja or Nein on this government.',
@@ -112,6 +116,7 @@ const getBoardStatus = (gameState) => {
 
     case PHASES.LEGISLATIVE_PRESIDENT:
       return createBoardStatus({
+        key: `routine:legislative-president:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}`,
         label: 'Legislative Session',
         title: `${currentPresidentName} is reviewing three policies`,
         description: `Two policies will be passed to ${currentChancellorName}.`,
@@ -120,6 +125,7 @@ const getBoardStatus = (gameState) => {
     case PHASES.LEGISLATIVE_CHANCELLOR:
       if (gameState.vetoRequested) {
         return createBoardStatus({
+          key: `routine:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}`,
           label: 'Veto Request',
           title: `${currentChancellorName} asked for a veto`,
           description: `${currentPresidentName} must accept or reject the request before play continues.`,
@@ -128,6 +134,7 @@ const getBoardStatus = (gameState) => {
       }
 
       return createBoardStatus({
+        key: `routine:legislative-chancellor:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}:${gameState.vetoRejected ? 'rejected' : 'open'}`,
         label: 'Legislative Session',
         title: `${currentChancellorName} is choosing the final policy`,
         description: 'One policy will be enacted from the remaining hand.',
@@ -138,6 +145,7 @@ const getBoardStatus = (gameState) => {
       switch (gameState.executivePower) {
         case EXECUTIVE_POWERS.INVESTIGATE:
           return createBoardStatus({
+            key: `routine:executive-investigate:${gameState.currentPresident || 'none'}`,
             label: 'Executive Action',
             title: `${currentPresidentName} is investigating loyalty`,
             description: 'One player is being checked in private for party membership.',
@@ -145,6 +153,7 @@ const getBoardStatus = (gameState) => {
           });
         case EXECUTIVE_POWERS.SPECIAL_ELECTION:
           return createBoardStatus({
+            key: `routine:executive-special:${gameState.currentPresident || 'none'}`,
             label: 'Executive Action',
             title: `${currentPresidentName} is calling a special election`,
             description: 'A temporary next president is being chosen for the following round.',
@@ -152,12 +161,14 @@ const getBoardStatus = (gameState) => {
           });
         case EXECUTIVE_POWERS.PEEK:
           return createBoardStatus({
+            key: `routine:executive-peek:${gameState.currentPresident || 'none'}`,
             label: 'Executive Action',
             title: `${currentPresidentName} is reviewing the top policies`,
             description: 'The next three cards are being inspected in private.',
           });
         case EXECUTIVE_POWERS.EXECUTION:
           return createBoardStatus({
+            key: `routine:executive-execution:${gameState.currentPresident || 'none'}`,
             label: 'Executive Action',
             title: `${currentPresidentName} is choosing an execution`,
             description: 'One player will be eliminated from the table.',
@@ -166,6 +177,7 @@ const getBoardStatus = (gameState) => {
           });
         default:
           return createBoardStatus({
+            key: `routine:executive:${gameState.currentPresident || 'none'}:${gameState.executivePower || 'none'}`,
             label: 'Executive Action',
             title: `${currentPresidentName} is resolving an executive power`,
             description: 'The table is waiting for the President to finish the action.',
