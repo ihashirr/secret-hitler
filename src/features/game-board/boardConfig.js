@@ -155,7 +155,11 @@ export const getVoteRevealGroups = (players, votes = {}) => {
 };
 
 export const VOTE_REVEAL_STAGE_DELAY_MS = 180;
-export const VOTE_REVEAL_DURATION_MS = 3000;
+export const VOTE_LOCK_STAGGER_MS = 220;
+export const VOTE_LOCK_PULSE_MS = 900;
+export const VOTE_REVEAL_START_DELAY_MS = 380;
+export const VOTE_REVEAL_STEP_MS = 340;
+export const VOTE_REVEAL_FINAL_HOLD_MS = 1450;
 export const GOVERNMENT_FORMATION_BANDS = [18, 32, 46, 60, 74];
 export const GOVERNMENT_FORMATION_SPARKS = [
   { left: '18%', top: '28%', delay: 0.08 },

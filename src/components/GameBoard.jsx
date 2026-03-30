@@ -342,7 +342,7 @@ export default function GameBoard({
 
           <FactionAccentText as="p" className="mt-2 text-[10px] leading-relaxed text-white/66 sm:text-[11px]">
             {revealProgressCount < orderedRevealPlayerIds.length
-              ? 'Votes are resolving on the table.'
+              ? 'Votes are resolving one ballot at a time on the table.'
               : revealNextStep}
           </FactionAccentText>
         </div>

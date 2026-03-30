@@ -1,8 +1,12 @@
 import React from 'react';
 import { PHASES } from '../../lib/constants';
 import {
-  VOTE_REVEAL_DURATION_MS,
+  VOTE_LOCK_PULSE_MS,
+  VOTE_LOCK_STAGGER_MS,
   VOTE_REVEAL_STAGE_DELAY_MS,
+  VOTE_REVEAL_START_DELAY_MS,
+  VOTE_REVEAL_STEP_MS,
+  VOTE_REVEAL_FINAL_HOLD_MS,
 } from './boardConfig';
 
 export default function useVoteRevealState(gameState) {
@@ -37,7 +41,10 @@ export default function useVoteRevealState(gameState) {
   );
 
   React.useEffect(() => () => {
-    voteHighlightTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    voteHighlightTimersRef.current.forEach(({ startTimer, clearTimer }) => {
+      if (startTimer) window.clearTimeout(startTimer);
+      if (clearTimer) window.clearTimeout(clearTimer);
+    });
     voteHighlightTimersRef.current.clear();
   }, []);
 
@@ -54,32 +61,44 @@ export default function useVoteRevealState(gameState) {
     }
 
     if (gameState.phase !== PHASES.VOTING) {
+      voteHighlightTimersRef.current.forEach(({ startTimer, clearTimer }) => {
+        if (startTimer) window.clearTimeout(startTimer);
+        if (clearTimer) window.clearTimeout(clearTimer);
+      });
+      voteHighlightTimersRef.current.clear();
+      setRecentVoteIds([]);
       prevVoteStateRef.current = nextVoteState;
       return undefined;
     }
 
-    const justVotedIds = gameState.players
+    const justVotedIds = [...gameState.players]
       .filter((player) => player.isAlive && player.hasVoted && !prevVoteStateRef.current[player.id])
+      .sort((left, right) => (left.position || 0) - (right.position || 0))
       .map((player) => player.id);
 
     prevVoteStateRef.current = nextVoteState;
 
     if (!justVotedIds.length) return undefined;
 
-    setRecentVoteIds((current) => Array.from(new Set([...current, ...justVotedIds])));
+    justVotedIds.forEach((id, index) => {
+      const existingTimers = voteHighlightTimersRef.current.get(id);
+      if (existingTimers?.startTimer) window.clearTimeout(existingTimers.startTimer);
+      if (existingTimers?.clearTimer) window.clearTimeout(existingTimers.clearTimer);
 
-    justVotedIds.forEach((id) => {
-      const existingTimer = voteHighlightTimersRef.current.get(id);
-      if (existingTimer) {
-        window.clearTimeout(existingTimer);
-      }
+      const startTimer = window.setTimeout(() => {
+        setRecentVoteIds((current) =>
+          current.includes(id) ? current : [...current, id],
+        );
 
-      const timer = window.setTimeout(() => {
-        setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
-        voteHighlightTimersRef.current.delete(id);
-      }, 650);
+        const clearTimer = window.setTimeout(() => {
+          setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
+          voteHighlightTimersRef.current.delete(id);
+        }, VOTE_LOCK_PULSE_MS);
 
-      voteHighlightTimersRef.current.set(id, timer);
+        voteHighlightTimersRef.current.set(id, { startTimer: null, clearTimer });
+      }, index * VOTE_LOCK_STAGGER_MS);
+
+      voteHighlightTimersRef.current.set(id, { startTimer, clearTimer: null });
     });
 
     return undefined;
@@ -118,17 +137,23 @@ export default function useVoteRevealState(gameState) {
 
     setRevealStage(0);
 
+    const revealSeatCount = revealState.orderedRevealPlayerIds?.length || 0;
+    const dynamicRevealDuration =
+      VOTE_REVEAL_START_DELAY_MS +
+      Math.max(0, revealSeatCount - 1) * VOTE_REVEAL_STEP_MS +
+      VOTE_REVEAL_FINAL_HOLD_MS;
+
     const revealTimer = window.setTimeout(() => setRevealStage(1), VOTE_REVEAL_STAGE_DELAY_MS);
     const cleanupTimer = window.setTimeout(() => {
       setRevealState((current) => (current?.id === revealState.id ? null : current));
       setRevealStage(0);
-    }, VOTE_REVEAL_DURATION_MS);
+    }, dynamicRevealDuration);
 
     return () => {
       window.clearTimeout(revealTimer);
       window.clearTimeout(cleanupTimer);
     };
-  }, [revealState?.id]);
+  }, [revealState?.id, revealState?.orderedRevealPlayerIds?.length]);
 
   React.useEffect(() => {
     if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
@@ -146,7 +171,7 @@ export default function useVoteRevealState(gameState) {
             ? current
             : [...current, { playerId, vote }],
         );
-      }, 120 + index * 80),
+      }, VOTE_REVEAL_START_DELAY_MS + index * VOTE_REVEAL_STEP_MS),
     );
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
