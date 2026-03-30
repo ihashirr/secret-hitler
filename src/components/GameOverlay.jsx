@@ -251,6 +251,7 @@ export default function GameOverlay({
   gameState,
   playerId,
   directorState,
+  voteRevealActive = false,
   pendingSelection,
   onConfirm,
   onCancel,
@@ -266,6 +267,9 @@ export default function GameOverlay({
   const isChancellor = gameState.amIChancellor || myActualId === gameState.currentChancellor;
   const sheetDragControls = useDragControls();
   const me = gameState.players.find((player) => player.id === myActualId);
+  const alivePlayers = gameState.players.filter((player) => player.isAlive);
+  const submittedVotes = alivePlayers.filter((player) => player.vote === 'YA' || player.vote === 'NEIN').length;
+  const pendingVoteCount = Math.max(0, alivePlayers.length - submittedVotes);
   const currentChancellor = gameState.players.find(
     (player) => player.id === gameState.currentChancellor || player.id === gameState.nominatedChancellor
   );
@@ -344,7 +348,7 @@ export default function GameOverlay({
   ]);
 
   useEffect(() => {
-    if (activeStoryBeat || !storyBeatQueue.length) return;
+    if (activeStoryBeat || !storyBeatQueue.length || voteRevealActive || (displayPhase === PHASES.VOTING && me?.hasVoted)) return;
 
     const [nextBeat, ...rest] = storyBeatQueue;
     const timer = window.setTimeout(() => {
@@ -353,7 +357,7 @@ export default function GameOverlay({
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [activeStoryBeat, storyBeatQueue]);
+  }, [activeStoryBeat, displayPhase, me?.hasVoted, storyBeatQueue, voteRevealActive]);
 
   const handleVoteSelection = async (approve) => {
     if (activePendingVote || me?.hasVoted) return;
@@ -503,7 +507,10 @@ export default function GameOverlay({
           voteStatusPill = me?.isAlive
             ? {
                 label: 'Vote Locked',
-                description: 'Your ballot is locked in. The table is resolving the rest.',
+                description:
+                  pendingVoteCount > 0
+                    ? `${pendingVoteCount} ${pendingVoteCount === 1 ? 'vote remains' : 'votes remain'}. Watch the ring for the next ballot to lock in.`
+                    : 'All ballots are in. Hold on while the table resolves the result.',
               }
             : me
               ? {

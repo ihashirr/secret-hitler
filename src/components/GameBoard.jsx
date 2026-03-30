@@ -590,6 +590,14 @@ export default function GameBoard({
                             {selectionPhaseActive && isSelectable && !isPending && (
                               <div className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(212,192,152,0.14)_0%,rgba(212,192,152,0.05)_48%,transparent_76%)]" />
                             )}
+                            {justVoted && (
+                              <motion.div
+                                initial={{ opacity: 0.22, scale: 0.92 }}
+                                animate={{ opacity: 0, scale: 1.1 }}
+                                transition={{ duration: 0.5, ease: 'easeOut' }}
+                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] border border-cyan-300/45"
+                              />
+                            )}
                             {playerIsPresident && (
                               <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(255,243,194,0.24)_0%,rgba(255,243,194,0.06)_42%,transparent_72%)]" />
                             )}
@@ -824,6 +832,7 @@ export default function GameBoard({
         gameState={gameState}
         playerId={playerId}
         directorState={directorState}
+        voteRevealActive={voteRevealActive}
         pendingSelection={pendingSelection}
         onConfirm={confirmSelection}
         onCancel={cancelSelection}
