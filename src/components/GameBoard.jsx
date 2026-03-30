@@ -32,8 +32,8 @@ const VOTE_TARGETS = [
   {
     key: 'YA',
     label: 'JA',
-    x: 16,
-    y: 56,
+    x: 18,
+    y: 48,
     accentClassName: 'border-cyan-300/28 bg-[linear-gradient(180deg,rgba(8,27,40,0.96)_0%,rgba(8,18,28,0.94)_100%)] text-cyan-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
     dotClassName: 'bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.52)]',
     laneColor: 'rgba(103, 232, 249, 0.86)',
@@ -41,8 +41,8 @@ const VOTE_TARGETS = [
   {
     key: 'NEIN',
     label: 'NEIN',
-    x: 84,
-    y: 56,
+    x: 82,
+    y: 48,
     accentClassName: 'border-red-400/28 bg-[linear-gradient(180deg,rgba(33,10,14,0.96)_0%,rgba(24,8,10,0.94)_100%)] text-red-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
     dotClassName: 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]',
     laneColor: 'rgba(248, 113, 113, 0.84)',
@@ -171,6 +171,7 @@ export default function GameBoard({
         voteRevealFinalHoldMs,
       }
     : null;
+  const voteRevealLayoutActive = Boolean(rawVoteReveal);
   const {
     displayVoteReveal,
     majorPublicBeat,
@@ -244,7 +245,7 @@ export default function GameBoard({
   const seatLayouts = React.useMemo(
     () =>
       tablePlayers.map((player, index) => {
-        const seatStyle = getTableRingSeatStyle(index, tablePlayers.length);
+        const seatStyle = getTableRingSeatStyle(index, tablePlayers.length, voteRevealLayoutActive);
         return {
           ...player,
           seatStyle,
@@ -252,7 +253,7 @@ export default function GameBoard({
           y: Number.parseFloat(seatStyle.top),
         };
       }),
-    [tablePlayers],
+    [tablePlayers, voteRevealLayoutActive],
   );
   const { orderMap: presidencyOrderMap, nextPresidentId, afterNextPresidentId } = React.useMemo(
     () => getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId),
@@ -294,20 +295,36 @@ export default function GameBoard({
     [currentChancellorPlayer?.name, currentPresidentPlayer?.name, nextPresidentPlayer?.name],
   );
   const voteTargetLookup = React.useMemo(() => new Map(VOTE_TARGETS.map((target) => [target.key, target])), []);
-  const ringShellWidth = React.useMemo(() => (
-    playerCount >= 9
+  const ringShellWidth = React.useMemo(() => {
+    if (voteRevealLayoutActive) {
+      return playerCount >= 9
+        ? 'min(100%, clamp(224px, calc(var(--app-vh) - var(--app-header-offset) - 372px), 296px))'
+        : playerCount >= 7
+          ? 'min(100%, clamp(238px, calc(var(--app-vh) - var(--app-header-offset) - 350px), 312px))'
+          : 'min(100%, clamp(252px, calc(var(--app-vh) - var(--app-header-offset) - 330px), 326px))';
+    }
+
+    return playerCount >= 9
       ? 'min(100%, clamp(272px, calc(var(--app-vh) - var(--app-header-offset) - 288px), 400px))'
       : playerCount >= 7
         ? 'min(100%, clamp(294px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 420px))'
-        : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))'
-  ), [playerCount]);
-  const ringPanelMinHeight = React.useMemo(() => (
-    playerCount >= 9
+        : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))';
+  }, [playerCount, voteRevealLayoutActive]);
+  const ringPanelMinHeight = React.useMemo(() => {
+    if (voteRevealLayoutActive) {
+      return playerCount >= 9
+        ? 'clamp(320px, calc(var(--app-vh) - var(--app-header-offset) - 304px), 392px)'
+        : playerCount >= 7
+          ? 'clamp(334px, calc(var(--app-vh) - var(--app-header-offset) - 288px), 408px)'
+          : 'clamp(348px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 424px)';
+    }
+
+    return playerCount >= 9
       ? 'clamp(352px, calc(var(--app-vh) - var(--app-header-offset) - 312px), 432px)'
       : playerCount >= 7
         ? 'clamp(364px, calc(var(--app-vh) - var(--app-header-offset) - 292px), 456px)'
-        : 'clamp(376px, calc(var(--app-vh) - var(--app-header-offset) - 272px), 480px)'
-  ), [playerCount]);
+        : 'clamp(376px, calc(var(--app-vh) - var(--app-header-offset) - 272px), 480px)';
+  }, [playerCount, voteRevealLayoutActive]);
   const getSeatSelectionMeta = (player) => {
     const isSelf = player.id === myActualId;
     const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
@@ -574,17 +591,21 @@ export default function GameBoard({
 
   const renderPlayerDock = () => {
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
-    const ringSeatClass = getTableRingSeatClass(playerCount);
+    const ringSeatClass = getTableRingSeatClass(playerCount, voteRevealLayoutActive);
 
     return (
       <div className="flex w-full min-w-0 flex-1">
         <div
-          className="relative w-full min-w-0 overflow-hidden rounded-[28px] border border-white/8 bg-black/28 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:p-4"
+          className={`relative w-full min-w-0 overflow-hidden rounded-[28px] border border-white/8 bg-black/28 shadow-[0_18px_40px_rgba(0,0,0,0.24)] ${
+            voteRevealLayoutActive ? 'p-2 sm:p-3' : 'p-2.5 sm:p-4'
+          }`}
           style={{ minHeight: ringPanelMinHeight }}
         >
           <div className="absolute inset-0 paper-grain opacity-[0.06] pointer-events-none" />
 
-          <div className="relative z-10 flex min-h-full min-w-0 flex-col items-center justify-start gap-3 py-1 sm:gap-5">
+          <div className={`relative z-10 flex min-h-full min-w-0 flex-col items-center justify-start ${
+            voteRevealLayoutActive ? 'gap-2 py-0.5 sm:gap-3' : 'gap-3 py-1 sm:gap-5'
+          }`}>
             <div className="relative mx-auto w-full" style={{ width: ringShellWidth }}>
               <div className="relative aspect-square w-full">
                 <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
@@ -642,7 +663,7 @@ export default function GameBoard({
                     {VOTE_TARGETS.map((target) => (
                       <motion.div
                         key={target.key}
-                        className={`pointer-events-none absolute z-[2] min-w-[74px] rounded-[18px] border px-2.5 py-2 text-center ${target.accentClassName}`}
+                        className={`pointer-events-none absolute z-[2] min-w-[60px] rounded-[16px] border px-2 py-1.5 text-center sm:min-w-[66px] ${target.accentClassName}`}
                         style={{
                           left: `${target.x}%`,
                           top: `${target.y}%`,
@@ -652,13 +673,13 @@ export default function GameBoard({
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.32, ease: 'easeOut' }}
                       >
-                        <div className="text-[7px] font-mono font-black uppercase tracking-[0.22em] text-white/62">
+                        <div className="text-[6px] font-mono font-black uppercase tracking-[0.22em] text-white/62 sm:text-[7px]">
                           {target.label}
                         </div>
                         <div className="mt-1 flex items-center justify-center gap-1.5">
                           <span className={`h-2 w-2 rounded-full ${target.dotClassName}`} />
                           <motion.span
-                            className="text-[15px] font-black leading-none"
+                            className="text-[13px] font-black leading-none sm:text-[15px]"
                             key={gatedRevealedVoteTotals[target.key]}
                             initial={{ scale: 1.2, opacity: 0.6 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -826,7 +847,7 @@ export default function GameBoard({
                               </span>
                             ) : null}
 
-                            <div className={`relative mt-1 flex h-10 w-10 items-end justify-center overflow-hidden rounded-[14px] border sm:h-12 sm:w-12 ${
+                            <div className={`relative ${voteRevealLayoutActive ? 'mt-0.5 h-9 w-9 rounded-[12px] sm:h-10 sm:w-10' : 'mt-1 h-10 w-10 rounded-[14px] sm:h-12 sm:w-12'} flex items-end justify-center overflow-hidden border ${
                               playerIsPresident
                                 ? 'border-[#2c2410]/14 bg-[#f7e7b0]'
                                 : !player.isAlive
@@ -852,7 +873,9 @@ export default function GameBoard({
                               )}
                             </div>
 
-                            <span className={`mt-1 w-full truncate font-serif text-[8px] font-black tracking-tight sm:text-[9px] ${
+                            <span className={`w-full truncate font-serif font-black tracking-tight ${
+                              voteRevealLayoutActive ? 'mt-0.5 text-[7px] sm:text-[8px]' : 'mt-1 text-[8px] sm:text-[9px]'
+                            } ${
                               playerIsPresident
                                 ? 'text-[#2c2410]'
                                 : !player.isAlive
@@ -863,7 +886,9 @@ export default function GameBoard({
                             </span>
 
                             {showSeatVoteStatus ? (
-                              <span className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] ${
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono font-black uppercase tracking-[0.16em] ${
+                                voteRevealLayoutActive ? 'mt-0.5 text-[5px] sm:text-[6px]' : 'mt-1 text-[6px]'
+                              } ${
                                 isVotePendingSeal
                                   ? 'border-amber-200/22 bg-amber-200/12 text-amber-100'
                                   : isVoteRevealed
@@ -882,7 +907,9 @@ export default function GameBoard({
                                 <span>{isVotePendingSeal ? 'Sealed' : voteStatus.label}</span>
                               </span>
                             ) : (
-                              <span className={`mt-1 text-[6px] font-mono font-black uppercase tracking-[0.18em] ${
+                              <span className={`font-mono font-black uppercase tracking-[0.18em] ${
+                                voteRevealLayoutActive ? 'mt-0.5 text-[5px] sm:text-[6px]' : 'mt-1 text-[6px]'
+                              } ${
                                 isNextPresident
                                   ? 'text-cyan-100'
                                   : playerIsPresident
@@ -945,24 +972,26 @@ export default function GameBoard({
                       })}
               </div>
             </div>
-            <div className="w-full max-w-[420px]">
-              <div className="grid grid-cols-3 gap-2">
-                {orbitStatusItems.map((item) => (
-                  <div
-                    key={item.label}
-                    className="min-w-0 rounded-[18px] border border-white/8 bg-black/24 px-3 py-2 shadow-[0_12px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm"
-                  >
-                    <div className="flex items-center gap-1.5 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
-                      <span className="truncate">{item.label}</span>
+            {!voteRevealLayoutActive && (
+              <div className="w-full max-w-[420px]">
+                <div className="grid grid-cols-3 gap-2">
+                  {orbitStatusItems.map((item) => (
+                    <div
+                      key={item.label}
+                      className="min-w-0 rounded-[18px] border border-white/8 bg-black/24 px-3 py-2 shadow-[0_12px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm"
+                    >
+                      <div className="flex items-center gap-1.5 text-[8px] font-mono font-black uppercase tracking-[0.18em] text-white/45">
+                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.accentClassName}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.04em] text-white/78 sm:text-[11px]">
+                        {item.value}
+                      </p>
                     </div>
-                    <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.04em] text-white/78 sm:text-[11px]">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

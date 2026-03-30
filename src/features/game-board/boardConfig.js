@@ -44,13 +44,19 @@ export const getProgressPercent = (count, max) =>
 export const getTablePlayers = (players) =>
   [...players].sort((left, right) => (left.position || 0) - (right.position || 0));
 
-export const getTableRingSeatClass = (count) => {
+export const getTableRingSeatClass = (count, compact = false) => {
+  if (compact) {
+    if (count >= 9) return 'h-[74px] w-[60px] sm:h-[82px] sm:w-[68px]';
+    if (count >= 7) return 'h-[80px] w-[66px] sm:h-[88px] sm:w-[74px]';
+    return 'h-[86px] w-[72px] sm:h-[94px] sm:w-[80px]';
+  }
+
   if (count >= 9) return 'h-[82px] w-[68px] sm:h-[90px] sm:w-[76px]';
   if (count >= 7) return 'h-[88px] w-[74px] sm:h-[98px] sm:w-[82px]';
   return 'h-[96px] w-[80px] sm:h-[108px] sm:w-[90px]';
 };
 
-export const getTableRingSeatStyle = (index, total) => {
+export const getTableRingSeatStyle = (index, total, compact = false) => {
   if (total <= 1) {
     return {
       left: '50%',
@@ -60,7 +66,17 @@ export const getTableRingSeatStyle = (index, total) => {
   }
 
   const angle = ((index / total) * Math.PI * 2) - Math.PI / 2;
-  const radius = total >= 9 ? 40 : total >= 7 ? 38 : 35;
+  const radius = compact
+    ? total >= 9
+      ? 35
+      : total >= 7
+        ? 33
+        : 30
+    : total >= 9
+      ? 40
+      : total >= 7
+        ? 38
+        : 35;
   const left = 50 + Math.cos(angle) * radius;
   const top = 50 + Math.sin(angle) * radius;
 
