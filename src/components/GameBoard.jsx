@@ -32,8 +32,8 @@ const VOTE_TARGETS = [
   {
     key: 'YA',
     label: 'JA',
-    x: 28,
-    y: 69,
+    x: 16,
+    y: 56,
     accentClassName: 'border-cyan-300/28 bg-[linear-gradient(180deg,rgba(8,27,40,0.96)_0%,rgba(8,18,28,0.94)_100%)] text-cyan-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
     dotClassName: 'bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.52)]',
     laneColor: 'rgba(103, 232, 249, 0.86)',
@@ -41,8 +41,8 @@ const VOTE_TARGETS = [
   {
     key: 'NEIN',
     label: 'NEIN',
-    x: 72,
-    y: 69,
+    x: 84,
+    y: 56,
     accentClassName: 'border-red-400/28 bg-[linear-gradient(180deg,rgba(33,10,14,0.96)_0%,rgba(24,8,10,0.94)_100%)] text-red-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
     dotClassName: 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]',
     laneColor: 'rgba(248, 113, 113, 0.84)',
@@ -50,10 +50,12 @@ const VOTE_TARGETS = [
 ];
 
 const getVoteLanePath = (seat, target) => {
-  const direction = target.key === 'YA' ? -1 : 1;
-  const controlX = ((seat.x + target.x) / 2) + direction * 12;
-  const controlY = Math.min(seat.y, target.y) - 16;
-  return `M ${seat.x} ${seat.y} Q ${controlX} ${controlY} ${target.x} ${target.y}`;
+  const horizontalDirection = target.key === 'YA' ? -1 : 1;
+  const control1X = seat.x + (horizontalDirection * 10);
+  const control1Y = seat.y + (seat.y > target.y ? -6 : 6);
+  const control2X = target.x - (horizontalDirection * 14);
+  const control2Y = target.y + (seat.y > target.y ? 8 : -8);
+  return `M ${seat.x} ${seat.y} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${target.x} ${target.y}`;
 };
 
 export default function GameBoard({
