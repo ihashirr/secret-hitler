@@ -596,8 +596,12 @@ async function resolveBotsIfNeeded(ctx: any, roomId: string) {
 export const addBot = mutation({
   args: { roomId: v.string(), playerId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const BOT_NAMES = ["CYPHER", "SPECTRE", "GHOST", "ECHO", "VOID", "NOVA", "ORBIT", "VECTOR", "ZETA", "PULSE"];
-    const name = `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]}_${Math.floor(Math.random() * 999).toString().padStart(3, '0')}`;
+    const BOT_NAMES = [
+      "GIGACHAD", "DOGE", "SKIBIDI", "CHEEMS", "STONKS", 
+      "WOJACK", "RIZZLER", "SIGMA", "CAPYBARA", "POGCHAMP", 
+      "SANIC", "CHONKER", "KEKW", "KAREN", "NPC", "BEANS"
+    ];
+    const name = `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]}_${Math.floor(Math.random() * 99).toString().padStart(2, '0')}`;
     const botPlayerId = `bot_${Math.random().toString(36).slice(2, 11)}`;
     const avatarId = Math.floor(Math.random() * 10) + 1;
     const identity = await ctx.auth.getUserIdentity();
@@ -630,7 +634,7 @@ export const addBot = mutation({
         isBot: true,
     });
 
-    await logSystem(ctx.db, args.roomId, `${name} (SYNTHETIC_OPERATIVE) deployed to sector.`);
+    await logSystem(ctx.db, args.roomId, `${name} (MEME_OPERATIVE) has entered the chat. No cap.`);
     return { success: true };
   },
 });

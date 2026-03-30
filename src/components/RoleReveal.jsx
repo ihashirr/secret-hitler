@@ -4,30 +4,24 @@ import { Check } from 'lucide-react';
 import { FACTIONS, ROLES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 
-const AUTO_ADVANCE_MS = 1200;
+const AUTO_ADVANCE_MS = 5000;
 
 const THEMES = {
   liberal: {
-    glow: 'rgba(54, 161, 255, 0.18)',
-    frame: 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(8,18,28,0.96)_0%,rgba(8,14,22,0.92)_100%)]',
-    panel: 'border-cyan-300/16 bg-cyan-300/10 text-cyan-100',
-    chip: 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100',
-    softText: 'text-cyan-100/72',
-    strongText: 'text-cyan-100',
-    button: 'border-cyan-300/22 bg-[linear-gradient(180deg,#3992da_0%,#225177_100%)] text-white',
+    glow: 'rgba(54, 161, 255, 0.22)',
+    frame: 'border-cyan-400/20 bg-[#0a1016]',
+    panel: 'border-cyan-400/15 bg-cyan-400/5',
+    chip: 'border-cyan-400/18 bg-cyan-400/10 text-cyan-100',
+    button: 'border-cyan-400/30 bg-[linear-gradient(180deg,#22d3ee_0%,#0891b2_100%)] text-white',
     partyImage: '/assets/policy-liberal.png',
-    partyLabel: 'Liberal Party',
   },
   fascist: {
-    glow: 'rgba(218, 64, 64, 0.18)',
-    frame: 'border-red-400/18 bg-[linear-gradient(180deg,rgba(28,10,12,0.96)_0%,rgba(19,8,9,0.92)_100%)]',
-    panel: 'border-red-400/16 bg-red-500/10 text-red-100',
-    chip: 'border-red-400/18 bg-red-500/10 text-red-100',
-    softText: 'text-red-100/72',
-    strongText: 'text-red-100',
-    button: 'border-red-300/22 bg-[linear-gradient(180deg,#be373d_0%,#77181d_100%)] text-white',
+    glow: 'rgba(239, 68, 68, 0.22)',
+    frame: 'border-red-500/20 bg-[#0e0708]',
+    panel: 'border-red-500/15 bg-red-500/5',
+    chip: 'border-red-500/18 bg-red-500/10 text-red-100',
+    button: 'border-red-500/30 bg-[linear-gradient(180deg,#ef4444_0%,#991b1b_100%)] text-white',
     partyImage: '/assets/policy-fascist.png',
-    partyLabel: 'Fascist Party',
   },
 };
 
@@ -35,79 +29,71 @@ const ROLE_COPY = {
   [ROLES.LIBERAL]: {
     title: 'The Loyal Liberal',
     membership: 'LIBERAL PARTY',
-    mission: 'Stop the fascists from ruining the scenes. Keep it 100, find your allies, and don\'t get played.',
-    color: 'rgb(34 211 238)',
-    accent: 'cyan',
-    icon: 'bird',
+    mission: "Stop the fascists from ruining the scenes. Keep it 100, find your allies, and don't get played.",
+    image: '/assets/role-liberal-premium.png',
+    accent: 'text-cyan-400',
+    description: 'Protect the Republic at all costs.',
   },
   [ROLES.FASCIST]: {
     title: 'The Secret Fascist',
     membership: 'FASCIST PARTY',
-    mission: 'Operation: Gaslight. Get Hitler on the throne. Easy dubs if you play the table right.',
-    color: 'rgb(239 68 68)',
-    accent: 'red',
-    icon: 'wolf',
+    mission: "Operation: Gaslight. Get Hitler on the throne. Easy dubs if you play the table right.",
+    image: '/assets/role-fascist-premium.png',
+    accent: 'text-red-500',
+    description: 'Infiltrate and usher in the New Order.',
   },
   [ROLES.HITLER]: {
     title: 'The Secret Hitler',
     membership: 'FASCIST PARTY',
-    mission: 'The Main Character. Stay low, look innocent, and wait for the table to cook themselves.',
-    color: 'rgb(185 28 28)',
-    accent: 'crimson',
-    icon: 'lizard',
+    mission: "The Main Character. Stay low, look innocent, and wait for the table to cook themselves.",
+    image: '/assets/role-hitler-premium.png',
+    accent: 'text-red-600',
+    description: 'Rise to power through legal mechanisms.',
   },
 };
 
-function getStableNumber(seed, min, max) {
-  let hash = 0;
-  for (const char of seed) {
-    hash = (hash * 31 + char.charCodeAt(0)) % 100000;
-  }
-
-  return min + (hash % (max - min + 1));
-}
-
-function getAvatarId(player) {
-  if (player?.avatarId) return player.avatarId;
-  return getStableNumber(player?.id || player?.name || 'operative', 1, 10);
-}
-
-function getKnownPlayers(gameState, myActualId) {
-  return gameState.players.filter(
-    (candidate) => candidate.id !== myActualId && Boolean(candidate.role),
-  );
-}
+const getAvatarId = (player) => player?.avatarId || 1;
 
 export default function RoleReveal({ gameState, playerId, onReady }) {
   const myActualId = gameState?.myPlayerId || playerId;
-  const me = gameState.players.find((player) => player.id === myActualId);
+  const me = gameState.players.find((p) => p.id === myActualId);
   const role = me?.role || ROLES.LIBERAL;
   const faction = me?.faction || (role === ROLES.LIBERAL ? FACTIONS.LIBERAL : FACTIONS.FASCIST);
   const theme = faction === FACTIONS.LIBERAL ? THEMES.liberal : THEMES.fascist;
-  const roleMeta = ROLE_COPY[role] || ROLE_COPY[ROLES.LIBERAL];
+  const roleMeta = ROLE_COPY[role];
+
   const [step, setStep] = useState('cover');
+  const [remainingMs, setRemainingMs] = useState(AUTO_ADVANCE_MS);
+  const [isHolding, setIsHolding] = useState(false);
 
   const knownPlayers = useMemo(
-    () => getKnownPlayers(gameState, myActualId),
-    [gameState, myActualId],
+    () => gameState.players.filter((p) => p.id !== myActualId && Boolean(p.role)),
+    [gameState, myActualId]
   );
 
   useEffect(() => {
-    if (step !== 'role') return undefined;
+    if (step !== 'role' || isHolding) return;
 
-    const timer = window.setTimeout(() => {
-      setStep('briefing');
-    }, AUTO_ADVANCE_MS);
+    const interval = setInterval(() => {
+      setRemainingMs((prev) => {
+        if (prev <= 100) {
+          clearInterval(interval);
+          setStep('briefing');
+          return 0;
+        }
+        return prev - 100;
+      });
+    }, 100);
 
-    return () => window.clearTimeout(timer);
-  }, [step]);
+    return () => clearInterval(interval);
+  }, [step, isHolding]);
 
-  const revealRole = () => {
+  const handleReveal = () => {
     triggerHaptic('selection');
     setStep('role');
   };
 
-  const showBriefingNow = () => {
+  const handleSkip = () => {
     triggerHaptic('soft');
     setStep('briefing');
   };
@@ -117,92 +103,61 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
     onReady();
   };
 
-  const allyHeading =
-    role === ROLES.FASCIST
-      ? 'Known To You'
-      : role === ROLES.HITLER
-        ? 'Known To You'
-        : 'Who You Know';
-  const allySummary =
-    knownPlayers.length > 0
-      ? role === ROLES.HITLER
-        ? 'These players are visible to you before the game begins.'
-        : 'Keep these identities quiet and coordinate indirectly.'
-      : role === ROLES.LIBERAL
-        ? 'Nobody is revealed to you at the start.'
-        : 'Nobody is revealed to you at the start.';
-
   if (me?.isReady) {
     return (
-      <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+12px)]">
+      <div className="relative flex h-full w-full items-center justify-center bg-obsidian-950 px-4">
         <div className="absolute inset-0 board-grid opacity-[0.04]" />
-        <div
-          className="pointer-events-none absolute inset-0 blur-[120px]"
-          style={{ background: `radial-gradient(circle at 50% 32%, ${theme.glow} 0%, transparent 62%)` }}
-        />
         <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          className={`relative z-10 w-full max-w-sm rounded-[30px] border ${theme.frame} px-6 py-8 text-center shadow-[0_28px_80px_rgba(0,0,0,0.52)]`}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={`relative z-10 w-full max-w-sm rounded-[32px] border ${theme.frame} px-6 py-10 text-center shadow-2xl`}
         >
           <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border ${theme.panel}`}>
-            <Check size={30} />
+            <Check size={32} />
           </div>
-          <p className="mt-5 text-[10px] font-mono font-black uppercase tracking-[0.32em] text-white/36">
-            Role Confirmed
-          </p>
-          <h2 className="mt-3 text-2xl font-black uppercase tracking-[0.14em] text-white">
-            Waiting For The Table
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-white/48">
-            Stay on this screen until everyone has finished checking their identity.
-          </p>
+          <h2 className="mt-6 text-2xl font-black uppercase tracking-tight text-white">Identity Secured</h2>
+          <p className="mt-2 text-sm text-white/40">Waiting for other operatives...</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+12px)] sm:px-6">
+    <div className="relative flex h-full w-full flex-col bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+12px)] sm:px-6">
       <div className="absolute inset-0 board-grid opacity-[0.04]" />
       <div
-        className="pointer-events-none absolute inset-0 blur-[120px] transition-opacity duration-700"
-        style={{ background: `radial-gradient(circle at 50% 24%, ${theme.glow} 0%, transparent 60%)` }}
+        className="pointer-events-none absolute inset-0 blur-[120px]"
+        style={{ background: `radial-gradient(circle at 50% 30%, ${theme.glow} 0%, transparent 60%)` }}
       />
 
-      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-md flex-col">
-        <div className="shrink-0 pt-2 text-center">
-          <p className="text-[10px] font-mono font-black uppercase tracking-[0.36em] text-white/30">
-            Private Role Reveal
-          </p>
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-sm flex-col">
+        <div className="shrink-0 text-center py-2">
+          <span className="text-[10px] font-mono font-black uppercase tracking-[0.4em] text-white/30">
+            Classified Transmission
+          </span>
         </div>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex flex-1 items-center justify-center min-h-0">
           <AnimatePresence mode="wait">
             {step === 'cover' && (
               <motion.div
                 key="cover"
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -18, scale: 0.98 }}
-                transition={{ duration: 0.28, ease: 'easeOut' }}
-                className={`w-full rounded-[30px] border ${theme.frame} px-6 py-8 text-center shadow-[0_28px_80px_rgba(0,0,0,0.52)]`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={`w-full rounded-[40px] border ${theme.frame} px-6 py-10 text-center shadow-2xl`}
               >
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[26px] border border-white/10 bg-white/[0.05]">
-                  <div className="h-7 w-7 rounded-xl border-2 border-white/18" />
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-white/5">
+                  <div className="h-4 w-4 rounded-full border-2 border-white/20" />
                 </div>
-                <h1 className="mt-6 text-2xl font-black uppercase tracking-[0.14em] text-white">
-                  Hide Your Screen
-                </h1>
-                <p className="mt-3 text-sm leading-relaxed text-white/52">
-                  Make sure nobody else can see before you reveal your identity.
-                </p>
+                <h1 className="mt-8 text-3xl font-black uppercase tracking-tight text-white">Hide Screen</h1>
+                <p className="mt-2 text-sm text-white/50">Ensure privacy before identity reveal.</p>
                 <button
                   type="button"
-                  onClick={revealRole}
-                  className={`mt-8 inline-flex h-14 w-full items-center justify-center rounded-2xl border text-[11px] font-black uppercase tracking-[0.24em] shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition-transform active:scale-[0.98] ${theme.button}`}
+                  onClick={handleReveal}
+                  className={`mt-10 h-16 w-full rounded-2xl border text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-[0.98] ${theme.button}`}
                 >
-                  Reveal My Role
+                  Confirm Awareness
                 </button>
               </motion.div>
             )}
@@ -210,43 +165,45 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
             {step === 'role' && (
               <motion.div
                 key="role"
-                initial={{ opacity: 0, scale: 0.96, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 1.02, y: -16 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className={`w-full rounded-[32px] border ${theme.frame} px-6 py-8 text-center shadow-[0_28px_84px_rgba(0,0,0,0.56)]`}
+                initial={{ opacity: 0, rotateY: 90 }}
+                animate={{ opacity: 1, rotateY: 0 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                onPointerDown={() => {
+                  setIsHolding(true);
+                  triggerHaptic('selection');
+                }}
+                onPointerUp={() => setIsHolding(false)}
+                onPointerLeave={() => setIsHolding(false)}
+                className={`group relative w-full cursor-pointer select-none rounded-[40px] border ${theme.frame} overflow-hidden px-6 py-10 text-center shadow-[0_32px_80px_rgba(0,0,0,0.6)] transition-transform ${isHolding ? 'scale-[1.02]' : ''}`}
               >
-                <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-white/32">
-                  Your Role
-                </p>
+                <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
+                <img
+                  src={roleMeta.image}
+                  alt={roleMeta.title}
+                  className="mx-auto w-full max-w-[200px] drop-shadow-2xl transition-transform duration-700 group-hover:scale-105"
+                />
                 <div className="mt-8">
-                  <div className={`mx-auto inline-flex rounded-full border px-4 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.26em] ${theme.panel}`}>
-                    {roleMeta.stamp}
-                  </div>
-                  <h2 className="mt-6 text-4xl font-black uppercase tracking-[0.08em] text-white sm:text-5xl">
-                    {roleMeta.headline}
+                  <span className={`text-[10px] font-mono font-black uppercase tracking-[0.3em] ${roleMeta.accent}`}>
+                    {roleMeta.membership}
+                  </span>
+                  <h2 className="mt-2 text-4xl font-black uppercase tracking-tight text-white">
+                    {roleMeta.title}
                   </h2>
-                  <p className="mt-4 text-base leading-relaxed text-white/58">
-                    {roleMeta.detail}
-                  </p>
                 </div>
 
-                <div className="mt-10">
-                  <div className="mx-auto h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
+                <div className="absolute inset-x-0 bottom-0 px-6 pb-6">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                     <motion.div
-                      initial={{ width: '0%' }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: 'linear' }}
-                      className={`h-full rounded-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-300' : 'bg-red-400'}`}
+                      initial={false}
+                      animate={{ width: `${(remainingMs / AUTO_ADVANCE_MS) * 100}%` }}
+                      transition={{ duration: 0.1, ease: 'linear' }}
+                      className={`h-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'}`}
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={showBriefingNow}
-                    className="mt-4 text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/40 transition-colors hover:text-white/70"
-                  >
-                    Skip Ahead
-                  </button>
+                  <div className="mt-3 flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-widest text-white/30">
+                    <span>{isHolding ? 'TIMER PAUSED' : 'REVEALING MISSION'}</span>
+                    <button onClick={handleSkip} className="hover:text-white">PROCEED NOW</button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -254,91 +211,58 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
             {step === 'briefing' && (
               <motion.div
                 key="briefing"
-                initial={{ opacity: 0, y: 22, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -14, scale: 0.98 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className={`w-full rounded-[32px] border ${theme.frame} px-5 py-5 shadow-[0_28px_84px_rgba(0,0,0,0.56)] sm:px-6 sm:py-6`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`w-full rounded-[40px] border ${theme.frame} flex flex-col gap-6 px-6 py-8 shadow-2xl`}
               >
                 <div className="text-center">
-                  <p className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-white/30">
-                    Private Briefing
+                  <span className="text-[9px] font-mono font-black uppercase tracking-[0.4em] text-white/30">
+                    Mission Briefing
+                  </span>
+                  <h2 className={`mt-2 text-2xl font-black uppercase tracking-tight text-white`}>{roleMeta.title}</h2>
+                </div>
+
+                <div className="rounded-3xl border border-white/5 bg-black/40 p-5 text-center">
+                  <p className="text-[11px] leading-relaxed text-white/70 italic">
+                    &ldquo;{roleMeta.mission}&rdquo;
                   </p>
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.12em] text-white">
-                    {roleMeta.headline}
-                  </h2>
                 </div>
 
-                <div className="mt-5 flex flex-col items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.22em] text-white/34">
-                      Party Membership
-                    </p>
-                    <img
-                      src={theme.partyImage}
-                      alt={theme.partyLabel}
-                      loading="eager"
-                      decoding="async"
-                      className="mx-auto mt-3 w-full max-w-[220px] rounded-[24px] shadow-[0_18px_42px_rgba(0,0,0,0.34)] sm:max-w-[250px]"
-                    />
-                    <p className={`mt-3 text-sm font-black uppercase tracking-[0.14em] ${theme.strongText}`}>
-                      {theme.partyLabel}
-                    </p>
-                  </div>
-
-                  <div className="w-full rounded-[24px] border border-white/8 bg-black/24 px-4 py-4 text-center">
-                    <p className="text-[10px] font-mono font-black uppercase tracking-[0.24em] text-white/34">
-                      {allyHeading}
-                    </p>
-
-                    {knownPlayers.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap justify-center gap-2">
-                        {knownPlayers.map((player) => (
-                          <div
-                            key={player.id}
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 ${theme.chip}`}
-                          >
-                            <img
-                              src={`/assets/avatars/avatar_${getAvatarId(player)}.png`}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              className="h-7 w-7 rounded-full border border-white/12 object-cover"
-                            />
-                            <span className="max-w-[88px] truncate text-[11px] font-black uppercase tracking-[0.08em] text-white">
-                              {player.name}
-                            </span>
-                            <span className={`text-[9px] font-mono font-black uppercase tracking-[0.16em] ${theme.softText}`}>
-                              {player.role === ROLES.HITLER ? 'Hitler' : 'Fascist'}
-                            </span>
+                {knownPlayers.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <span className="text-[9px] font-mono font-black uppercase tracking-widest text-white/30 px-2">
+                      Operative Database
+                    </span>
+                    <div className="grid grid-cols-1 gap-2">
+                      {knownPlayers.map((p) => (
+                        <div key={p.id} className={`flex items-center gap-4 rounded-2xl border p-3 ${theme.panel}`}>
+                          <img
+                            src={`/assets/avatars/avatar_${getAvatarId(p)}.png`}
+                            className="h-10 w-10 rounded-xl border border-white/10 p-0.5 object-cover"
+                            alt=""
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs font-black uppercase tracking-wide text-white">{p.name}</p>
+                            <p className={`text-[9px] font-mono font-black uppercase tracking-widest ${roleMeta.accent}`}>
+                              {p.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-sm leading-relaxed text-white/56">
-                        {allySummary}
-                      </p>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleReady}
+                  className={`mt-2 h-16 w-full rounded-2xl border text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-[0.98] ${theme.button}`}
+                >
+                  Transmission Confirmed
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        <div className="shrink-0 pb-2 pt-4">
-          <button
-            type="button"
-            onClick={handleReady}
-            disabled={step !== 'briefing'}
-            className={`h-14 w-full rounded-2xl border text-[11px] font-black uppercase tracking-[0.24em] transition-all ${
-              step === 'briefing'
-                ? `${theme.button} shadow-[0_18px_34px_rgba(0,0,0,0.3)] active:scale-[0.98]`
-                : 'border-white/8 bg-white/[0.04] text-white/24'
-            }`}
-          >
-            {step === 'briefing' ? 'Got It' : 'Reveal First'}
-          </button>
         </div>
       </div>
     </div>
