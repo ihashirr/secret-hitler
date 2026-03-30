@@ -32,7 +32,7 @@ export default function TrackDetailSheet({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[145] flex items-end justify-center p-2 pb-[calc(var(--app-safe-bottom)+8px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
+        className="fixed inset-0 z-145 flex items-end justify-center p-1.5 pb-[calc(var(--app-safe-bottom)+6px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
       >
         <motion.button
           type="button"
@@ -40,7 +40,7 @@ export default function TrackDetailSheet({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-[rgba(3,4,6,0.72)] backdrop-blur-[16px]"
+          className="absolute inset-0 bg-[rgba(3,4,6,0.72)] backdrop-blur-lg"
         />
 
         <motion.div
@@ -59,16 +59,16 @@ export default function TrackDetailSheet({
               onClose();
             }
           }}
-          className="relative z-[146] flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl transform-gpu will-change-transform flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+          className="relative z-146 flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-var(--app-safe-bottom)-8px)] max-w-2xl transform-gpu will-change-transform flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
         >
-          <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
+          <div className="flex items-center justify-center px-4 pt-2.5 sm:px-6 sm:pt-4">
             <button
               type="button"
               onPointerDown={(event) => {
                 event.stopPropagation();
                 dragControls.start(event);
               }}
-              className="flex h-8 w-full max-w-[120px] items-center justify-center rounded-full"
+              className="flex h-8 w-full max-w-30 items-center justify-center rounded-full"
               aria-label="Swipe down to close track detail"
               style={{ touchAction: 'none' }}
             >
@@ -79,7 +79,7 @@ export default function TrackDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-4"
+            className="absolute right-3 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75 transition-colors hover:bg-white/10 sm:right-5 sm:top-4 sm:h-10 sm:w-10"
             aria-label="Close track detail"
           >
             <X size={18} />
@@ -87,8 +87,8 @@ export default function TrackDetailSheet({
 
           <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
 
-          <div className="app-scroll-y min-h-0 flex-1 px-4 pb-5 pt-3 sm:px-5 sm:pb-6">
-            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${
+          <div className="app-scroll-y min-h-0 flex-1 px-3.5 pb-4 pt-2.5 sm:px-5 sm:pb-6 sm:pt-3">
+            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r ${
               insight.type === 'FASCIST'
                 ? 'from-red-400/85 via-red-500/75 to-red-700/85'
                 : 'from-cyan-300/85 via-cyan-400/72 to-blue-500/82'
@@ -98,14 +98,14 @@ export default function TrackDetailSheet({
               <span className={`rounded-full border px-3 py-1 ${insight.accentSurfaceClassName} ${insight.accentClassName}`}>
                 {insight.trackLabel}
               </span>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
+              <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-white/70">
                 Slot {insight.slotNumber}
               </span>
             </div>
 
-            <div className="mt-4 grid min-w-0 gap-4 min-[560px]:grid-cols-[120px,minmax(0,1fr)]">
+            <div className="mt-3 grid min-w-0 gap-3 sm:mt-4 sm:gap-4 min-[560px]:grid-cols-[120px,minmax(0,1fr)]">
               <div className="flex items-center justify-center">
-                <div className={`relative flex h-[142px] w-[108px] items-center justify-center overflow-hidden rounded-[26px] border ${insight.accentSurfaceClassName}`}>
+                <div className={`relative flex h-[clamp(7.4rem,23vh,8.875rem)] w-[clamp(5.7rem,18vw,6.75rem)] items-center justify-center overflow-hidden rounded-[26px] border ${insight.accentSurfaceClassName}`}>
                   <motion.div
                     animate={
                       insight.isNext || insight.isResolvingNow
@@ -120,7 +120,7 @@ export default function TrackDetailSheet({
                       alt={`${insight.cardLabel} reference`}
                       loading="eager"
                       decoding="async"
-                      className="h-[120px] w-[82px] rounded-[15px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
+                      className="h-[clamp(6.3rem,20vh,7.5rem)] w-[clamp(4.25rem,13.5vw,5.125rem)] rounded-[15px] object-cover shadow-[0_20px_34px_rgba(0,0,0,0.32)]"
                     />
                   </motion.div>
 
@@ -141,19 +141,19 @@ export default function TrackDetailSheet({
               </div>
 
               <div className="min-w-0">
-                <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-white/42">
+                <p className="text-[clamp(0.5rem,2.2vw,0.625rem)] font-mono font-black uppercase tracking-[0.18em] text-white/42 sm:tracking-[0.2em]">
                   {impactLabel}
                 </p>
                 <FactionAccentText
                   as="h3"
-                  className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white sm:text-xl"
+                  className="mt-2 text-[clamp(1rem,4.8vw,1.25rem)] font-black uppercase tracking-widest text-white sm:tracking-[0.12em]"
                 >
                   {insight.outcomeLabel}
                 </FactionAccentText>
-                <FactionAccentText as="p" className="mt-2 text-sm leading-relaxed text-white/68">
+                <FactionAccentText as="p" className="mt-2 text-[clamp(0.75rem,3.2vw,0.9rem)] leading-relaxed text-white/68">
                   {insight.outcomeDescription}
                 </FactionAccentText>
-                <p className={`mt-4 inline-flex rounded-full border px-3 py-1 text-[9px] font-mono font-black uppercase tracking-[0.18em] ${insight.accentSoftClassName} ${insight.accentClassName}`}>
+                <p className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-[clamp(0.45rem,2vw,0.563rem)] font-mono font-black uppercase tracking-[0.14em] sm:mt-4 sm:px-3 sm:text-[9px] sm:tracking-[0.18em] ${insight.accentSoftClassName} ${insight.accentClassName}`}>
                   Policy consequence only
                 </p>
               </div>

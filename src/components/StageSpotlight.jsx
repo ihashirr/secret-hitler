@@ -144,13 +144,13 @@ export default function StageSpotlight({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[130] flex items-end justify-center p-2 pb-[calc(var(--app-safe-bottom)+8px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
+          className="fixed inset-0 z-130 flex items-end justify-center p-1.5 pb-[calc(var(--app-safe-bottom)+6px)] sm:p-3 sm:pb-[calc(var(--app-safe-bottom)+12px)]"
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={compact ? 'absolute inset-0 bg-[rgba(3,4,6,0.58)] backdrop-blur-[12px]' : 'absolute inset-0 bg-[rgba(3,4,6,0.76)] backdrop-blur-[18px]'}
+            className={compact ? 'absolute inset-0 bg-[rgba(3,4,6,0.58)] backdrop-blur-md' : 'absolute inset-0 bg-[rgba(3,4,6,0.76)] backdrop-blur-lg'}
           />
 
           <motion.div
@@ -174,7 +174,7 @@ export default function StageSpotlight({
               }
             }}
             onContextMenu={(event) => event.preventDefault()}
-            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] ${compact ? 'max-w-xl' : 'max-w-2xl'} transform-gpu will-change-transform select-none flex-col overflow-hidden ${compact ? 'rounded-[26px] sm:rounded-[28px]' : 'rounded-[30px] sm:rounded-[34px]'} border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
+            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-var(--app-safe-bottom)-8px)] ${compact ? 'max-w-xl' : 'max-w-2xl'} transform-gpu will-change-transform select-none flex-col overflow-hidden ${compact ? 'rounded-[26px] sm:rounded-[28px]' : 'rounded-[30px] sm:rounded-[34px]'} border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'}`}
             style={{
               boxShadow: isHolding
                 ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`
@@ -184,14 +184,14 @@ export default function StageSpotlight({
               WebkitUserSelect: 'none',
             }}
           >
-            <div className="relative z-40 flex shrink-0 items-center justify-center px-5 pt-3 sm:px-7 sm:pt-4">
+            <div className="relative z-40 flex shrink-0 items-center justify-center px-4 pt-2.5 sm:px-7 sm:pt-4">
               <button
                 type="button"
                 onPointerDown={(event) => {
                   event.stopPropagation();
                   dragControls.start(event);
                 }}
-                className="flex h-8 w-full max-w-[120px] items-center justify-center rounded-full"
+                className="flex h-8 w-full max-w-30 items-center justify-center rounded-full"
                 aria-label="Swipe down to close spotlight"
                 style={{ touchAction: 'none' }}
               >
@@ -206,7 +206,7 @@ export default function StageSpotlight({
                 event.stopPropagation();
                 closeSpotlight();
               }}
-              className="pointer-events-auto absolute right-4 top-3 z-40 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-colors hover:bg-white/[0.08] sm:right-6 sm:top-4"
+              className="pointer-events-auto absolute right-3 top-2.5 z-40 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/72 transition-colors hover:bg-white/8 sm:right-6 sm:top-4 sm:h-11 sm:w-11"
               aria-label="Close stage spotlight"
             >
               <X size={18} />
@@ -234,59 +234,59 @@ export default function StageSpotlight({
                 WebkitUserSelect: 'none',
               }}
             />
-            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${toneTheme.accentBar}`} />
+            <div className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${toneTheme.accentBar}`} />
             <div className="absolute inset-0 paper-grain pointer-events-none opacity-[0.08]" />
             {isHolding && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 z-20 bg-white/[0.03] pointer-events-none"
+                className="absolute inset-0 z-20 bg-white/3 pointer-events-none"
               />
             )}
 
-            <div className={`pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden ${compact ? 'px-4 pb-4 pt-3 sm:px-5 sm:pb-5' : 'px-4 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-4'}`}>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.22em]">
+            <div className={`pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden ${compact ? 'px-3.5 pb-3.5 pt-2.5 sm:px-5 sm:pb-5' : 'px-3.5 pb-4 pt-2.5 sm:px-7 sm:pb-7 sm:pt-4'}`}>
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-[clamp(0.5rem,2.3vw,0.625rem)] font-mono font-black uppercase tracking-[0.18em] sm:gap-2 sm:tracking-[0.22em]">
                 <span className={`rounded-full border px-3 py-1 ${toneTheme.badge}`}>
                   <FactionAccentText>
                     {timelineLabel ? `${timelineLabel} · ${stageLabel}` : stageLabel}
                   </FactionAccentText>
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/70">
+                <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-white/70">
                   {modeLabel}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-white/58">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/4 px-3 py-1 text-white/58">
                   {visibility === 'private' ? <Lock size={12} /> : <Unlock size={12} />}
                   {audienceLabel}
                 </span>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col justify-center pt-5 sm:pt-7">
+              <div className="flex min-h-0 flex-1 flex-col justify-center pt-4 sm:pt-7">
                 <div className="mx-auto flex max-w-xl flex-1 flex-col justify-center text-center">
-                  <p className="text-[11px] font-mono font-black uppercase tracking-[0.42em] text-white/42">
+                  <p className="text-[clamp(0.55rem,2.6vw,0.7rem)] font-mono font-black uppercase tracking-[0.3em] text-white/42 sm:tracking-[0.42em]">
                     Current Stage
                   </p>
                   <FactionAccentText
                     as="h2"
-                    className="mt-4 break-words text-3xl font-black uppercase tracking-[0.14em] text-white sm:text-5xl sm:tracking-[0.16em]"
+                    className="mt-3 wrap-break-word text-[clamp(1.4rem,6.8vw,3rem)] font-black uppercase tracking-widest text-white sm:mt-4 sm:tracking-[0.16em]"
                   >
                     {title}
                   </FactionAccentText>
                   {description && (
                     <FactionAccentText
                       as="p"
-                      className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/68 sm:text-base"
+                      className="mx-auto mt-3 max-w-2xl text-[clamp(0.75rem,3.2vw,1rem)] leading-relaxed text-white/68 sm:mt-4"
                     >
                       {description}
                     </FactionAccentText>
                   )}
 
                   {actionLabels.length > 0 && (
-                    <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 sm:mt-6 sm:gap-2">
                       {actionLabels.map((actionLabel, index) => (
                         <span
                           key={`${actionLabel}-${index}`}
-                          className={`rounded-full border px-3 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.18em] ${toneTheme.chip}`}
+                          className={`rounded-full border px-2.5 py-1 text-[clamp(0.5rem,2.2vw,0.625rem)] font-mono font-black uppercase tracking-[0.16em] sm:px-3 sm:py-1.5 sm:tracking-[0.18em] ${toneTheme.chip}`}
                         >
                           <FactionAccentText>{actionLabel}</FactionAccentText>
                         </span>
@@ -295,16 +295,16 @@ export default function StageSpotlight({
                   )}
                 </div>
 
-                <div className="mt-6 sm:mt-8">
-                  <div className="flex flex-col gap-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
-                    <span>{isHolding ? 'Pinned while pressed' : `Closing in ${autoCloseLabel}`}</span>
-                    <span>{isHolding ? 'Release to continue' : 'Tap resets • hold pauses'}</span>
+                <div className="mt-4 sm:mt-8">
+                  <div className="flex flex-col gap-1 text-[clamp(0.5rem,2.2vw,0.625rem)] font-mono font-black uppercase tracking-[0.14em] text-white/48 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between sm:tracking-[0.18em]">
+                    <span className="truncate pr-2">{isHolding ? 'Pinned while pressed' : `Closing in ${autoCloseLabel}`}</span>
+                    <span className="truncate">{isHolding ? 'Release to continue' : 'Tap resets • hold pauses'}</span>
                   </div>
-                  <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/[0.12]' : 'bg-white/[0.06]'}`}>
+                  <div className={`relative mt-2 h-2.5 overflow-hidden rounded-full ${isHolding ? 'bg-white/12' : 'bg-white/6'}`}>
                     <motion.div
                       animate={isHolding ? { width: '100%', opacity: [0.45, 0.9, 0.45] } : { width: `${progressPercent}%`, opacity: 1 }}
                       transition={isHolding ? { duration: 1.05, repeat: Infinity, ease: 'easeInOut' } : { ease: 'linear', duration: 0.08 }}
-                      className={`h-full rounded-full bg-gradient-to-r ${toneTheme.accentBar}`}
+                      className={`h-full rounded-full bg-linear-to-r ${toneTheme.accentBar}`}
                     />
                     {isHolding && (
                       <motion.div

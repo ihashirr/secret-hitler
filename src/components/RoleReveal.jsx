@@ -110,7 +110,7 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`relative z-10 w-full max-w-sm rounded-[32px] border ${theme.frame} px-6 py-10 text-center shadow-2xl`}
+          className={`relative z-10 w-full max-w-sm rounded-4xl border ${theme.frame} px-6 py-10 text-center shadow-2xl`}
         >
           <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border ${theme.panel}`}>
             <Check size={32} />
@@ -123,21 +123,21 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-obsidian-950 px-4 pb-[calc(var(--app-safe-bottom)+1rem)] pt-[calc(var(--app-header-offset)+12px)] sm:px-6">
+    <div className="relative flex h-(--app-vh) min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 px-3 pb-[calc(var(--app-safe-bottom)+0.75rem)] pt-[calc(var(--app-header-offset)+8px)] sm:px-6 sm:pb-[calc(var(--app-safe-bottom)+1rem)] sm:pt-[calc(var(--app-header-offset)+12px)]">
       <div className="absolute inset-0 board-grid opacity-[0.04]" />
       <div
         className="pointer-events-none absolute inset-0 blur-[120px]"
         style={{ background: `radial-gradient(circle at 50% 30%, ${theme.glow} 0%, transparent 60%)` }}
       />
 
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-sm flex-col">
-        <div className="shrink-0 text-center py-2">
+      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-sm flex-col">
+        <div className="shrink-0 py-1.5 text-center sm:py-2">
           <span className="text-[10px] font-mono font-black uppercase tracking-[0.4em] text-white/30">
             Classified Transmission
           </span>
         </div>
 
-        <div className="flex flex-1 items-center justify-center min-h-0">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
           <AnimatePresence mode="wait">
             {step === 'cover' && (
               <motion.div
@@ -145,17 +145,17 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`w-full rounded-[40px] border ${theme.frame} px-6 py-10 text-center shadow-2xl`}
+                className={`w-full max-h-[calc(var(--app-vh)-var(--app-header-offset)-var(--app-safe-bottom)-18px)] overflow-y-auto rounded-[40px] border ${theme.frame} px-5 py-7 text-center shadow-2xl scrollbar-hide sm:px-6 sm:py-10`}
               >
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-white/5">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5 sm:h-20 sm:w-20">
                   <div className="h-4 w-4 rounded-full border-2 border-white/20" />
                 </div>
-                <h1 className="mt-8 text-3xl font-black uppercase tracking-tight text-white">Hide Screen</h1>
+                <h1 className="mt-6 text-[clamp(1.5rem,6.6vw,1.95rem)] font-black uppercase tracking-tight text-white sm:mt-8">Hide Screen</h1>
                 <p className="mt-2 text-sm text-white/50">Ensure privacy before identity reveal.</p>
                 <button
                   type="button"
                   onClick={handleReveal}
-                  className={`mt-10 h-16 w-full rounded-2xl border text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-[0.98] ${theme.button}`}
+                  className={`mt-7 h-14 w-full rounded-2xl border text-[10px] font-black uppercase tracking-[0.18em] shadow-xl active:scale-[0.98] sm:mt-10 sm:h-16 sm:text-[11px] ${theme.button}`}
                 >
                   Confirm Awareness
                 </button>
@@ -174,24 +174,24 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 }}
                 onPointerUp={() => setIsHolding(false)}
                 onPointerLeave={() => setIsHolding(false)}
-                className={`group relative w-full cursor-pointer select-none rounded-[40px] border ${theme.frame} overflow-hidden px-6 py-10 text-center shadow-[0_32px_80px_rgba(0,0,0,0.6)] transition-transform ${isHolding ? 'scale-[1.02]' : ''}`}
+                className={`group relative w-full max-h-[calc(var(--app-vh)-var(--app-header-offset)-var(--app-safe-bottom)-18px)] cursor-pointer select-none overflow-hidden rounded-[40px] border ${theme.frame} px-5 pb-24 pt-6 text-center shadow-[0_32px_80px_rgba(0,0,0,0.6)] transition-transform sm:px-6 sm:pb-28 sm:pt-8 ${isHolding ? 'scale-[1.02]' : ''}`}
               >
                 <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
                 <img
                   src={roleMeta.image}
                   alt={roleMeta.title}
-                  className="mx-auto w-full max-w-[200px] drop-shadow-2xl transition-transform duration-700 group-hover:scale-105"
+                  className="mx-auto w-full max-w-[clamp(8.25rem,24vh,12.5rem)] drop-shadow-2xl transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="mt-8">
+                <div className="mt-5 sm:mt-8">
                   <span className={`text-[10px] font-mono font-black uppercase tracking-[0.3em] ${roleMeta.accent}`}>
                     {roleMeta.membership}
                   </span>
-                  <h2 className="mt-2 text-4xl font-black uppercase tracking-tight text-white">
+                  <h2 className="mt-2 text-[clamp(1.55rem,6vw,2.6rem)] font-black uppercase leading-[0.92] tracking-tight text-white">
                     {roleMeta.title}
                   </h2>
                 </div>
 
-                <div className="absolute inset-x-0 bottom-0 px-6 pb-6">
+                <div className="absolute inset-x-0 bottom-0 px-5 pb-4 sm:px-6 sm:pb-6">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                     <motion.div
                       initial={false}
@@ -200,9 +200,9 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                       className={`h-full ${faction === FACTIONS.LIBERAL ? 'bg-cyan-400' : 'bg-red-500'}`}
                     />
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-widest text-white/30">
-                    <span>{isHolding ? 'TIMER PAUSED' : 'REVEALING MISSION'}</span>
-                    <button onClick={handleSkip} className="hover:text-white">PROCEED NOW</button>
+                  <div className="mt-2 flex items-center justify-between text-[clamp(0.42rem,1.9vw,0.5rem)] font-mono font-black uppercase tracking-[0.16em] text-white/30 sm:mt-3 sm:text-[8px] sm:tracking-widest">
+                    <span className="truncate pr-2">{isHolding ? 'Timer Paused' : 'Revealing Mission'}</span>
+                    <button onClick={handleSkip} className="shrink-0 whitespace-nowrap hover:text-white">Proceed Now</button>
                   </div>
                 </div>
               </motion.div>
@@ -213,50 +213,52 @@ export default function RoleReveal({ gameState, playerId, onReady }) {
                 key="briefing"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={`w-full rounded-[40px] border ${theme.frame} flex flex-col gap-6 px-6 py-8 shadow-2xl`}
+                className={`flex min-h-0 w-full max-h-[calc(var(--app-vh)-var(--app-header-offset)-var(--app-safe-bottom)-18px)] flex-col rounded-[40px] border ${theme.frame} px-5 py-6 shadow-2xl sm:px-6 sm:py-8`}
               >
-                <div className="text-center">
+                <div className="shrink-0 text-center">
                   <span className="text-[9px] font-mono font-black uppercase tracking-[0.4em] text-white/30">
                     Mission Briefing
                   </span>
-                  <h2 className={`mt-2 text-2xl font-black uppercase tracking-tight text-white`}>{roleMeta.title}</h2>
+                  <h2 className={`mt-2 text-[clamp(1.35rem,5.4vw,1.5rem)] font-black uppercase tracking-tight text-white`}>{roleMeta.title}</h2>
                 </div>
 
-                <div className="rounded-3xl border border-white/5 bg-black/40 p-5 text-center">
-                  <p className="text-[11px] leading-relaxed text-white/70 italic">
-                    &ldquo;{roleMeta.mission}&rdquo;
-                  </p>
-                </div>
-
-                {knownPlayers.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    <span className="text-[9px] font-mono font-black uppercase tracking-widest text-white/30 px-2">
-                      Operative Database
-                    </span>
-                    <div className="grid grid-cols-1 gap-2">
-                      {knownPlayers.map((p) => (
-                        <div key={p.id} className={`flex items-center gap-4 rounded-2xl border p-3 ${theme.panel}`}>
-                          <img
-                            src={`/assets/avatars/avatar_${getAvatarId(p)}.png`}
-                            className="h-10 w-10 rounded-xl border border-white/10 p-0.5 object-cover"
-                            alt=""
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate text-xs font-black uppercase tracking-wide text-white">{p.name}</p>
-                            <p className={`text-[9px] font-mono font-black uppercase tracking-widest ${roleMeta.accent}`}>
-                              {p.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-1 pr-1 sm:gap-6">
+                  <div className="rounded-3xl border border-white/5 bg-black/40 p-4 text-center sm:p-5">
+                    <p className="text-[11px] leading-relaxed text-white/70 italic">
+                      &ldquo;{roleMeta.mission}&rdquo;
+                    </p>
                   </div>
-                )}
+
+                  {knownPlayers.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <span className="px-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/30">
+                        Operative Database
+                      </span>
+                      <div className="grid grid-cols-1 gap-2">
+                        {knownPlayers.map((p) => (
+                          <div key={p.id} className={`flex items-center gap-3 rounded-2xl border p-2.5 sm:gap-4 sm:p-3 ${theme.panel}`}>
+                            <img
+                              src={`/assets/avatars/avatar_${getAvatarId(p)}.png`}
+                              className="h-9 w-9 rounded-xl border border-white/10 p-0.5 object-cover sm:h-10 sm:w-10"
+                              alt=""
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[11px] font-black uppercase tracking-wide text-white sm:text-xs">{p.name}</p>
+                              <p className={`text-[9px] font-mono font-black uppercase tracking-widest ${roleMeta.accent}`}>
+                                {p.role === ROLES.HITLER ? 'HITLER' : 'FASCIST'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   type="button"
                   onClick={handleReady}
-                  className={`mt-2 h-16 w-full rounded-2xl border text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-[0.98] ${theme.button}`}
+                  className={`mt-3 h-14 w-full shrink-0 rounded-2xl border text-[10px] font-black uppercase tracking-[0.18em] shadow-xl active:scale-[0.98] sm:h-16 sm:text-[11px] sm:tracking-[0.2em] ${theme.button}`}
                 >
                   Transmission Confirmed
                 </button>
