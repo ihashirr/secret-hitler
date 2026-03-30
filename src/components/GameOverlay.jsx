@@ -156,50 +156,83 @@ export default function GameOverlay({
           isActive = true;
           privateAudience = 'Your Ballot';
           actionContent = (
-            <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-3">
-              <button
+            <div className="mt-5 grid w-full max-w-sm grid-cols-2 gap-4">
+              <motion.button
+                key="vote-ya"
                 type="button"
+                initial={{ opacity: 0, x: -20, rotate: -4 }}
+                animate={{ opacity: 1, x: 0, rotate: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
                 onClick={() => handleVoteSelection(true)}
                 disabled={Boolean(activePendingVote)}
                 aria-pressed={activePendingVote === 'YA'}
-                className={`touch-manipulation flex min-h-[112px] items-center justify-center rounded-[24px] border bg-white/70 p-3 shadow-sm transition-all active:scale-[0.98] ${
+                className={`group relative flex min-h-[140px] flex-col items-center justify-center rounded-[28px] border bg-black/40 p-4 shadow-2xl transition-all active:scale-[0.96] ${
                   activePendingVote === 'YA'
-                    ? 'border-[#2b5c8f]/45 ring-2 ring-[#2b5c8f]/35'
-                    : 'border-[#2b5c8f]/15'
-                } ${activePendingVote ? 'cursor-wait opacity-85' : ''}`}
+                    ? 'border-cyan-400 ring-2 ring-cyan-400/30'
+                    : 'border-white/10 hover:border-cyan-400/50 hover:bg-white/[0.03]'
+                } ${activePendingVote ? 'cursor-wait opacity-50' : ''}`}
               >
+                <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
                 <img
                   src="/assets/vote-yes.png"
                   alt="Ja"
                   loading="eager"
                   decoding="async"
-                  className="w-full max-w-[96px]"
+                  className={`w-full max-w-[100px] transition-transform duration-500 ${activePendingVote === 'YA' ? 'scale-110' : 'group-hover:scale-105'}`}
                 />
-              </button>
-              <button
+                <span className={`mt-3 text-[10px] font-mono font-black uppercase tracking-[0.2em] transition-colors ${activePendingVote === 'YA' ? 'text-cyan-400' : 'text-white/40 group-hover:text-cyan-300'}`}>
+                  Approve (Ja)
+                </span>
+                {activePendingVote === 'YA' && (
+                  <motion.div
+                    layoutId="vote-glow"
+                    className="absolute inset-0 rounded-[28px] bg-cyan-400/5 blur-xl pointer-events-none"
+                  />
+                )}
+              </motion.button>
+
+              <motion.button
+                key="vote-nein"
                 type="button"
+                initial={{ opacity: 0, x: 20, rotate: 4 }}
+                animate={{ opacity: 1, x: 0, rotate: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
                 onClick={() => handleVoteSelection(false)}
                 disabled={Boolean(activePendingVote)}
                 aria-pressed={activePendingVote === 'NEIN'}
-                className={`touch-manipulation flex min-h-[112px] items-center justify-center rounded-[24px] border bg-white/70 p-3 shadow-sm transition-all active:scale-[0.98] ${
+                className={`group relative flex min-h-[140px] flex-col items-center justify-center rounded-[28px] border bg-black/40 p-4 shadow-2xl transition-all active:scale-[0.96] ${
                   activePendingVote === 'NEIN'
-                    ? 'border-[#c1272d]/45 ring-2 ring-[#c1272d]/35'
-                    : 'border-[#c1272d]/15'
-                } ${activePendingVote ? 'cursor-wait opacity-85' : ''}`}
+                    ? 'border-red-500 ring-2 ring-red-500/30'
+                    : 'border-white/10 hover:border-red-500/50 hover:bg-white/[0.03]'
+                } ${activePendingVote ? 'cursor-wait opacity-50' : ''}`}
               >
+                <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
                 <img
                   src="/assets/vote-no.png"
                   alt="Nein"
                   loading="eager"
                   decoding="async"
-                  className="w-full max-w-[96px]"
+                  className={`w-full max-w-[100px] transition-transform duration-500 ${activePendingVote === 'NEIN' ? 'scale-110' : 'group-hover:scale-105'}`}
                 />
-              </button>
+                <span className={`mt-3 text-[10px] font-mono font-black uppercase tracking-[0.2em] transition-colors ${activePendingVote === 'NEIN' ? 'text-red-400' : 'text-white/40 group-hover:text-red-400'}`}>
+                  Reject (Nein)
+                </span>
+                {activePendingVote === 'NEIN' && (
+                  <motion.div
+                    layoutId="vote-glow"
+                    className="absolute inset-0 rounded-[28px] bg-red-400/5 blur-xl pointer-events-none"
+                  />
+                )}
+              </motion.button>
 
               {activePendingVote && (
-                <div className="col-span-2 flex items-center justify-center gap-2 pt-1 text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[#5f5449]">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-[#2c2c2c]/50" />
-                  Sending vote...
+                <div className="col-span-2 flex items-center justify-center gap-3 pt-3 text-[9px] font-mono font-black uppercase tracking-[0.24em] text-white/30">
+                  <motion.span 
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className={`h-2 w-2 rounded-full ${activePendingVote === 'YA' ? 'bg-cyan-400' : 'bg-red-500'}`} 
+                  />
+                  Transmitting Ballot...
                 </div>
               )}
             </div>
@@ -499,9 +532,18 @@ export default function GameOverlay({
                 setDismissedVoteDeskKey(votingDrawerKey);
               }
             }}
-            className="pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-2 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-3 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]"
+            className={`pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 pb-[calc(var(--app-safe-bottom)+1.2rem)] sm:px-6 sm:pt-3 sm:pb-[calc(var(--app-safe-bottom)+1.6rem)] transition-all ${
+              displayPhase === PHASES.VOTING
+                ? 'border-cyan-500/20 bg-[linear-gradient(180deg,#0a1016_0%,#05080b_100%)]'
+                : 'border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)]'
+            }`}
+            style={{
+              boxShadow: displayPhase === PHASES.VOTING 
+                ? '0 -32px 80px rgba(0,0,0,0.7), 0 0 100px rgba(34,211,238,0.06)' 
+                : '0 -24px 60px rgba(0,0,0,0.55)'
+            }}
           >
-            <div className="absolute inset-0 paper-grain opacity-10 pointer-events-none" />
+            <div className={`absolute inset-0 paper-grain pointer-events-none ${displayPhase === PHASES.VOTING ? 'opacity-[0.05]' : 'opacity-10'}`} />
 
             <div className="relative z-10 flex items-center justify-center pt-1">
               <button
@@ -516,7 +558,7 @@ export default function GameOverlay({
                 aria-label={votingDeskDismissible ? 'Swipe down to close sheet' : 'Sheet handle'}
                 style={votingDeskDismissible ? { touchAction: 'none' } : undefined}
               >
-                <span className="h-1.5 w-14 rounded-full bg-black/10" />
+                <span className={`h-1.5 w-14 rounded-full ${displayPhase === PHASES.VOTING ? 'bg-cyan-400/20' : 'bg-black/10'}`} />
               </button>
             </div>
 
@@ -524,15 +566,23 @@ export default function GameOverlay({
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em] sm:text-[9px]">
-                    <span className="rounded-full border border-[#c1272d]/18 bg-[#c1272d]/10 px-2 py-0.5 text-[#8a001d]">
+                    <span className={`rounded-full border px-2.5 py-1 ${
+                      displayPhase === PHASES.VOTING
+                        ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-300'
+                        : 'border-[#c1272d]/18 bg-[#c1272d]/10 text-[#8a001d]'
+                    }`}>
                       {deskBadgeLabel}
                     </span>
-                    <span className="text-[#7a6b57]">{deskScopeLabel}</span>
+                    <span className={displayPhase === PHASES.VOTING ? 'text-white/35' : 'text-[#7a6b57]'}>
+                      {deskScopeLabel}
+                    </span>
                   </div>
 
                   <FactionAccentText
                     as="h2"
-                    className="mt-2 text-[13px] font-serif font-black uppercase tracking-[0.12em] text-[#2c2c2c] sm:text-[15px]"
+                    className={`mt-2 text-[15px] font-black uppercase tracking-[0.14em] sm:text-[18px] ${
+                      displayPhase === PHASES.VOTING ? 'text-white' : 'text-[#2c2c2c] font-serif'
+                    }`}
                   >
                     {title}
                   </FactionAccentText>
@@ -540,7 +590,9 @@ export default function GameOverlay({
                   {subtext && (
                     <FactionAccentText
                       as="p"
-                      className="mt-1 max-w-[44rem] text-[10px] leading-relaxed text-[#5f5449] sm:text-[11px]"
+                      className={`mt-1 max-w-[44rem] text-[10px] leading-relaxed sm:text-[11px] ${
+                        displayPhase === PHASES.VOTING ? 'text-white/55' : 'text-[#5f5449]'
+                      }`}
                     >
                       {subtext}
                     </FactionAccentText>
@@ -551,7 +603,11 @@ export default function GameOverlay({
                   <button
                     type="button"
                     onClick={runWithHaptic(() => setDismissedVoteDeskKey(votingDrawerKey), 'soft')}
-                    className="shrink-0 rounded-full border border-black/10 bg-black/5 px-3 py-1.5 text-[9px] font-mono font-black uppercase tracking-[0.2em] text-[#5f5449] transition-colors hover:bg-black/10 active:scale-[0.98]"
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[9px] font-mono font-black uppercase tracking-[0.2em] transition-colors active:scale-[0.98] ${
+                      displayPhase === PHASES.VOTING
+                        ? 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10'
+                        : 'border-black/10 bg-black/5 text-[#5f5449] hover:bg-black/10'
+                    }`}
                   >
                     Hide
                   </button>
@@ -559,7 +615,7 @@ export default function GameOverlay({
               </div>
             </div>
 
-            <div className="relative z-10 mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
+            <div className="relative z-10 mt-5 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
               {actionContent && (
                 <div className="flex justify-center">
                   {actionContent}
@@ -567,18 +623,18 @@ export default function GameOverlay({
               )}
 
               {pendingSelection && (
-                <div className={`grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 ${actionContent ? 'mt-5' : ''}`}>
+                <div className={`grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 ${actionContent ? 'mt-6' : ''}`}>
                   <button
                     type="button"
                     onClick={runWithHaptic(onConfirm, 'confirm')}
-                    className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
+                    className="rounded-xl border border-[#8a001d] bg-[#c1272d] px-4 py-3.5 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-white shadow-lg transition-colors hover:bg-[#a01d22] active:scale-[0.98]"
                   >
                     Confirm
                   </button>
                   <button
                     type="button"
                     onClick={runWithHaptic(onCancel, 'soft')}
-                    className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
+                    className="rounded-xl border border-[#b09868] bg-[#d4c098] px-4 py-3.5 text-[11px] font-serif font-black uppercase tracking-[0.18em] text-[#2c2c2c] shadow-lg transition-colors hover:bg-[#c4ae7d] active:scale-[0.98]"
                   >
                     Cancel
                   </button>
