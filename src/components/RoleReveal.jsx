@@ -33,19 +33,28 @@ const THEMES = {
 
 const ROLE_COPY = {
   [ROLES.LIBERAL]: {
-    headline: 'You Are A Liberal',
-    detail: 'Protect the Republic and keep Hitler away from power.',
-    stamp: 'LIBERAL',
+    title: 'The Loyal Liberal',
+    membership: 'LIBERAL PARTY',
+    mission: 'Stop the fascists from ruining the scenes. Keep it 100, find your allies, and don\'t get played.',
+    color: 'rgb(34 211 238)',
+    accent: 'cyan',
+    icon: 'bird',
   },
   [ROLES.FASCIST]: {
-    headline: 'You Are A Fascist',
-    detail: 'Blend in, protect Hitler, and push the regime forward.',
-    stamp: 'FASCIST',
+    title: 'The Secret Fascist',
+    membership: 'FASCIST PARTY',
+    mission: 'Operation: Gaslight. Get Hitler on the throne. Easy dubs if you play the table right.',
+    color: 'rgb(239 68 68)',
+    accent: 'red',
+    icon: 'wolf',
   },
   [ROLES.HITLER]: {
-    headline: 'You Are Hitler',
-    detail: 'Stay trusted. Let the table bring you to power.',
-    stamp: 'HITLER',
+    title: 'The Secret Hitler',
+    membership: 'FASCIST PARTY',
+    mission: 'The Main Character. Stay low, look innocent, and wait for the table to cook themselves.',
+    color: 'rgb(185 28 28)',
+    accent: 'crimson',
+    icon: 'lizard',
   },
 };
 

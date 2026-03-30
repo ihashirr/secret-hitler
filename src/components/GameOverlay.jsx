@@ -40,7 +40,7 @@ function getExecutiveBeat(gameState) {
         key: `story:executive-investigate:${gameState.currentPresident || 'none'}`,
         stageLabel: 'Executive Action',
         title: `${presidentName} Is Investigating`,
-        description: 'The President is checking one player\'s party loyalty in private.',
+        description: "Checking the receipts... scanning for sus vibes in private.",
         tone: 'red',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -48,8 +48,8 @@ function getExecutiveBeat(gameState) {
       return createStoryBeat({
         key: `story:executive-special:${gameState.currentPresident || 'none'}`,
         stageLabel: 'Executive Action',
-        title: `${presidentName} Is Calling A Special Election`,
-        description: 'The next presidency is being reassigned for one round.',
+        title: `${presidentName} Called A Special Election`,
+        description: "Fresh promotion! The next presidency is being reassigned.",
         tone: 'red',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -57,8 +57,8 @@ function getExecutiveBeat(gameState) {
       return createStoryBeat({
         key: `story:executive-peek:${gameState.currentPresident || 'none'}`,
         stageLabel: 'Executive Action',
-        title: `${presidentName} Is Reviewing The Top Deck`,
-        description: 'The next three policies are being seen in private.',
+        title: `${presidentName} Is Peeking At The Deck`,
+        description: "No cap, they're seeing the top three policies right now.",
         tone: 'red',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -67,7 +67,7 @@ function getExecutiveBeat(gameState) {
         key: `story:executive-execution:${gameState.currentPresident || 'none'}`,
         stageLabel: 'Executive Action',
         title: `${presidentName} Is Choosing An Execution`,
-        description: 'One player will be eliminated by presidential order.',
+        description: "Khalas. Someone's getting cooked by presidential order.",
         tone: 'red',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -87,8 +87,8 @@ function getStoryBeatFromTransition(previous, gameState) {
     return createStoryBeat({
       key: `story:nominating:${gameState.currentPresident || 'none'}:${gameState.roomId || 'room'}`,
       stageLabel: 'Nomination',
-      title: `${presidentName} Is Nominating`,
-      description: 'The President is choosing the next Chancellor.',
+      title: `${presidentName} Is Picking`,
+      description: "Setting the scenes. The President is choosing the next Chancellor.",
       tone: 'neutral',
     });
   }
@@ -98,7 +98,7 @@ function getStoryBeatFromTransition(previous, gameState) {
       key: `story:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
       stageLabel: 'Nomination Locked',
       title: `${presidentName} Nominated ${nomineeName}`,
-      description: 'The table now moves to a vote on this government.',
+      description: "Ballot is set. They're on the hot seat now. Vote wisely.",
       tone: 'blue',
       autoCloseMs: EVENT_BRIEFING_MS,
     });
@@ -108,8 +108,8 @@ function getStoryBeatFromTransition(previous, gameState) {
     return createStoryBeat({
       key: `story:president-hand:${gameState.currentPresident || 'none'}:${gameState.drawPileCount}`,
       stageLabel: 'Legislative Session',
-      title: `${presidentName} Is Reviewing Policies`,
-      description: 'Three policies were drawn. Two will be passed to the Chancellor.',
+      title: `${presidentName} Is Reviewing The Goods`,
+      description: "3 policies drawn. Picking 2 bangers to pass to the Chancellor.",
       tone: 'neutral',
       autoCloseMs: EVENT_BRIEFING_MS,
     });
@@ -120,7 +120,7 @@ function getStoryBeatFromTransition(previous, gameState) {
       key: `story:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
       stageLabel: 'Legislative Session',
       title: `${chancellorName} Requested A Veto`,
-      description: `${presidentName} must now accept or reject the request.`,
+      description: "The vibes are off! President, will you accept the veto?",
       tone: 'red',
       autoCloseMs: EVENT_BRIEFING_MS,
     });
@@ -130,8 +130,8 @@ function getStoryBeatFromTransition(previous, gameState) {
     return createStoryBeat({
       key: `story:chancellor-hand:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}:${gameState.drawPileCount}`,
       stageLabel: 'Legislative Session',
-      title: `${chancellorName} Is Deciding The Policy`,
-      description: 'The final policy choice is now in the Chancellor\'s hands.',
+      title: `${chancellorName} Has The Final Call`,
+      description: "It's on the Chancellor now. Don't fumble the bag.",
       tone: 'neutral',
       autoCloseMs: EVENT_BRIEFING_MS,
     });
@@ -155,8 +155,8 @@ function getInitialStoryBeat(gameState) {
         return createStoryBeat({
           key: `story:init-nominating:${gameState.currentPresident || 'none'}:${gameState.roomId || 'room'}`,
           stageLabel: 'Nomination',
-          title: `${presidentName} Is Nominating`,
-          description: 'The President is choosing the next Chancellor.',
+          title: `${presidentName} Is Picking`,
+          description: "Setting the scenes. The President is choosing the next Chancellor.",
           tone: 'neutral',
         });
       }
@@ -167,7 +167,7 @@ function getInitialStoryBeat(gameState) {
           key: `story:init-nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
           stageLabel: 'Vote',
           title: `${presidentName} Nominated ${nomineeName}`,
-          description: 'The table is now voting on this government.',
+          description: "The table is now voting. No cap, pick a side.",
           tone: 'blue',
           autoCloseMs: EVENT_BRIEFING_MS,
         });
@@ -177,8 +177,8 @@ function getInitialStoryBeat(gameState) {
       return createStoryBeat({
         key: `story:init-president-hand:${gameState.currentPresident || 'none'}:${gameState.drawPileCount}`,
         stageLabel: 'Legislative Session',
-        title: `${presidentName} Is Reviewing Policies`,
-        description: 'Three policies were drawn and two will be passed forward.',
+        title: `${presidentName} Is Reviewing The Goods`,
+        description: "3 policies drawn. Picking 2 bangers to pass forward.",
         tone: 'neutral',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -186,8 +186,8 @@ function getInitialStoryBeat(gameState) {
       return createStoryBeat({
         key: `story:init-chancellor-hand:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}:${gameState.drawPileCount}`,
         stageLabel: 'Legislative Session',
-        title: `${chancellorName} Is Deciding The Policy`,
-        description: 'The final policy choice is now in the Chancellor\'s hands.',
+        title: `${chancellorName} Has The Final Call`,
+        description: "It's on the Chancellor now. Don't fumble the bag.",
         tone: 'neutral',
         autoCloseMs: EVENT_BRIEFING_MS,
       });
@@ -498,7 +498,7 @@ export default function GameOverlay({
                     transition={{ duration: 1.5, repeat: Infinity }}
                     className={`h-2 w-2 rounded-full ${activePendingVote === 'YA' ? 'bg-cyan-400' : 'bg-red-500'}`} 
                   />
-                  Transmitting Ballot...
+                  Transmitting Ballot... Wallah, stay calm.
                 </div>
               )}
             </div>
@@ -506,11 +506,11 @@ export default function GameOverlay({
         } else {
           voteStatusPill = me?.isAlive
             ? {
-                label: 'Vote Locked',
+                label: "Ballot's In",
                 description:
                   pendingVoteCount > 0
-                    ? `${pendingVoteCount} ${pendingVoteCount === 1 ? 'vote remains' : 'votes remain'}. Watch the ring for the next ballot to lock in.`
-                    : 'All ballots are in. Hold on while the table resolves the result.',
+                    ? `Say less, ${pendingVoteCount} ${pendingVoteCount === 1 ? 'vote remains' : 'votes remain'}. Waiting for the table.`
+                    : 'All ballots are in. Wallah, hold on while we resolve the result.',
               }
             : me
               ? {
