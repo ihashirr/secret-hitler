@@ -6,65 +6,76 @@ const TABLE_MODES = {
   MIXED: 'mixed',
 };
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
 const LIVE_TEMPO_PROFILES = {
   [TABLE_MODES.MIXED]: {
-    voteLockPulseMs: 620,
-    voteLockStaggerMs: 170,
-    voteRevealStageDelayMs: 120,
-    voteRevealStartDelayMs: 260,
-    voteRevealStepMs: 240,
-    voteRevealFinalHoldMs: 560,
-    nominationLockedMs: 1250,
-    vetoRequestMs: 1550,
-    executionMs: 1600,
-    gameOverMs: 1850,
-    majorBeatGraceMs: 900,
-    voteRevealGraceMs: 1200,
+    voteLockPulseMs: 540,
+    voteLockStaggerMs: 160,
+    voteLockStaggerMinMs: 120,
+    voteRevealStageDelayMs: 90,
+    voteRevealStartDelayMs: 180,
+    voteRevealStepMs: 210,
+    voteRevealStepMinMs: 145,
+    voteRevealFinalHoldMs: 430,
+    voteRevealFinalHoldMinMs: 340,
+    nominationLockedMs: 950,
+    vetoRequestMs: 1250,
+    executionMs: 1350,
+    gameOverMs: 1650,
+    majorBeatGraceMs: 650,
+    voteRevealGraceMs: 700,
     liveStateIdleHealthCheckMs: 5200,
     healthCheckThrottleMs: 2200,
   },
   [TABLE_MODES.SOLO_HUMAN]: {
-    voteLockPulseMs: 760,
-    voteLockStaggerMs: 220,
-    voteRevealStageDelayMs: 150,
-    voteRevealStartDelayMs: 320,
-    voteRevealStepMs: 270,
-    voteRevealFinalHoldMs: 680,
-    nominationLockedMs: 1400,
-    vetoRequestMs: 1700,
-    executionMs: 1750,
-    gameOverMs: 1950,
-    majorBeatGraceMs: 1000,
-    voteRevealGraceMs: 1300,
+    voteLockPulseMs: 620,
+    voteLockStaggerMs: 190,
+    voteLockStaggerMinMs: 135,
+    voteRevealStageDelayMs: 110,
+    voteRevealStartDelayMs: 220,
+    voteRevealStepMs: 225,
+    voteRevealStepMinMs: 165,
+    voteRevealFinalHoldMs: 520,
+    voteRevealFinalHoldMinMs: 430,
+    nominationLockedMs: 1100,
+    vetoRequestMs: 1400,
+    executionMs: 1500,
+    gameOverMs: 1750,
+    majorBeatGraceMs: 700,
+    voteRevealGraceMs: 800,
     liveStateIdleHealthCheckMs: 4800,
     healthCheckThrottleMs: 2000,
   },
   [TABLE_MODES.ALL_BOTS]: {
-    voteLockPulseMs: 500,
+    voteLockPulseMs: 420,
     voteLockStaggerMs: 120,
-    voteRevealStageDelayMs: 90,
-    voteRevealStartDelayMs: 210,
-    voteRevealStepMs: 170,
-    voteRevealFinalHoldMs: 420,
-    nominationLockedMs: 900,
-    vetoRequestMs: 1200,
-    executionMs: 1300,
-    gameOverMs: 1500,
-    majorBeatGraceMs: 750,
-    voteRevealGraceMs: 900,
+    voteLockStaggerMinMs: 90,
+    voteRevealStageDelayMs: 70,
+    voteRevealStartDelayMs: 160,
+    voteRevealStepMs: 175,
+    voteRevealStepMinMs: 125,
+    voteRevealFinalHoldMs: 330,
+    voteRevealFinalHoldMinMs: 270,
+    nominationLockedMs: 800,
+    vetoRequestMs: 1000,
+    executionMs: 1150,
+    gameOverMs: 1350,
+    majorBeatGraceMs: 550,
+    voteRevealGraceMs: 650,
     liveStateIdleHealthCheckMs: 5600,
     healthCheckThrottleMs: 2200,
   },
 };
 
 const BOT_PHASE_DELAY_RANGES = {
-  DEFAULT: { min: 900, max: 1500 },
-  [PHASES.ROLE_REVEAL]: { min: 520, max: 840 },
-  [PHASES.VOTING]: { min: 780, max: 1180 },
-  [PHASES.NOMINATION]: { min: 1250, max: 1920 },
-  [PHASES.LEGISLATIVE_PRESIDENT]: { min: 1320, max: 2050 },
-  [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 1380, max: 2140 },
-  [PHASES.EXECUTIVE_ACTION]: { min: 1450, max: 2280 },
+  DEFAULT: { min: 760, max: 1260 },
+  [PHASES.ROLE_REVEAL]: { min: 460, max: 760 },
+  [PHASES.VOTING]: { min: 620, max: 940 },
+  [PHASES.NOMINATION]: { min: 980, max: 1540 },
+  [PHASES.LEGISLATIVE_PRESIDENT]: { min: 1050, max: 1660 },
+  [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 1120, max: 1720 },
+  [PHASES.EXECUTIVE_ACTION]: { min: 1180, max: 1820 },
 };
 
 const BOT_TABLE_MODE_BONUSES = {
@@ -78,26 +89,32 @@ const BOT_TABLE_MODE_BONUSES = {
     [PHASES.EXECUTIVE_ACTION]: { min: 0, max: 0 },
   },
   [TABLE_MODES.SOLO_HUMAN]: {
-    DEFAULT: { min: 180, max: 360 },
-    [PHASES.ROLE_REVEAL]: { min: 160, max: 300 },
-    [PHASES.VOTING]: { min: 220, max: 420 },
-    [PHASES.NOMINATION]: { min: 320, max: 620 },
-    [PHASES.LEGISLATIVE_PRESIDENT]: { min: 320, max: 620 },
-    [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 360, max: 680 },
-    [PHASES.EXECUTIVE_ACTION]: { min: 360, max: 720 },
+    DEFAULT: { min: 80, max: 180 },
+    [PHASES.ROLE_REVEAL]: { min: 80, max: 160 },
+    [PHASES.VOTING]: { min: 120, max: 220 },
+    [PHASES.NOMINATION]: { min: 180, max: 320 },
+    [PHASES.LEGISLATIVE_PRESIDENT]: { min: 200, max: 340 },
+    [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 220, max: 360 },
+    [PHASES.EXECUTIVE_ACTION]: { min: 220, max: 420 },
   },
   [TABLE_MODES.ALL_BOTS]: {
-    DEFAULT: { min: 120, max: 240 },
-    [PHASES.ROLE_REVEAL]: { min: 80, max: 180 },
-    [PHASES.VOTING]: { min: 180, max: 320 },
-    [PHASES.NOMINATION]: { min: 260, max: 440 },
-    [PHASES.LEGISLATIVE_PRESIDENT]: { min: 280, max: 460 },
-    [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 280, max: 480 },
-    [PHASES.EXECUTIVE_ACTION]: { min: 320, max: 540 },
+    DEFAULT: { min: 0, max: 90 },
+    [PHASES.ROLE_REVEAL]: { min: 0, max: 60 },
+    [PHASES.VOTING]: { min: 50, max: 140 },
+    [PHASES.NOMINATION]: { min: 90, max: 190 },
+    [PHASES.LEGISLATIVE_PRESIDENT]: { min: 110, max: 220 },
+    [PHASES.LEGISLATIVE_CHANCELLOR]: { min: 120, max: 230 },
+    [PHASES.EXECUTIVE_ACTION]: { min: 150, max: 260 },
   },
 };
 
 const getAlivePlayers = (players = []) => players.filter((player) => player.isAlive !== false);
+const getAlivePlayerCount = (players = []) => getAlivePlayers(players).length;
+const getRevealSeatCount = (players = [], revealPlayerCount) =>
+  clamp(Math.max(0, revealPlayerCount ?? getAlivePlayerCount(players)), 0, 10);
+const getSeatDensity = (seatCount) => clamp((seatCount - 5) / 5, 0, 1);
+const getCompressedTiming = ({ base, min, density }) =>
+  Math.max(min, Math.round(base - (base - min) * density));
 
 export function getLiveTableMode(players = []) {
   const alivePlayers = getAlivePlayers(players);
@@ -123,20 +140,52 @@ export function getLiveTempoProfile(players = []) {
   };
 }
 
+export function getVoteTempoProfile({
+  players = [],
+  revealPlayerCount,
+} = {}) {
+  const tempo = getLiveTempoProfile(players);
+  const seatCount = getRevealSeatCount(players, revealPlayerCount);
+  const density = getSeatDensity(seatCount);
+  const voteLockStaggerMs = getCompressedTiming({
+    base: tempo.voteLockStaggerMs,
+    min: tempo.voteLockStaggerMinMs,
+    density,
+  });
+  const voteRevealStepMs = getCompressedTiming({
+    base: tempo.voteRevealStepMs,
+    min: tempo.voteRevealStepMinMs,
+    density,
+  });
+  const voteRevealFinalHoldMs = getCompressedTiming({
+    base: tempo.voteRevealFinalHoldMs,
+    min: tempo.voteRevealFinalHoldMinMs,
+    density,
+  });
+  const expectedTotalDurationMs =
+    tempo.voteRevealStageDelayMs +
+    tempo.voteRevealStartDelayMs +
+    Math.max(0, seatCount - 1) * voteRevealStepMs +
+    voteRevealFinalHoldMs;
+
+  return {
+    tableMode: tempo.tableMode,
+    seatCount,
+    voteLockPulseMs: tempo.voteLockPulseMs,
+    voteLockStaggerMs,
+    voteRevealStageDelayMs: tempo.voteRevealStageDelayMs,
+    voteRevealStartDelayMs: tempo.voteRevealStartDelayMs,
+    voteRevealStepMs,
+    voteRevealFinalHoldMs,
+    expectedTotalDurationMs,
+  };
+}
+
 export function getExpectedVoteRevealDurationMs({
   players = [],
   revealPlayerCount,
 }) {
-  const tempo = getLiveTempoProfile(players);
-  const alivePlayerCount = getAlivePlayers(players).length;
-  const seatCount = Math.max(0, revealPlayerCount ?? alivePlayerCount);
-
-  return (
-    tempo.voteRevealStageDelayMs +
-    tempo.voteRevealStartDelayMs +
-    Math.max(0, seatCount - 1) * tempo.voteRevealStepMs +
-    tempo.voteRevealFinalHoldMs
-  );
+  return getVoteTempoProfile({ players, revealPlayerCount }).expectedTotalDurationMs;
 }
 
 export function getMajorBeatDurationMs(kind, players = []) {

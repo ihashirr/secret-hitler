@@ -1,8 +1,7 @@
 import React from 'react';
 import { PHASES } from '../../lib/constants';
 import {
-  getExpectedVoteRevealDurationMs,
-  getLiveTempoProfile,
+  getVoteTempoProfile,
 } from './liveTempoProfile';
 
 const clearVoteHighlightTimers = (timersRef) => {
@@ -36,7 +35,10 @@ export default function useVoteRevealState(gameState, options = {}) {
   const prevVoteStateRef = React.useRef({});
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
-  const liveTempo = React.useMemo(() => getLiveTempoProfile(gameState.players), [gameState.players]);
+  const voteTempo = React.useMemo(
+    () => getVoteTempoProfile({ players: gameState.players }),
+    [gameState.players],
+  );
 
   const revealedVoteMap = React.useMemo(
     () =>
@@ -109,10 +111,10 @@ export default function useVoteRevealState(gameState, options = {}) {
         const clearTimer = window.setTimeout(() => {
           setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
           voteHighlightTimersRef.current.delete(id);
-        }, liveTempo.voteLockPulseMs);
+        }, voteTempo.voteLockPulseMs);
 
         voteHighlightTimersRef.current.set(id, { startTimer: null, clearTimer });
-      }, index * liveTempo.voteLockStaggerMs);
+      }, index * voteTempo.voteLockStaggerMs);
 
       voteHighlightTimersRef.current.set(id, { startTimer, clearTimer: null });
     });
@@ -121,8 +123,8 @@ export default function useVoteRevealState(gameState, options = {}) {
   }, [
     gameState.phase,
     gameState.players,
-    liveTempo.voteLockPulseMs,
-    liveTempo.voteLockStaggerMs,
+    voteTempo.voteLockPulseMs,
+    voteTempo.voteLockStaggerMs,
     suppressTransitionEffects,
   ]);
 
@@ -148,6 +150,10 @@ export default function useVoteRevealState(gameState, options = {}) {
         .filter((player) => player.isAlive && gameState.lastVotes[player.id])
         .sort((left, right) => (left.position || 0) - (right.position || 0))
         .map((player) => player.id);
+      const revealTempo = getVoteTempoProfile({
+        players: gameState.players,
+        revealPlayerCount: orderedRevealPlayerIds.length,
+      });
 
       setRevealState({
         id: createVoteRevealId(gameState, orderedRevealPlayerIds),
@@ -156,16 +162,14 @@ export default function useVoteRevealState(gameState, options = {}) {
         ya,
         nein,
         orderedRevealPlayerIds,
-        expectedTotalDurationMs: getExpectedVoteRevealDurationMs({
-          players: gameState.players,
-          revealPlayerCount: orderedRevealPlayerIds.length,
-        }),
-        voteRevealFinalHoldMs: liveTempo.voteRevealFinalHoldMs,
+        tempo: revealTempo,
+        expectedTotalDurationMs: revealTempo.expectedTotalDurationMs,
+        voteRevealFinalHoldMs: revealTempo.voteRevealFinalHoldMs,
       });
     }
 
     prevPhaseRef.current = gameState.phase;
-  }, [gameState, liveTempo.voteRevealFinalHoldMs, suppressTransitionEffects]);
+  }, [gameState, suppressTransitionEffects]);
 
   React.useEffect(() => {
     if (!revealState?.id) return undefined;
@@ -174,7 +178,7 @@ export default function useVoteRevealState(gameState, options = {}) {
 
     const revealTimer = window.setTimeout(() => {
       setRevealStage(1);
-    }, liveTempo.voteRevealStageDelayMs);
+    }, revealState.tempo?.voteRevealStageDelayMs || voteTempo.voteRevealStageDelayMs);
 
     const cleanupTimer = window.setTimeout(() => {
       setRevealState((current) => (current?.id === revealState.id ? null : current));
@@ -185,7 +189,12 @@ export default function useVoteRevealState(gameState, options = {}) {
       window.clearTimeout(revealTimer);
       window.clearTimeout(cleanupTimer);
     };
-  }, [liveTempo.voteRevealStageDelayMs, revealState?.expectedTotalDurationMs, revealState?.id]);
+  }, [
+    revealState?.expectedTotalDurationMs,
+    revealState?.id,
+    revealState?.tempo?.voteRevealStageDelayMs,
+    voteTempo.voteRevealStageDelayMs,
+  ]);
 
   React.useEffect(() => {
     if (suppressTransitionEffects || gameState.phase === PHASES.VOTING || !revealState?.votes) {
@@ -195,6 +204,10 @@ export default function useVoteRevealState(gameState, options = {}) {
 
     setRevealedVotes([]);
 
+    const revealStartDelayMs =
+      revealState.tempo?.voteRevealStartDelayMs || voteTempo.voteRevealStartDelayMs;
+    const revealStepMs = revealState.tempo?.voteRevealStepMs || voteTempo.voteRevealStepMs;
+
     const timers = (revealState.orderedRevealPlayerIds || []).map((playerId, index) =>
       window.setTimeout(() => {
         const vote = revealState.votes[playerId];
@@ -203,16 +216,16 @@ export default function useVoteRevealState(gameState, options = {}) {
             ? current
             : [...current, { playerId, vote }],
         );
-      }, liveTempo.voteRevealStartDelayMs + index * liveTempo.voteRevealStepMs),
+      }, revealStartDelayMs + index * revealStepMs),
     );
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [
     gameState.phase,
-    liveTempo.voteRevealStartDelayMs,
-    liveTempo.voteRevealStepMs,
     revealState,
     suppressTransitionEffects,
+    voteTempo.voteRevealStartDelayMs,
+    voteTempo.voteRevealStepMs,
   ]);
 
   return {
@@ -227,7 +240,7 @@ export default function useVoteRevealState(gameState, options = {}) {
     orderedRevealPlayerIds: revealState?.orderedRevealPlayerIds || [],
     revealProgressCount: revealedVotes.length,
     expectedTotalDurationMs: revealState?.expectedTotalDurationMs || 0,
-    voteRevealFinalHoldMs: revealState?.voteRevealFinalHoldMs || liveTempo.voteRevealFinalHoldMs,
+    voteRevealFinalHoldMs: revealState?.voteRevealFinalHoldMs || voteTempo.voteRevealFinalHoldMs,
     setRevealState,
   };
 }
