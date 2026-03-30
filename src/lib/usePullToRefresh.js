@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 const REFRESH_THRESHOLD = 84;
 const MAX_PULL_DISTANCE = 120;
 const DRAG_RESISTANCE = 0.45;
-const EDGE_START_LIMIT = 56;
+const EDGE_START_LIMIT = 96;
 const PULL_ACTIVATION_DISTANCE = 14;
 
 const isScrollableElement = (element) => {
@@ -24,6 +24,18 @@ const getScrollableParent = (target) => {
   }
 
   return null;
+};
+
+const parseCssPixels = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getActivationBandLimit = () => {
+  const styles = window.getComputedStyle(document.documentElement);
+  const safeTop = parseCssPixels(styles.getPropertyValue('--app-safe-top'));
+  const headerOffset = parseCssPixels(styles.getPropertyValue('--app-header-offset'));
+  return Math.max(EDGE_START_LIMIT, safeTop + 24, headerOffset + 16);
 };
 
 export default function usePullToRefresh() {
@@ -69,10 +81,7 @@ export default function usePullToRefresh() {
       const touch = event.touches[0];
       const scrollContainer = getScrollableParent(event.target);
       const canStartPull = !scrollContainer || scrollContainer.scrollTop <= 0;
-      const startZoneLimit = scrollContainer
-        ? scrollContainer.getBoundingClientRect().top + EDGE_START_LIMIT
-        : EDGE_START_LIMIT;
-      const withinStartZone = touch.clientY <= startZoneLimit;
+      const withinStartZone = touch.clientY <= getActivationBandLimit();
 
       if (!canStartPull || !withinStartZone) {
         gestureRef.current.tracking = false;
@@ -143,19 +152,19 @@ export default function usePullToRefresh() {
       resetPullState();
     };
 
-    const passiveOptions = { passive: true };
-    const activeOptions = { passive: false };
+    const passiveCaptureOptions = { passive: true, capture: true };
+    const activeCaptureOptions = { passive: false, capture: true };
 
-    document.addEventListener('touchstart', handleTouchStart, passiveOptions);
-    document.addEventListener('touchmove', handleTouchMove, activeOptions);
-    document.addEventListener('touchend', handleTouchEnd, passiveOptions);
-    document.addEventListener('touchcancel', handleTouchCancel, passiveOptions);
+    window.addEventListener('touchstart', handleTouchStart, passiveCaptureOptions);
+    window.addEventListener('touchmove', handleTouchMove, activeCaptureOptions);
+    window.addEventListener('touchend', handleTouchEnd, passiveCaptureOptions);
+    window.addEventListener('touchcancel', handleTouchCancel, passiveCaptureOptions);
 
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart, passiveOptions);
-      document.removeEventListener('touchmove', handleTouchMove, activeOptions);
-      document.removeEventListener('touchend', handleTouchEnd, passiveOptions);
-      document.removeEventListener('touchcancel', handleTouchCancel, passiveOptions);
+      window.removeEventListener('touchstart', handleTouchStart, passiveCaptureOptions);
+      window.removeEventListener('touchmove', handleTouchMove, activeCaptureOptions);
+      window.removeEventListener('touchend', handleTouchEnd, passiveCaptureOptions);
+      window.removeEventListener('touchcancel', handleTouchCancel, passiveCaptureOptions);
     };
   }, [isRefreshing]);
 
