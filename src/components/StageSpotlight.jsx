@@ -7,6 +7,9 @@ import { triggerHaptic } from '../lib/haptics';
 const DEFAULT_AUTO_CLOSE_MS = 10000;
 const DISMISS_DRAG_OFFSET = 120;
 const DISMISS_DRAG_VELOCITY = 720;
+const SHEET_ENTER_Y = 64;
+const SHEET_EXIT_Y = 84;
+const SHEET_MOTION_EASE = [0.22, 1, 0.36, 1];
 
 const TONE_MAP = {
   red: {
@@ -147,10 +150,14 @@ export default function StageSpotlight({
           />
 
           <motion.div
-            initial={{ opacity: 0, y: '100%' }}
+            initial={{ opacity: 0, y: SHEET_ENTER_Y }}
             animate={{ opacity: 1, y: 0, scale: isHolding ? 1.01 : 1 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+            exit={{ opacity: 0, y: SHEET_EXIT_Y }}
+            transition={{
+              y: { type: 'tween', duration: 0.28, ease: SHEET_MOTION_EASE },
+              opacity: { duration: 0.18, ease: 'easeOut' },
+              scale: { duration: 0.14, ease: 'easeOut' },
+            }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
@@ -163,7 +170,7 @@ export default function StageSpotlight({
               }
             }}
             onContextMenu={(event) => event.preventDefault()}
-            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl select-none flex-col overflow-hidden rounded-[30px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'} sm:rounded-[34px]`}
+            className={`relative flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl transform-gpu will-change-transform select-none flex-col overflow-hidden rounded-[30px] border bg-[linear-gradient(180deg,rgba(8,10,14,0.96)_0%,rgba(8,10,12,0.92)_100%)] shadow-[0_40px_120px_rgba(0,0,0,0.62)] ${isHolding ? 'border-white/22' : 'border-white/10'} sm:rounded-[34px]`}
             style={{
               boxShadow: isHolding
                 ? `0 44px 130px rgba(0,0,0,0.68), 0 0 110px ${toneTheme.glow}`

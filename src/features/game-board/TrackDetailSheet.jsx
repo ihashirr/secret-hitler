@@ -6,6 +6,10 @@ import {
   TRACK_DETAIL_DISMISS_DRAG_VELOCITY,
 } from './boardConfig';
 
+const SHEET_ENTER_Y = 64;
+const SHEET_EXIT_Y = 84;
+const SHEET_MOTION_EASE = [0.22, 1, 0.36, 1];
+
 export default function TrackDetailSheet({
   dragControls,
   insight,
@@ -40,10 +44,10 @@ export default function TrackDetailSheet({
         />
 
         <motion.div
-          initial={{ opacity: 0, y: '100%' }}
+          initial={{ opacity: 0, y: SHEET_ENTER_Y }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: '100%' }}
-          transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+          exit={{ opacity: 0, y: SHEET_EXIT_Y }}
+          transition={{ type: 'tween', duration: 0.26, ease: SHEET_MOTION_EASE }}
           drag="y"
           dragControls={dragControls}
           dragListener={false}
@@ -55,7 +59,7 @@ export default function TrackDetailSheet({
               onClose();
             }
           }}
-          className="relative z-[146] flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+          className="relative z-[146] flex min-h-0 w-full min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] max-w-2xl transform-gpu will-change-transform flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,11,13,0.96)_0%,rgba(7,8,10,0.96)_100%)] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
         >
           <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
             <button

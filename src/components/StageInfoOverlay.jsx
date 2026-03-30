@@ -6,6 +6,9 @@ import StageTimeline from './StageTimeline';
 
 const DISMISS_DRAG_OFFSET = 120;
 const DISMISS_DRAG_VELOCITY = 720;
+const SHEET_ENTER_Y = 64;
+const SHEET_EXIT_Y = 84;
+const SHEET_MOTION_EASE = [0.22, 1, 0.36, 1];
 
 const urgencyStyles = {
   high: 'border-red-400/25 bg-red-500/10 text-red-100',
@@ -59,10 +62,10 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
           />
 
           <motion.div
-            initial={{ opacity: 0, y: '100%' }}
+            initial={{ opacity: 0, y: SHEET_ENTER_Y }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            exit={{ opacity: 0, y: SHEET_EXIT_Y }}
+            transition={{ type: 'tween', duration: 0.26, ease: SHEET_MOTION_EASE }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
@@ -74,7 +77,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
                 handleClose();
               }
             }}
-            className="relative z-[151] flex min-h-0 min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] w-full max-w-2xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
+            className="relative z-[151] flex min-h-0 min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-12px)] w-full max-w-2xl transform-gpu will-change-transform flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#0c0d0f] shadow-[0_32px_90px_rgba(0,0,0,0.65)]"
           >
             <div className="flex items-center justify-center px-5 pt-3 sm:px-6 sm:pt-4">
               <button

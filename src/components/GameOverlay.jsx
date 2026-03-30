@@ -8,6 +8,14 @@ import StageSpotlight from './StageSpotlight';
 const ACTIONABLE_SPOTLIGHT_MS = 10000;
 const SHEET_DISMISS_DRAG_OFFSET = 120;
 const SHEET_DISMISS_DRAG_VELOCITY = 720;
+const SHEET_ENTER_Y = 64;
+const SHEET_EXIT_Y = 84;
+const SHEET_MOTION_EASE = [0.22, 1, 0.36, 1];
+const SHEET_MOTION_TRANSITION = {
+  type: 'tween',
+  duration: 0.26,
+  ease: SHEET_MOTION_EASE,
+};
 
 function getSpotlightSceneId({
   displayPhase,
@@ -515,10 +523,10 @@ export default function GameOverlay({
         >
           <motion.div
             key={`desk-${votingDrawerKey || displayPhase}-${pendingSelection?.type || 'base'}`}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 190, damping: 28, mass: 0.9 }}
+            initial={{ opacity: 0, y: SHEET_ENTER_Y }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: SHEET_EXIT_Y }}
+            transition={SHEET_MOTION_TRANSITION}
             drag={votingDeskDismissible ? 'y' : false}
             dragControls={sheetDragControls}
             dragListener={false}
@@ -532,7 +540,7 @@ export default function GameOverlay({
                 setDismissedVoteDeskKey(votingDrawerKey);
               }
             }}
-            className={`pointer-events-auto relative flex min-w-0 max-h-[85dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 transition-all ${
+            className={`pointer-events-auto relative flex min-w-0 max-h-[85dvh] w-full max-w-[760px] transform-gpu will-change-transform flex-col overflow-hidden rounded-t-[32px] border shadow-[0_-32px_80px_rgba(0,0,0,0.65)] px-4 pt-2 ${
               displayPhase === PHASES.VOTING
                 ? 'border-cyan-500/20 bg-[linear-gradient(180deg,#0a1016_0%,#05080b_100%)]'
                 : 'border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)]'
