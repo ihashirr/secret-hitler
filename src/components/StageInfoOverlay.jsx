@@ -123,7 +123,7 @@ export default function StageInfoOverlay({ open, onClose, directorState }) {
               </div>
             </div>
 
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="app-scroll-y min-h-0 min-w-0 flex-1 px-5 py-4 sm:px-6">
               <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
                 {tabs.map((tab) => (
                   <button

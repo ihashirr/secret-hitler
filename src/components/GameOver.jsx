@@ -100,7 +100,7 @@ export default function GameOver({ gameState, playerId, onReplay }) {
       <div className="absolute inset-0 board-grid opacity-[0.06]" />
 
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full min-w-0 max-w-lg flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-hide">
+        <div className="app-scroll-y scrollbar-hide min-h-0 flex-1 pr-1">
         <section className="min-w-0 shrink-0 rounded-[30px] border border-white/10 bg-black/35 px-4 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:px-5 sm:py-6">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}

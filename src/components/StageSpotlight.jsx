@@ -250,7 +250,7 @@ export default function StageSpotlight({
                 </span>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto pt-6 scrollbar-hide sm:pt-8">
+              <div className="app-scroll-y scrollbar-hide min-h-0 flex-1 pt-6 sm:pt-8">
                 <div className="mx-auto max-w-xl text-center">
                   <p className="text-[11px] font-mono font-black uppercase tracking-[0.42em] text-white/42">
                     Current Stage

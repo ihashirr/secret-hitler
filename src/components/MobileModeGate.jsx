@@ -130,7 +130,7 @@ export default function MobileModeGate({ active, viewKey, onExitToConnect, acces
             </div>
             </div>
 
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
+          <div className="app-scroll-y scrollbar-hide min-h-0 min-w-0 flex-1 px-5 py-4">
             <div className="space-y-5">
               <div className="grid gap-3">
                 {hasInstallPrompt ? (

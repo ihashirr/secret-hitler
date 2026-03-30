@@ -616,7 +616,7 @@ export default function GameOverlay({
             </div>
 
             <div 
-              className="relative z-10 mt-5 min-h-0 flex-1 overflow-y-auto pr-1 pb-[calc(var(--app-safe-bottom)+2rem)]"
+              className="app-scroll-y relative z-10 mt-5 min-h-0 flex-1 pr-1 pb-[calc(var(--app-safe-bottom)+2rem)]"
               style={{ touchAction: 'pan-y' }}
             >
               {actionContent && (

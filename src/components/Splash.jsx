@@ -46,7 +46,7 @@ export default function Splash({ onConnect }) {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,240,255,0.08),transparent_38%),linear-gradient(180deg,#040607_0%,#111111_100%)] text-white">
-      <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col overflow-y-auto px-3 pb-[calc(var(--app-safe-bottom)+1.5rem)] pt-[calc(var(--app-safe-top)+1rem)] scrollbar-hide sm:px-4">
+      <div className="app-scroll-y scrollbar-hide mx-auto flex h-full min-h-0 w-full min-w-0 max-w-md flex-col px-3 pb-[calc(var(--app-safe-bottom)+1.5rem)] pt-[calc(var(--app-safe-top)+1rem)] sm:px-4">
         <section className="min-w-0 rounded-[28px] border border-cyan-500/15 bg-black/35 px-5 py-6 shadow-[0_24px_64px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <p className="text-[10px] font-mono font-black uppercase tracking-[0.32em] text-cyan-300/70">
             Private Phone Match

@@ -123,7 +123,7 @@ export default function Lobby({ gameState, playerId, onStart, onAddBot }) {
             )}
           </div>
 
-          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1 scrollbar-hide">
+          <div className="app-scroll-y scrollbar-hide mt-4 flex min-h-0 flex-1 flex-col gap-2 pr-1">
             {gameState.players.map((player) => {
               const isSelf = player.id === playerId;
 

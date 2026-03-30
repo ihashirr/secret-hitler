@@ -71,6 +71,13 @@
   display: none;
 }
 
+.app-scroll-y {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
 @layer utilities {
   .tactical-panel {
     background: rgba(3, 10, 15, 0.78);

@@ -801,7 +801,7 @@ export default function GameBoard({
         duration: 0.28,
         ease: 'easeOut',
       }}
-      className="relative h-full min-h-0 w-full overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-obsidian-950 pt-[var(--app-header-offset)]"
     >
       {revealStage === 1 && voteRevealActive && (
         <motion.div
@@ -831,7 +831,7 @@ export default function GameBoard({
       />
       {renderTrackDetailOverlay()}
 
-      <div className={`relative z-10 min-h-0 flex-1 overflow-y-auto pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
+      <div className={`app-scroll-y scrollbar-hide relative z-10 min-h-0 flex-1 pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         <div className="mx-auto flex min-h-full w-full min-w-0 max-w-[1120px] flex-col gap-2 px-3 pt-16 sm:gap-3 sm:px-4 sm:pt-20">
           {renderBoardStage()}
           {renderVoteRibbon()}

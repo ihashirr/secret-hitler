@@ -83,7 +83,7 @@ export default function TrackDetailSheet({
 
           <div className="pointer-events-none absolute inset-0 paper-grain opacity-10" />
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-3 sm:px-5 sm:pb-6">
+          <div className="app-scroll-y min-h-0 flex-1 px-4 pb-5 pt-3 sm:px-5 sm:pb-6">
             <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${
               insight.type === 'FASCIST'
                 ? 'from-red-400/85 via-red-500/75 to-red-700/85'

@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 const REFRESH_THRESHOLD = 84;
 const MAX_PULL_DISTANCE = 120;
 const DRAG_RESISTANCE = 0.45;
+const EDGE_START_LIMIT = 56;
+const PULL_ACTIVATION_DISTANCE = 14;
 
 const isScrollableElement = (element) => {
   if (!(element instanceof HTMLElement)) return false;
@@ -67,8 +69,12 @@ export default function usePullToRefresh() {
       const touch = event.touches[0];
       const scrollContainer = getScrollableParent(event.target);
       const canStartPull = !scrollContainer || scrollContainer.scrollTop <= 0;
+      const startZoneLimit = scrollContainer
+        ? scrollContainer.getBoundingClientRect().top + EDGE_START_LIMIT
+        : EDGE_START_LIMIT;
+      const withinStartZone = touch.clientY <= startZoneLimit;
 
-      if (!canStartPull) {
+      if (!canStartPull || !withinStartZone) {
         gestureRef.current.tracking = false;
         return;
       }
@@ -99,19 +105,25 @@ export default function usePullToRefresh() {
         return;
       }
 
+      if (deltaY < -8) {
+        gestureRef.current.tracking = false;
+        return;
+      }
+
       if (deltaY <= 0) {
         if (gestureRef.current.pullDistance > 0) {
-          event.preventDefault();
+          if (event.cancelable) event.preventDefault();
           resetPullState();
         }
         return;
       }
 
       const nextPullDistance = Math.min(MAX_PULL_DISTANCE, Math.round(deltaY * DRAG_RESISTANCE));
+      if (nextPullDistance < PULL_ACTIVATION_DISTANCE) return;
       gestureRef.current.pullDistance = nextPullDistance;
       setPullDistance(nextPullDistance);
       setIsThresholdReached(nextPullDistance >= REFRESH_THRESHOLD);
-      event.preventDefault();
+      if (event.cancelable) event.preventDefault();
     };
 
     const handleTouchEnd = () => {
