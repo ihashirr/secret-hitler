@@ -339,6 +339,7 @@ async function passPoliciesToChancellor(ctx: any, room: any, players: any[], dis
     discardPile: [...room.discardPile, discarded],
     phase: PHASES.LEGISLATIVE_CHANCELLOR,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     botThinkAt: undefined,
   });
 }
@@ -346,6 +347,7 @@ async function passPoliciesToChancellor(ctx: any, room: any, players: any[], dis
 async function openVetoRequest(ctx: any, room: any, players: any[]) {
   const vetoRoom = await setRoomState(ctx, room, players, {
     vetoRequested: true,
+    vetoRejected: undefined,
     botThinkAt: undefined,
   });
   await logSystem(ctx.db, room.roomId, "Chancellor requested a veto.");
@@ -354,9 +356,13 @@ async function openVetoRequest(ctx: any, room: any, players: any[]) {
 
 async function resolveVetoDecision(ctx: any, room: any, players: any[], accept: boolean) {
   if (!accept) {
-    await setRoomState(ctx, room, players, { vetoRequested: undefined });
+    const rejectedRoom = await setRoomState(ctx, room, players, {
+      vetoRequested: undefined,
+      vetoRejected: true,
+      botThinkAt: undefined,
+    });
     await logSystem(ctx.db, room.roomId, "President rejected the veto request.");
-    return room;
+    return rejectedRoom;
   }
 
   const vetoRoom = await setRoomState(ctx, room, players, {
@@ -365,6 +371,7 @@ async function resolveVetoDecision(ctx: any, room: any, players: any[], accept: 
     previousPresidentId: room.currentPresidentId,
     previousChancellorId: room.currentChancellorId,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     botThinkAt: undefined,
   });
 
@@ -601,7 +608,7 @@ async function resolveSingleBotStep(ctx: any, room: any, players: any[]) {
 
     if (!chancellor?.isBot || room.vetoRequested) return false;
 
-    if (shouldBotRequestVeto(chancellor, room)) {
+    if (!room.vetoRejected && shouldBotRequestVeto(chancellor, room)) {
       await openVetoRequest(ctx, room, players);
       return true;
     }
@@ -919,6 +926,7 @@ export const startGame = mutation({
         lastVotes: undefined,
         executivePower: undefined,
         vetoRequested: undefined,
+        vetoRejected: undefined,
         investigatedPlayerIds: [],
         lastInvestigatedPlayerId: undefined,
         lastInvestigationParty: undefined,
@@ -1027,6 +1035,9 @@ export const requestVeto = mutation({
       return { success: false, error: "Veto unavailable" };
     }
     if (room.vetoRequested) return { success: true };
+    if (room.vetoRejected) {
+      return { success: false, error: "Veto already rejected" };
+    }
 
     const players = await getPlayersByRoomId(ctx, args.roomId);
     await openVetoRequest(ctx, room, players);
@@ -1532,6 +1543,7 @@ export const getGameState = query({
             executivePower: room.executivePower || null,
             vetoAvailable: room.phase === PHASES.LEGISLATIVE_CHANCELLOR && room.fascistPolicies >= 5,
             vetoRequested: Boolean(room.vetoRequested),
+            vetoRejected: Boolean(room.vetoRejected),
             chaosTriggered: Boolean(room.chaosTriggered),
             chaosPolicy: room.chaosPolicy || null,
             peekedPolicies,
@@ -1580,6 +1592,7 @@ async function startNextNomination(ctx: any, room: any, players: any[], extraPat
     drawnCards: [],
     executivePower: undefined,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     chaosTriggered: false,
     chaosPolicy: undefined,
     specialElectionCallerId: undefined,
@@ -1599,6 +1612,7 @@ async function finishGame(ctx: any, room: any, players: any[], winner: string, w
     winReason,
     executivePower: undefined,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     chaosTriggered: false,
     chaosPolicy: undefined,
     botThinkAt: undefined,
@@ -1637,6 +1651,7 @@ async function beginLegislativeSession(
     drawnCards: deckState.drawnCards,
     executivePower: undefined,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     chaosTriggered: false,
     chaosPolicy: undefined,
     botThinkAt: undefined,
@@ -1678,6 +1693,7 @@ async function resolveChaos(ctx: any, room: any, players: any[]) {
     previousChancellorId: undefined,
     executivePower: undefined,
     vetoRequested: undefined,
+    vetoRejected: undefined,
     chaosTriggered: true,
     chaosPolicy,
   });
@@ -1751,6 +1767,7 @@ async function applyEnactedPolicy(
     discardPile: [...room.discardPile, ...discardCards],
     drawnCards: [],
     vetoRequested: undefined,
+    vetoRejected: undefined,
     botThinkAt: undefined,
   };
 

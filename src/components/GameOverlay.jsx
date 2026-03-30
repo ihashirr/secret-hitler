@@ -31,6 +31,9 @@ const createStoryBeat = ({ key, stageLabel, title, description, tone = 'neutral'
   autoCloseMs,
 });
 
+const isChancellorDecisionBeat = (key = '') =>
+  key.startsWith('story:chancellor-hand:') || key.startsWith('story:init-chancellor-hand:');
+
 function getExecutiveBeat(gameState) {
   const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
 
@@ -120,7 +123,7 @@ function getStoryBeatFromTransition(previous, gameState) {
       key: `story:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
       stageLabel: 'Legislative Session',
       title: `${chancellorName} Requested A Veto`,
-      description: "The vibes are off! President, will you accept the veto?",
+      description: `${presidentName} must now accept or reject the veto request.`,
       tone: 'red',
       autoCloseMs: EVENT_BRIEFING_MS,
     });
@@ -347,17 +350,26 @@ export default function GameOverlay({
     gameState.vetoRequested,
   ]);
 
-  useEffect(() => {
-    if (activeStoryBeat || !storyBeatQueue.length || voteRevealActive || (displayPhase === PHASES.VOTING && me?.hasVoted)) return;
+  const effectiveStoryBeatQueue =
+    gameState.vetoRequested
+      ? storyBeatQueue.filter((entry) => !isChancellorDecisionBeat(entry.key))
+      : storyBeatQueue;
+  const visibleActiveStoryBeat =
+    gameState.vetoRequested && isChancellorDecisionBeat(activeStoryBeat?.key)
+      ? null
+      : activeStoryBeat;
 
-    const [nextBeat, ...rest] = storyBeatQueue;
+  useEffect(() => {
+    if (visibleActiveStoryBeat || !effectiveStoryBeatQueue.length || voteRevealActive || (displayPhase === PHASES.VOTING && me?.hasVoted)) return;
+
+    const [nextBeat] = effectiveStoryBeatQueue;
     const timer = window.setTimeout(() => {
       setActiveStoryBeat(nextBeat);
-      setStoryBeatQueue(rest);
+      setStoryBeatQueue((current) => current.filter((entry) => entry.key !== nextBeat.key));
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [activeStoryBeat, displayPhase, me?.hasVoted, storyBeatQueue, voteRevealActive]);
+  }, [displayPhase, effectiveStoryBeatQueue, gameState.vetoRequested, me?.hasVoted, visibleActiveStoryBeat, voteRevealActive]);
 
   const handleVoteSelection = async (approve) => {
     if (activePendingVote || me?.hasVoted) return;
@@ -591,9 +603,11 @@ export default function GameOverlay({
             </div>
           );
         } else if (isChancellor) {
-          title = gameState.vetoRequested ? 'Veto Requested' : 'Enact One Policy';
+          title = gameState.vetoRequested ? 'Veto Requested' : gameState.vetoRejected ? 'Veto Rejected' : 'Enact One Policy';
           subtext = gameState.vetoRequested
             ? 'Your veto request is pending the President response.'
+            : gameState.vetoRejected
+              ? 'The President rejected the veto. You must enact one of the remaining policies now.'
             : 'Select the one policy that will be enacted.';
           isActive = true;
           privateAudience = 'Chancellor Only';
@@ -631,7 +645,7 @@ export default function GameOverlay({
                   ))}
                 </motion.div>
 
-                {gameState.vetoAvailable && !gameState.vetoRequested && (
+                {gameState.vetoAvailable && !gameState.vetoRequested && !gameState.vetoRejected && (
                   <button
                     type="button"
                     onClick={runWithHaptic(onRequestVeto, 'warning')}
@@ -748,7 +762,7 @@ export default function GameOverlay({
   const actionableSpotlightVisible =
     Boolean(actionableSpotlightKey) &&
     actionableSpotlightKey !== dismissedSpotlightKey;
-  const spotlightVisible = Boolean(activeStoryBeat) || actionableSpotlightVisible;
+  const spotlightVisible = Boolean(visibleActiveStoryBeat) || actionableSpotlightVisible;
   const votingDeskDismissible = Boolean(votingDrawerKey);
   const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === votingDrawerKey;
   const deskBadgeLabel = displayPhase === PHASES.VOTING ? 'Vote Desk' : 'Action Desk';
@@ -763,22 +777,22 @@ export default function GameOverlay({
 
   return (
     <AnimatePresence>
-      {activeStoryBeat && (
+      {visibleActiveStoryBeat && (
         <StageSpotlight
-          key={activeStoryBeat.key}
-          stageLabel={activeStoryBeat.stageLabel}
-          title={activeStoryBeat.title}
-          description={activeStoryBeat.description}
+          key={visibleActiveStoryBeat.key}
+          stageLabel={visibleActiveStoryBeat.stageLabel}
+          title={visibleActiveStoryBeat.title}
+          description={visibleActiveStoryBeat.description}
           audienceLabel="Table"
           visibility="public"
-          tone={activeStoryBeat.tone}
-          autoCloseMs={activeStoryBeat.autoCloseMs}
+          tone={visibleActiveStoryBeat.tone}
+          autoCloseMs={visibleActiveStoryBeat.autoCloseMs}
           enforceMinimum={false}
           onDismiss={() => setActiveStoryBeat(null)}
         />
       )}
 
-      {!activeStoryBeat && actionableSpotlightVisible && (
+      {!visibleActiveStoryBeat && actionableSpotlightVisible && (
         <StageSpotlight
           key={actionableSpotlightKey}
           stageLabel={directorState?.stageLabel || 'Live Match'}

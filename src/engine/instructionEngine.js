@@ -242,6 +242,8 @@ export function getInstructions(player, gameState) {
             'Enact One Policy',
             gameState.vetoRequested
               ? 'You requested a veto. Wait for the President to accept or reject it.'
+              : gameState.vetoRejected
+                ? 'The President rejected the veto. You must now enact one of the remaining policies.'
               : 'Choose the one policy that will take effect this round. Do not reveal hidden information directly.',
             'high',
             'private',
@@ -249,7 +251,7 @@ export function getInstructions(player, gameState) {
               ? []
               : [
                   { label: 'Enact a policy', action: 'chancellor-enact' },
-                  ...(gameState.vetoAvailable ? [{ label: 'Request veto', action: 'request-veto' }] : []),
+                  ...(gameState.vetoAvailable && !gameState.vetoRejected ? [{ label: 'Request veto', action: 'request-veto' }] : []),
                 ],
           ),
         );
