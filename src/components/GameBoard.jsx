@@ -4,6 +4,7 @@ import {
   EXECUTIVE_POWERS,
   FASCIST_TO_WIN,
   LIBERAL_TO_WIN,
+  MAX_ELECTION_TRACKER,
   PHASES,
 } from '../lib/constants';
 import { Ban, Bot, Skull } from 'lucide-react';
@@ -82,8 +83,10 @@ export default function GameBoard({
     recentVoteIds,
     revealStage,
     revealState,
-    revealedVoteIds,
+    revealedVoteMap,
     revealedVoteTotals,
+    orderedRevealPlayerIds,
+    revealProgressCount,
   } = useVoteRevealState(gameState);
 
   React.useEffect(() => {
@@ -98,7 +101,20 @@ export default function GameBoard({
   const voteFeedbackActive = gameState.phase === PHASES.VOTING || voteRevealActive;
   const displayPhase = gameState.phase;
   const playerCount = gameState.players.length;
+  const aliveCount = gameState.players.filter((player) => player.isAlive).length;
   const revealIsApproved = revealState?.result === 'APPROVED';
+  const revealNextStep =
+    revealIsApproved
+      ? gameState.phase === PHASES.GAME_OVER
+        ? 'Hitler took office. The match ends here.'
+        : gameState.phase === PHASES.LEGISLATIVE_PRESIDENT
+          ? 'President is selecting which policies move forward.'
+          : gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR
+            ? 'Chancellor is deciding the final policy.'
+            : 'The government moves into the legislative session.'
+      : gameState.chaosTriggered && gameState.chaosPolicy
+        ? `Chaos auto-enacted a ${gameState.chaosPolicy.toLowerCase()} policy.`
+        : `Election tracker advances to ${gameState.electionTracker}/${MAX_ELECTION_TRACKER}.`;
   const selectedTrackType = selectedTrackFocus?.type === 'LIBERAL' ? 'LIBERAL' : selectedTrackFocus?.type === 'FASCIST' ? 'FASCIST' : null;
   const selectedTrackMax =
     selectedTrackType === 'FASCIST' ? FASCIST_TO_WIN : selectedTrackType === 'LIBERAL' ? LIBERAL_TO_WIN : null;
@@ -291,18 +307,69 @@ export default function GameBoard({
     );
   };
 
+  const renderVoteRibbon = () => {
+    if (!voteRevealActive || !revealState) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto w-full max-w-[860px] shrink-0"
+      >
+        <div
+          className={`rounded-[20px] border px-3 py-2.5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] backdrop-blur-sm sm:px-4 ${
+            revealIsApproved
+              ? 'border-cyan-300/18 bg-[linear-gradient(180deg,rgba(8,17,24,0.88)_0%,rgba(8,13,19,0.8)_100%)]'
+              : 'border-red-400/18 bg-[linear-gradient(180deg,rgba(25,8,10,0.88)_0%,rgba(15,8,9,0.8)_100%)]'
+          }`}
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.2em]">
+            <span className={`rounded-full border px-2.5 py-1 ${
+              revealIsApproved
+                ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
+                : 'border-red-400/18 bg-red-500/10 text-red-100'
+            }`}>
+              {revealIsApproved ? 'Government Elected' : 'Vote Failed'}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/18 px-2.5 py-1 text-white/72">
+              {revealedVoteTotals.YA} Ja • {revealedVoteTotals.NEIN} Nein
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/56">
+              {revealProgressCount < aliveCount ? `Resolving ${revealProgressCount}/${aliveCount}` : 'Resolved'}
+            </span>
+          </div>
+
+          <FactionAccentText as="p" className="mt-2 text-[10px] leading-relaxed text-white/66 sm:text-[11px]">
+            {revealProgressCount < orderedRevealPlayerIds.length
+              ? 'Votes are resolving on the table.'
+              : revealNextStep}
+          </FactionAccentText>
+        </div>
+      </motion.div>
+    );
+  };
+
   const renderPlayerDock = () => {
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
     const tablePlayers = getTablePlayers(gameState.players);
+    const seatLayouts = tablePlayers.map((player, index) => {
+      const seatStyle = getTableRingSeatStyle(index, tablePlayers.length);
+      return {
+        ...player,
+        seatStyle,
+        x: Number.parseFloat(seatStyle.left),
+        y: Number.parseFloat(seatStyle.top),
+      };
+    });
     const {
       orderMap: presidencyOrderMap,
       nextPresidentId,
       afterNextPresidentId,
     } = getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId);
-    const currentPresidentPlayer = tablePlayers.find((player) => player.id === gameState.currentPresident) || null;
+    const currentPresidentPlayer = seatLayouts.find((player) => player.id === gameState.currentPresident) || null;
     const currentChancellorPlayer =
-      tablePlayers.find((player) => player.id === (gameState.currentChancellor || gameState.nominatedChancellor)) || null;
-    const nextPresidentPlayer = tablePlayers.find((player) => player.id === nextPresidentId) || null;
+      seatLayouts.find((player) => player.id === (gameState.currentChancellor || gameState.nominatedChancellor)) || null;
+    const nextPresidentPlayer = seatLayouts.find((player) => player.id === nextPresidentId) || null;
     const orbitStatusItems = [
       {
         label: 'President',
@@ -320,13 +387,40 @@ export default function GameBoard({
         accentClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.3)]',
       },
     ];
+    const voteTargets = [
+      {
+        key: 'YA',
+        label: 'JA',
+        x: 28,
+        y: 69,
+        accentClassName: 'border-cyan-300/28 bg-[linear-gradient(180deg,rgba(8,27,40,0.96)_0%,rgba(8,18,28,0.94)_100%)] text-cyan-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
+        dotClassName: 'bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.52)]',
+        laneColor: 'rgba(103, 232, 249, 0.86)',
+      },
+      {
+        key: 'NEIN',
+        label: 'NEIN',
+        x: 72,
+        y: 69,
+        accentClassName: 'border-red-400/28 bg-[linear-gradient(180deg,rgba(33,10,14,0.96)_0%,rgba(24,8,10,0.94)_100%)] text-red-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
+        dotClassName: 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]',
+        laneColor: 'rgba(248, 113, 113, 0.84)',
+      },
+    ];
+    const voteTargetLookup = new Map(voteTargets.map((target) => [target.key, target]));
+    const getVoteLanePath = (seat, target) => {
+      const direction = target.key === 'YA' ? -1 : 1;
+      const controlX = ((seat.x + target.x) / 2) + direction * 12;
+      const controlY = Math.min(seat.y, target.y) - 16;
+      return `M ${seat.x} ${seat.y} Q ${controlX} ${controlY} ${target.x} ${target.y}`;
+    };
     const ringSeatClass = getTableRingSeatClass(playerCount);
     const ringShellWidth =
       playerCount >= 9
-        ? 'min(100%, clamp(280px, calc(var(--app-vh) - var(--app-header-offset) - 280px), 400px))'
+        ? 'min(100%, clamp(272px, calc(var(--app-vh) - var(--app-header-offset) - 288px), 400px))'
         : playerCount >= 7
-          ? 'min(100%, clamp(300px, calc(var(--app-vh) - var(--app-header-offset) - 260px), 420px))'
-          : 'min(100%, clamp(320px, calc(var(--app-vh) - var(--app-header-offset) - 240px), 440px))';
+          ? 'min(100%, clamp(294px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 420px))'
+          : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))';
 
     return (
       <div className="flex w-full min-w-0 flex-1">
@@ -336,58 +430,119 @@ export default function GameBoard({
           <div className="relative z-10 flex min-h-full min-w-0 flex-col items-center justify-start gap-4 py-1 sm:gap-5">
             <div className="relative mx-auto w-full" style={{ width: ringShellWidth }}>
               <div className="relative aspect-square w-full">
-                      <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
-                      <div className="pointer-events-none absolute inset-[17%] rounded-full border border-dashed border-white/8 opacity-55" />
+                <div className="pointer-events-none absolute inset-[12%] rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_55%,rgba(0,0,0,0.16)_100%)] shadow-[0_20px_44px_rgba(0,0,0,0.24)]" />
+                <div className="pointer-events-none absolute inset-[17%] rounded-full border border-dashed border-white/8 opacity-55" />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: gameState.specialElectionCallerId ? 10 : 16, repeat: Infinity, ease: 'linear' }}
+                  className="pointer-events-none absolute inset-[17%]"
+                >
+                  <span className={`absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+                    gameState.specialElectionCallerId
+                      ? 'bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.55)]'
+                      : 'bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.55)]'
+                  }`} />
+                </motion.div>
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+                  className="pointer-events-none absolute inset-[23%]"
+                >
+                  <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.45)]" />
+                </motion.div>
+                <div className="pointer-events-none absolute inset-[27%] rounded-full border border-[#d4c098]/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06)_0%,rgba(10,11,13,0.88)_72%,rgba(6,7,8,0.94)_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                  <div className="absolute inset-[18%] rounded-full border border-white/8" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-16 w-16 rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.01)_70%,rgba(0,0,0,0.16)_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.18)]" />
+                  </div>
+                </div>
+
+                {voteRevealActive && (
+                  <>
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible"
+                      preserveAspectRatio="none"
+                    >
+                      {orderedRevealPlayerIds.map((playerId) => {
+                        const seat = seatLayouts.find((candidate) => candidate.id === playerId);
+                        const vote = revealedVoteMap[playerId];
+                        const target = voteTargetLookup.get(vote);
+
+                        if (!seat || !vote || !target) return null;
+
+                        return (
+                          <motion.path
+                            key={`vote-lane-${playerId}`}
+                            d={getVoteLanePath(seat, target)}
+                            initial={{ pathLength: 0, opacity: 0.16 }}
+                            animate={{ pathLength: 1, opacity: 0.8 }}
+                            transition={{ duration: 0.32, ease: 'easeOut' }}
+                            fill="none"
+                            stroke={target.laneColor}
+                            strokeWidth="1.35"
+                            strokeLinecap="round"
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {voteTargets.map((target) => (
                       <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: gameState.specialElectionCallerId ? 10 : 16, repeat: Infinity, ease: 'linear' }}
-                        className="pointer-events-none absolute inset-[17%]"
+                        key={target.key}
+                        initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: 0.24, ease: 'easeOut' }}
+                        className={`pointer-events-none absolute z-[2] min-w-[74px] rounded-[18px] border px-2.5 py-2 text-center ${target.accentClassName}`}
+                        style={{
+                          left: `${target.x}%`,
+                          top: `${target.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
                       >
-                        <span className={`absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
-                          gameState.specialElectionCallerId
-                            ? 'bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.55)]'
-                            : 'bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.55)]'
-                        }`} />
-                      </motion.div>
-                      <motion.div
-                        animate={{ rotate: -360 }}
-                        transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
-                        className="pointer-events-none absolute inset-[23%]"
-                      >
-                        <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.45)]" />
-                      </motion.div>
-                      <div className="pointer-events-none absolute inset-[27%] rounded-full border border-[#d4c098]/10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06)_0%,rgba(10,11,13,0.88)_72%,rgba(6,7,8,0.94)_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
-                        <div className="absolute inset-[18%] rounded-full border border-white/8" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="h-16 w-16 rounded-full border border-white/8 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.01)_70%,rgba(0,0,0,0.16)_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.18)]" />
+                        <div className="text-[7px] font-mono font-black uppercase tracking-[0.22em] text-white/62">
+                          {target.label}
                         </div>
+                        <div className="mt-1 flex items-center justify-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full ${target.dotClassName}`} />
+                          <span className="text-[15px] font-black leading-none">
+                            {revealedVoteTotals[target.key] || 0}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </>
+                )}
+
+                {selectionPhaseActive && selectionPromptLabel && (
+                  <div className="pointer-events-none absolute inset-[30%] z-10 flex items-center justify-center">
+                    <div className="rounded-full border border-white/10 bg-black/34 px-4 py-3 text-center shadow-[0_16px_28px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+                      <p className="text-[8px] font-mono font-black uppercase tracking-[0.2em] text-white/82">
+                        {selectionPromptLabel}
+                      </p>
+                      <div className="mt-2 flex items-center justify-center gap-2 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-white/58">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#d4c098]/25 bg-[#d4c098]/10 px-1.5 py-0.5 text-[#f1e6c4]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#d4c098]" />
+                          Choose
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-300/20 bg-red-500/10 px-1.5 py-0.5 text-red-100">
+                          <Ban size={7} />
+                          Blocked
+                        </span>
                       </div>
-                      {selectionPhaseActive && selectionPromptLabel && (
-                        <div className="pointer-events-none absolute inset-[30%] z-10 flex items-center justify-center">
-                          <div className="rounded-full border border-white/10 bg-black/34 px-4 py-3 text-center shadow-[0_16px_28px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-                            <p className="text-[8px] font-mono font-black uppercase tracking-[0.2em] text-white/82">
-                              {selectionPromptLabel}
-                            </p>
-                            <div className="mt-2 flex items-center justify-center gap-2 text-[6px] font-mono font-black uppercase tracking-[0.16em] text-white/58">
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[#d4c098]/25 bg-[#d4c098]/10 px-1.5 py-0.5 text-[#f1e6c4]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#d4c098]" />
-                                Choose
-                              </span>
-                              <span className="inline-flex items-center gap-1 rounded-full border border-red-300/20 bg-red-500/10 px-1.5 py-0.5 text-red-100">
-                                <Ban size={7} />
-                                Blocked
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {tablePlayers.map((player, index) => {
+                    </div>
+                  </div>
+                )}
+
+                {seatLayouts.map((player) => {
                         const isSelf = player.id === myActualId;
                         const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
                         const selectionMeta = getSeatSelectionMeta(player);
                         const finalVote = revealState?.votes?.[player.id] || null;
-                        const isVoteRevealed = Boolean(finalVote) && revealedVoteIds.includes(player.id);
-                        const voteStatus = getVotingStatusMeta(player, isVoteRevealed, finalVote);
+                        const revealedVote = revealedVoteMap[player.id] || null;
+                        const isVoteRevealed = Boolean(revealedVote);
+                        const voteStatus = getVotingStatusMeta(player, isVoteRevealed, revealedVote);
+                        const isVotePendingSeal = voteRevealActive && Boolean(finalVote) && !isVoteRevealed;
                         const showSeatVoteStatus = voteFeedbackActive && player.isAlive;
                         const justVoted = recentVoteIds.includes(player.id);
                         const isSelectable =
@@ -417,15 +572,16 @@ export default function GameBoard({
                               if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE) handleInvestigate(player.id);
                               if (displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.SPECIAL_ELECTION) handleSpecialElection(player.id);
                             }}
-                            style={getTableRingSeatStyle(index, tablePlayers.length)}
+                            style={player.seatStyle}
                             className={`group absolute flex flex-col items-center justify-start overflow-hidden rounded-[24px] border px-1.5 py-1.5 text-center shadow-[0_14px_26px_rgba(0,0,0,0.26)] outline-none transition-all duration-300 sm:px-2 sm:py-2 ${ringSeatClass}
                               ${playerIsPresident ? 'border-[#d4af37]/80 bg-[linear-gradient(180deg,#fff2c2_0%,#d7ba67_100%)] text-[#2c2410]' : 'border-white/8 bg-[linear-gradient(180deg,rgba(18,20,24,0.96)_0%,rgba(11,12,14,0.94)_100%)] text-white'}
                               ${playerIsChancellor && !playerIsPresident ? 'ring-2 ring-white/55' : ''}
                               ${isNextPresident ? 'ring-2 ring-cyan-300 shadow-[0_0_0_1px_rgba(103,232,249,0.4),0_16px_30px_rgba(0,0,0,0.3)]' : ''}
                               ${isAfterNextPresident ? 'shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_28px_rgba(0,0,0,0.28)]' : ''}
                               ${showSeatVoteStatus && player.hasVoted && !isVoteRevealed ? 'border-cyan-300/30 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
-                              ${isVoteRevealed && finalVote === 'YA' ? 'ring-2 ring-[#2b5c8f] shadow-[0_0_0_1px_rgba(103,232,249,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
-                              ${isVoteRevealed && finalVote === 'NEIN' ? 'ring-2 ring-[var(--color-stamp-red)] shadow-[0_0_0_1px_rgba(248,113,113,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
+                              ${isVotePendingSeal ? 'border-amber-200/32 shadow-[0_0_0_1px_rgba(253,230,138,0.18),0_18px_34px_rgba(0,0,0,0.32)]' : ''}
+                              ${isVoteRevealed && revealedVote === 'YA' ? 'ring-2 ring-[#2b5c8f] shadow-[0_0_0_1px_rgba(103,232,249,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
+                              ${isVoteRevealed && revealedVote === 'NEIN' ? 'ring-2 ring-[var(--color-stamp-red)] shadow-[0_0_0_1px_rgba(248,113,113,0.32),0_18px_34px_rgba(0,0,0,0.34)]' : ''}
                               ${selectionPhaseActive && isSelectable ? 'border-[#d4c098]/65 shadow-[0_0_0_1px_rgba(212,192,152,0.25),0_18px_32px_rgba(0,0,0,0.3)]' : ''}
                               ${selectionPhaseActive && !isSelectable ? 'border-red-400/18 bg-[linear-gradient(180deg,rgba(30,14,17,0.96)_0%,rgba(17,10,12,0.96)_100%)]' : ''}
                               ${isSelectable ? 'cursor-pointer hover:scale-[1.04] hover:border-[#d4c098] active:scale-[0.98]' : 'cursor-default'}
@@ -462,6 +618,13 @@ export default function GameBoard({
                                 animate={{ opacity: [0.14, 0.3, 0.14], scale: [0.96, 1.03, 0.96] }}
                                 transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
                                 className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_top,rgba(103,232,249,0.24)_0%,rgba(103,232,249,0.06)_42%,transparent_72%)]"
+                              />
+                            )}
+                            {isVotePendingSeal && (
+                              <motion.div
+                                animate={{ opacity: [0.12, 0.26, 0.12] }}
+                                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+                                className="pointer-events-none absolute inset-0 z-0 rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(253,230,138,0.16)_0%,rgba(253,230,138,0.04)_56%,transparent_78%)]"
                               />
                             )}
 
@@ -539,16 +702,22 @@ export default function GameBoard({
 
                             {showSeatVoteStatus ? (
                               <span className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[6px] font-mono font-black uppercase tracking-[0.16em] ${
-                                isVoteRevealed
-                                  ? finalVote === 'YA'
+                                isVotePendingSeal
+                                  ? 'border-amber-200/22 bg-amber-200/12 text-amber-100'
+                                  : isVoteRevealed
+                                  ? revealedVote === 'YA'
                                     ? 'border-cyan-300/25 bg-cyan-300/12 text-cyan-100'
                                     : 'border-red-400/25 bg-red-500/12 text-red-100'
                                   : player.hasVoted
                                     ? 'border-cyan-300/18 bg-cyan-300/10 text-cyan-100'
                                     : 'border-white/10 bg-white/[0.05] text-white/58'
                               }`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${voteStatus.dotClassName}`} />
-                                <span>{voteStatus.label}</span>
+                                <span className={`h-1.5 w-1.5 rounded-full ${
+                                  isVotePendingSeal
+                                    ? 'bg-amber-200 shadow-[0_0_10px_rgba(253,230,138,0.42)]'
+                                    : voteStatus.dotClassName
+                                }`} />
+                                <span>{isVotePendingSeal ? 'Sealed' : voteStatus.label}</span>
                               </span>
                             ) : (
                               <span className={`mt-1 text-[6px] font-mono font-black uppercase tracking-[0.18em] ${
@@ -586,7 +755,7 @@ export default function GameBoard({
 
                             {player.isAlive && isVoteRevealed && (
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                {finalVote === 'YA' && (
+                                {revealedVote === 'YA' && (
                                   <motion.div
                                     initial={{ scale: 2.4, opacity: 0, rotate: -18 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'YA') }}
@@ -597,7 +766,7 @@ export default function GameBoard({
                                   </motion.div>
                                 )}
 
-                                {finalVote === 'NEIN' && (
+                                {revealedVote === 'NEIN' && (
                                   <motion.div
                                     initial={{ scale: 2.4, opacity: 0, rotate: 18 }}
                                     animate={{ scale: 1, opacity: 1, rotate: getVoteStampRotation(player.id, 'NEIN') }}
@@ -651,14 +820,13 @@ export default function GameBoard({
 
   return (
     <motion.div
-      key={`viewport-${displayPhase}`}
       initial={{ opacity: 0, scale: 0.98, filter: 'brightness(1.3)' }}
       animate={{
         opacity: 1,
-        scale: revealStage === 1 && revealIsApproved ? [1.016, 1] : 1,
+        scale: revealStage === 1 && revealIsApproved ? [1.006, 1] : 1,
         filter: 'brightness(1)',
-        x: revealStage === 1 && !revealIsApproved ? [-8, 8, -4, 4, 0] : 0,
-        y: revealStage === 1 && !revealIsApproved ? [-4, 4, -2, 2, 0] : 0,
+        x: revealStage === 1 && !revealIsApproved ? [-3, 3, -1, 1, 0] : 0,
+        y: revealStage === 1 && !revealIsApproved ? [-2, 2, -1, 1, 0] : 0,
       }}
       transition={{
         duration: revealStage === 1 ? 0.4 : 0.55,
@@ -682,9 +850,6 @@ export default function GameBoard({
         gameState={gameState}
         playerId={playerId}
         directorState={directorState}
-        revealState={revealState}
-        revealedVoteIds={revealedVoteIds}
-        revealedVoteTotals={revealedVoteTotals}
         pendingSelection={pendingSelection}
         onConfirm={confirmSelection}
         onCancel={cancelSelection}
@@ -700,6 +865,7 @@ export default function GameBoard({
       <div className={`relative z-10 min-h-0 flex-1 overflow-y-auto pb-[calc(var(--app-safe-bottom)+0.75rem)] transition-all duration-700 sm:pb-[calc(var(--app-safe-bottom)+1rem)] ${boardDimmed ? 'opacity-45' : 'opacity-100'}`}>
         <div className="mx-auto flex min-h-full w-full min-w-0 max-w-[1120px] flex-col gap-2 px-3 pt-16 sm:gap-3 sm:px-4 sm:pt-20">
           {renderBoardStage()}
+          {renderVoteRibbon()}
           {renderPlayerDock()}
         </div>
       </div>

@@ -1,15 +1,9 @@
 import { useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
-import { MAX_ELECTION_TRACKER, PHASES } from '../lib/constants';
+import { PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
-import {
-  GOVERNMENT_FORMATION_BANDS,
-  GOVERNMENT_FORMATION_SPARKS,
-  GOVERNMENT_FRACTURE_LINES,
-  GOVERNMENT_FRACTURE_SHARDS,
-} from '../features/game-board/boardConfig';
 
 const ACTIONABLE_SPOTLIGHT_MS = 10000;
 const SHEET_DISMISS_DRAG_OFFSET = 120;
@@ -68,9 +62,6 @@ export default function GameOverlay({
   gameState,
   playerId,
   directorState,
-  revealState,
-  revealedVoteIds,
-  revealedVoteTotals,
   pendingSelection,
   onConfirm,
   onCancel,
@@ -95,27 +86,9 @@ export default function GameOverlay({
   const [dismissedSpotlightKey, setDismissedSpotlightKey] = useState(null);
   const [dismissedVoteDeskKey, setDismissedVoteDeskKey] = useState(null);
   const displayPhase = gameState.phase;
-  const aliveCount = gameState.players.filter((player) => player.isAlive).length;
-  const revealProgressTotal = revealedVoteTotals.YA + revealedVoteTotals.NEIN;
-  const revealJaPercent = revealProgressTotal ? (revealedVoteTotals.YA / revealProgressTotal) * 100 : 0;
-  const revealNeinPercent = revealProgressTotal ? (revealedVoteTotals.NEIN / revealProgressTotal) * 100 : 0;
-  const revealIsApproved = revealState?.result === 'APPROVED';
-  const revealNextStep =
-    revealIsApproved
-      ? gameState.phase === PHASES.GAME_OVER
-        ? 'Hitler took office. The match ends here.'
-        : gameState.phase === PHASES.LEGISLATIVE_PRESIDENT
-          ? 'President is selecting which policies move forward.'
-          : gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR
-            ? 'Chancellor is deciding the final policy.'
-            : 'The government moves into the legislative session.'
-      : gameState.chaosTriggered && gameState.chaosPolicy
-        ? `Chaos auto-enacted a ${gameState.chaosPolicy.toLowerCase()} policy.`
-        : `Election tracker advances to ${gameState.electionTracker}/${MAX_ELECTION_TRACKER}.`;
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
     gameState.phase === PHASES.VOTING &&
-    !revealState &&
     !me?.hasVoted
       ? pendingVote.vote
       : null;
@@ -144,6 +117,7 @@ export default function GameOverlay({
   let isActive = false;
   let actionContent = null;
   let privateAudience = 'You';
+  let voteStatusPill = null;
 
   if (pendingSelection) {
     const pendingMeta = {
@@ -167,157 +141,6 @@ export default function GameOverlay({
     title = pendingMeta[pendingSelection.type]?.title || 'Confirm Action';
     subtext = pendingMeta[pendingSelection.type]?.description || '';
     isActive = true;
-  } else if (revealState) {
-    title = revealIsApproved ? 'Government Elected' : 'Vote Failed';
-    subtext = revealNextStep;
-    isActive = true;
-    privateAudience = 'Table';
-    actionContent = (
-      <div className="w-full max-w-2xl">
-        <div
-          className={`relative overflow-hidden rounded-[26px] border px-4 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.22)] sm:px-5 sm:py-5 ${
-            revealIsApproved
-              ? 'border-cyan-300/22 bg-[linear-gradient(180deg,rgba(8,17,24,0.98)_0%,rgba(8,13,19,0.96)_100%)]'
-              : 'border-red-400/22 bg-[linear-gradient(180deg,rgba(25,8,10,0.98)_0%,rgba(15,8,9,0.96)_100%)]'
-          }`}
-        >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {revealIsApproved ? (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.72 }}
-                  animate={{ opacity: [0, 0.42, 0.12], scale: [0.72, 1.14, 1.28] }}
-                  transition={{ duration: 1.3, ease: 'easeOut' }}
-                  className="absolute left-1/2 top-[36%] h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/18"
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: [0, 0.24, 0], scale: [0.8, 1.05, 1.2] }}
-                  transition={{ duration: 1.45, ease: 'easeOut', delay: 0.08 }}
-                  className="absolute left-1/2 top-[36%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10"
-                />
-                {GOVERNMENT_FORMATION_BANDS.map((top, index) => (
-                  <div key={`formation-band-${top}`} className="contents">
-                    <motion.div
-                      initial={{ opacity: 0, scaleX: 0.2, x: -28 }}
-                      animate={{ opacity: [0, 0.5, 0.12], scaleX: [0.2, 1, 1], x: [-28, 0, 0] }}
-                      transition={{ duration: 0.9, ease: 'easeOut', delay: index * 0.05 }}
-                      className="absolute left-0 h-px origin-right bg-[linear-gradient(90deg,transparent_0%,rgba(103,232,249,0.32)_100%)]"
-                      style={{ top: `${top}%`, width: '42%' }}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, scaleX: 0.2, x: 28 }}
-                      animate={{ opacity: [0, 0.5, 0.12], scaleX: [0.2, 1, 1], x: [28, 0, 0] }}
-                      transition={{ duration: 0.9, ease: 'easeOut', delay: index * 0.05 }}
-                      className="absolute right-0 h-px origin-left bg-[linear-gradient(90deg,rgba(103,232,249,0.32)_0%,transparent_100%)]"
-                      style={{ top: `${top}%`, width: '42%' }}
-                    />
-                  </div>
-                ))}
-                {GOVERNMENT_FORMATION_SPARKS.map((spark, index) => (
-                  <motion.span
-                    key={`formation-spark-${index}`}
-                    initial={{ opacity: 0, scale: 0.4, y: 10 }}
-                    animate={{ opacity: [0, 0.8, 0], scale: [0.4, 1, 0.7], y: [10, -8, -18] }}
-                    transition={{ duration: 1.05, ease: 'easeOut', delay: spark.delay }}
-                    className="absolute h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.6)]"
-                    style={{ left: spark.left, top: spark.top }}
-                  />
-                ))}
-              </>
-            ) : (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.82 }}
-                  animate={{ opacity: [0, 0.22, 0], scale: [0.82, 1.18, 1.28] }}
-                  transition={{ duration: 0.9, ease: 'easeOut' }}
-                  className="absolute left-1/2 top-[38%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-300/10"
-                />
-                {GOVERNMENT_FRACTURE_LINES.map((line, index) => (
-                  <motion.div
-                    key={`fracture-line-${index}`}
-                    initial={{ opacity: 0, scaleX: 0.25 }}
-                    animate={{ opacity: [0, 0.5, 0.18], scaleX: [0.25, 1, 1.04] }}
-                    transition={{ duration: 0.75, ease: 'easeOut', delay: line.delay }}
-                    className="absolute h-px origin-center bg-[linear-gradient(90deg,transparent_0%,rgba(248,113,113,0.82)_20%,rgba(255,255,255,0.22)_50%,rgba(248,113,113,0.82)_80%,transparent_100%)]"
-                    style={{ top: line.top, left: line.left, width: line.width, rotate: `${line.rotate}deg` }}
-                  />
-                ))}
-                {GOVERNMENT_FRACTURE_SHARDS.map((shard, index) => (
-                  <motion.span
-                    key={`fracture-shard-${index}`}
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{
-                      opacity: [0, 0.55, 0],
-                      scale: [0.7, 1, 0.9],
-                      x: [0, shard.x],
-                      y: [0, shard.y],
-                      rotate: [shard.rotate, shard.rotate + (index % 2 === 0 ? -12 : 12)],
-                    }}
-                    transition={{ duration: 0.82, ease: 'easeOut', delay: shard.delay }}
-                    className="absolute rounded-full border border-red-200/12 bg-red-300/18 shadow-[0_0_20px_rgba(248,113,113,0.22)]"
-                    style={{
-                      left: shard.left,
-                      top: shard.top,
-                      width: `${shard.width}px`,
-                      height: `${shard.height}px`,
-                    }}
-                  />
-                ))}
-              </>
-            )}
-          </div>
-
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-black uppercase tracking-[0.22em]">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/68">
-                {revealIsApproved ? 'Government Formed' : 'Government Broken'}
-              </span>
-              <span className="rounded-full border border-white/10 bg-black/16 px-3 py-1 text-white/52">
-                {revealState.ya} Ja • {revealState.nein} Nein
-              </span>
-            </div>
-
-            <div className="mt-4 rounded-[22px] border border-white/8 bg-black/22 px-4 py-4">
-              <div className="relative h-4 overflow-hidden rounded-full bg-white/8">
-                <motion.div
-                  initial={false}
-                  animate={{ width: `${revealJaPercent}%` }}
-                  transition={{ type: 'spring', stiffness: 160, damping: 24 }}
-                  className="absolute inset-y-0 left-0 bg-[linear-gradient(90deg,#36d7ff_0%,#87bfff_100%)]"
-                />
-                <motion.div
-                  initial={false}
-                  animate={{ width: `${revealNeinPercent}%` }}
-                  transition={{ type: 'spring', stiffness: 160, damping: 24 }}
-                  className="absolute inset-y-0 right-0 bg-[linear-gradient(90deg,#f87171_0%,#c1272d_100%)]"
-                />
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-mono font-black uppercase tracking-[0.16em]">
-                <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/8 px-3 py-2 text-cyan-100">
-                  <span className="block text-[9px] tracking-[0.22em] text-cyan-100/60">Ja</span>
-                  <span className="mt-1 block text-lg">{revealedVoteTotals.YA}</span>
-                </div>
-                <div className="rounded-2xl border border-red-400/16 bg-red-500/8 px-3 py-2 text-red-100">
-                  <span className="block text-[9px] tracking-[0.22em] text-red-100/60">Nein</span>
-                  <span className="mt-1 block text-lg">{revealedVoteTotals.NEIN}</span>
-                </div>
-              </div>
-
-              <FactionAccentText
-                as="p"
-                className="mt-3 text-center text-[10px] font-mono font-black uppercase tracking-[0.18em] text-white/45"
-              >
-                {revealProgressTotal < aliveCount
-                  ? `Revealing votes ${revealedVoteIds.length}/${aliveCount}`
-                  : revealNextStep}
-              </FactionAccentText>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   } else {
     switch (displayPhase) {
       case PHASES.NOMINATION:
@@ -382,26 +205,17 @@ export default function GameOverlay({
             </div>
           );
         } else {
-          title = me?.isAlive ? 'Vote Locked' : 'Observer Only';
-          if (me && !me.isAlive) {
-            subtext = 'You have been eliminated. Watch the table, but you do not vote anymore.';
-          } else {
-            subtext = 'Your ballot is locked in. The board stays live while the rest of the table votes.';
-          }
-          isActive = true;
-          privateAudience = me?.isAlive ? 'Vote Desk' : 'Observer View';
-          actionContent = (
-            <div className="w-full max-w-md">
-              <div className="rounded-[24px] border border-black/8 bg-black/[0.04] px-4 py-4 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
-                <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-[#5f5449]">
-                  {me?.isAlive ? 'Ballot Submitted' : 'Observer Mode'}
-                </p>
-                <FactionAccentText as="p" className="mt-3 text-sm leading-relaxed text-[#5f5449]">
-                  {subtext}
-                </FactionAccentText>
-              </div>
-            </div>
-          );
+          voteStatusPill = me?.isAlive
+            ? {
+                label: 'Vote Locked',
+                description: 'Your ballot is locked in. The table is resolving the rest.',
+              }
+            : me
+              ? {
+                  label: 'Observer',
+                  description: 'You are watching this vote only.',
+                }
+              : null;
         }
         break;
 
@@ -586,11 +400,9 @@ export default function GameOverlay({
 
   const hasActionContent = Boolean(actionContent || pendingSelection);
   const votingDrawerKey =
-    displayPhase === PHASES.VOTING && !revealState && hasActionContent
+    displayPhase === PHASES.VOTING && me?.isAlive && !me?.hasVoted && hasActionContent
       ? `vote:${currentBallotKey}`
       : null;
-  const voteResultDrawerKey = revealState ? `vote-result:${revealState.id}` : null;
-  const dismissibleDeskKey = voteResultDrawerKey || votingDrawerKey;
 
   const waitingForPrivateActionPayload =
     !pendingSelection &&
@@ -610,7 +422,7 @@ export default function GameOverlay({
         ? 'blue'
         : 'neutral';
   const spotlightVisibility =
-    revealState || displayPhase === PHASES.VOTING
+    displayPhase === PHASES.VOTING
       ? 'public'
       : primaryInstruction?.visibility || (hasActionContent ? 'private' : 'public');
   const spotlightAudienceLabel = hasActionContent ? privateAudience : spotlightVisibility === 'private' ? 'You' : 'Table';
@@ -620,7 +432,7 @@ export default function GameOverlay({
       ? primaryInstruction.actions.map((action) => action.label)
       : [];
   const spotlightKey =
-    !isActive || pendingSelection || revealState || waitingForPrivateActionPayload || !hasActionContent || displayPhase === PHASES.VOTING
+    !isActive || pendingSelection || waitingForPrivateActionPayload || !hasActionContent || displayPhase === PHASES.VOTING
       ? null
       : getSpotlightSceneId({
           displayPhase,
@@ -634,21 +446,17 @@ export default function GameOverlay({
   const spotlightVisible =
     Boolean(spotlightKey) &&
     spotlightKey !== dismissedSpotlightKey;
-  const votingDeskDismissible = Boolean(dismissibleDeskKey);
-  const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === dismissibleDeskKey;
-  const deskBadgeLabel = revealState ? 'Vote Result' : displayPhase === PHASES.VOTING ? 'Vote Desk' : 'Action Desk';
+  const votingDeskDismissible = Boolean(votingDrawerKey);
+  const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === votingDrawerKey;
+  const deskBadgeLabel = displayPhase === PHASES.VOTING ? 'Vote Desk' : 'Action Desk';
   const deskScopeLabel =
-    revealState
-      ? 'Board Overlay — Table Summary'
-      : displayPhase === PHASES.VOTING
-        ? me?.isAlive
-          ? 'Board Overlay — Live Ballot'
-          : 'Board Overlay — Observer View'
-        : `Private Channel — ${privateAudience}`;
-  const reopenChipLabel = revealState ? 'Open Result' : 'Open Vote';
+    displayPhase === PHASES.VOTING
+      ? 'Board Overlay — Live Ballot'
+      : `Private Channel — ${privateAudience}`;
+  const reopenChipLabel = 'Open Vote';
   const showActionDesk = hasActionContent && !spotlightVisible && !voteDeskHidden;
 
-  if (!isActive) return null;
+  if (!isActive && !voteStatusPill) return null;
 
   return (
     <AnimatePresence>
@@ -673,7 +481,7 @@ export default function GameOverlay({
           className="fixed inset-x-0 bottom-0 z-[110] flex justify-center px-2 pointer-events-none sm:px-4"
         >
           <motion.div
-            key={`desk-${dismissibleDeskKey || displayPhase}-${pendingSelection?.type || 'base'}`}
+            key={`desk-${votingDrawerKey || displayPhase}-${pendingSelection?.type || 'base'}`}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -688,7 +496,7 @@ export default function GameOverlay({
               if (!votingDeskDismissible) return;
               if (info.offset.y > SHEET_DISMISS_DRAG_OFFSET || info.velocity.y > SHEET_DISMISS_DRAG_VELOCITY) {
                 triggerHaptic('soft');
-                setDismissedVoteDeskKey(dismissibleDeskKey);
+                setDismissedVoteDeskKey(votingDrawerKey);
               }
             }}
             className="pointer-events-auto relative flex min-w-0 max-h-[calc(var(--app-vh)-var(--app-header-offset)-16px)] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[28px] border border-[#d4c098]/32 bg-[linear-gradient(180deg,#efe5d3_0%,#e5d8c1_100%)] px-4 pt-2 pb-[calc(var(--app-safe-bottom)+1rem)] shadow-[0_-24px_60px_rgba(0,0,0,0.55)] sm:px-6 sm:pt-3 sm:pb-[calc(var(--app-safe-bottom)+1.4rem)]"
@@ -742,7 +550,7 @@ export default function GameOverlay({
                 {votingDeskDismissible && (
                   <button
                     type="button"
-                    onClick={runWithHaptic(() => setDismissedVoteDeskKey(dismissibleDeskKey), 'soft')}
+                    onClick={runWithHaptic(() => setDismissedVoteDeskKey(votingDrawerKey), 'soft')}
                     className="shrink-0 rounded-full border border-black/10 bg-black/5 px-3 py-1.5 text-[9px] font-mono font-black uppercase tracking-[0.2em] text-[#5f5449] transition-colors hover:bg-black/10 active:scale-[0.98]"
                   >
                     Hide
@@ -779,6 +587,26 @@ export default function GameOverlay({
             </div>
           </motion.div>
         </div>
+      )}
+
+      {voteStatusPill && !showActionDesk && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="fixed inset-x-0 bottom-[calc(var(--app-safe-bottom)+0.75rem)] z-[108] flex justify-center px-3 pointer-events-none"
+        >
+          <div className="pointer-events-auto max-w-[320px] rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,31,0.96)_0%,rgba(9,15,21,0.94)_100%)] px-4 py-2 shadow-[0_14px_30px_rgba(0,0,0,0.32)] backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-2 text-[9px] font-mono font-black uppercase tracking-[0.18em] text-cyan-100">
+              <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.42)]" />
+              <span>{voteStatusPill.label}</span>
+            </div>
+            <FactionAccentText as="p" className="mt-1 text-center text-[10px] leading-relaxed text-white/62">
+              {voteStatusPill.description}
+            </FactionAccentText>
+          </div>
+        </motion.div>
       )}
 
       {voteDeskHidden && (
