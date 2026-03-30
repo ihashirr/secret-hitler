@@ -42,9 +42,12 @@ export default function StageSpotlight({
   actionLabels = [],
   tone = 'neutral',
   autoCloseMs = DEFAULT_AUTO_CLOSE_MS,
+  enforceMinimum = true,
   onDismiss,
 }) {
-  const effectiveAutoCloseMs = Math.max(DEFAULT_AUTO_CLOSE_MS, autoCloseMs);
+  const effectiveAutoCloseMs = enforceMinimum
+    ? Math.max(DEFAULT_AUTO_CLOSE_MS, autoCloseMs)
+    : autoCloseMs;
   const [isVisible, setIsVisible] = useState(true);
   const [isHolding, setIsHolding] = useState(false);
   const [remainingMs, setRemainingMs] = useState(effectiveAutoCloseMs);

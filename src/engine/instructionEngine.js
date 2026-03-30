@@ -134,7 +134,7 @@ export function getInstructions(player, gameState) {
       if (isPresident) {
         instructions.push(
           createInstruction(
-            'Select A Chancellor Candidate',
+            'You Are Nominating',
             eligibleNames.length
               ? `Choose from eligible players: ${eligibleNames.join(', ')}. Avoid term-limited players and set up a government you can defend.`
               : 'Select an eligible chancellor from the operative dock.',
@@ -146,8 +146,8 @@ export function getInstructions(player, gameState) {
       } else {
         instructions.push(
           createInstruction(
-            'Evaluate The Nomination',
-            `${currentPresidentName} is choosing the next chancellor. Discuss trust, recent governments, and whether the room can defend the pick.`,
+            `${currentPresidentName} Is Nominating`,
+            `${currentPresidentName} is choosing the next chancellor right now. Watch the pick, then decide whether the table can trust the government.`,
             'medium',
             'public',
           ),
@@ -159,8 +159,8 @@ export function getInstructions(player, gameState) {
       if (!isAlive) {
         instructions.push(
           createInstruction(
-            'Observe The Vote',
-            `The living players are voting on ${currentPresidentName} and ${currentChancellorName}. You do not vote this round.`,
+            `${currentPresidentName} Nominated ${currentChancellorName}`,
+            `The living players are now voting on this government. You are observing only.`,
             'low',
             'public',
           ),
@@ -216,7 +216,7 @@ export function getInstructions(player, gameState) {
       if (isPresident) {
         instructions.push(
           createInstruction(
-            'Send Two Policies Forward',
+            'You Drew Three Policies',
             'Discard one of the three policies and pass the remaining two to the Chancellor. Do not leak the full hand publicly.',
             'high',
             'private',
@@ -226,8 +226,8 @@ export function getInstructions(player, gameState) {
       } else {
         instructions.push(
           createInstruction(
-            'President Is Reviewing',
-            `${currentPresidentName} is choosing which two policies to pass forward. Watch the story they tell afterward.`,
+            `${currentPresidentName} Is Reviewing Policies`,
+            `${currentPresidentName} drew three policies and is selecting which two to pass to ${currentChancellorName}.`,
             'medium',
             'public',
           ),
@@ -269,8 +269,8 @@ export function getInstructions(player, gameState) {
       } else {
         instructions.push(
           createInstruction(
-            'Chancellor Is Deciding',
-            `${currentChancellorName} is choosing the final policy. Watch for contradictions between the President and Chancellor afterward.`,
+            `${currentChancellorName} Is Deciding The Policy`,
+            `${currentChancellorName} now holds the final decision. Listen for contradictions after the enactment.`,
             'medium',
             'public',
           ),
@@ -282,8 +282,8 @@ export function getInstructions(player, gameState) {
       if (!isPresident) {
         instructions.push(
           createInstruction(
-            'Executive Power In Progress',
-            `${currentPresidentName} is resolving the executive power triggered by the fascist board.`,
+            `${currentPresidentName} Is Resolving Executive Power`,
+            `${currentPresidentName} is carrying out the power unlocked by the fascist track.`,
             'medium',
             'public',
           ),

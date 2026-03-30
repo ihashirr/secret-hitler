@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
-import { PHASES } from '../lib/constants';
+import { EXECUTIVE_POWERS, PHASES } from '../lib/constants';
 import { triggerHaptic } from '../lib/haptics';
 import FactionAccentText from './FactionAccentText';
 import StageSpotlight from './StageSpotlight';
 
 const ACTIONABLE_SPOTLIGHT_MS = 10000;
+const PUBLIC_BRIEFING_MS = 1800;
+const EVENT_BRIEFING_MS = 2200;
 const SHEET_DISMISS_DRAG_OFFSET = 120;
 const SHEET_DISMISS_DRAG_VELOCITY = 720;
 const SHEET_ENTER_Y = 64;
@@ -16,6 +18,185 @@ const SHEET_MOTION_TRANSITION = {
   duration: 0.26,
   ease: SHEET_MOTION_EASE,
 };
+
+const getPlayerName = (gameState, playerId, fallback = 'Someone') =>
+  gameState?.players?.find((player) => player.id === playerId)?.name || fallback;
+
+const createStoryBeat = ({ key, stageLabel, title, description, tone = 'neutral', autoCloseMs = PUBLIC_BRIEFING_MS }) => ({
+  key,
+  stageLabel,
+  title,
+  description,
+  tone,
+  autoCloseMs,
+});
+
+function getExecutiveBeat(gameState) {
+  const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
+
+  switch (gameState.executivePower) {
+    case EXECUTIVE_POWERS.INVESTIGATE:
+      return createStoryBeat({
+        key: `story:executive-investigate:${gameState.currentPresident || 'none'}`,
+        stageLabel: 'Executive Action',
+        title: `${presidentName} Is Investigating`,
+        description: 'The President is checking one player\'s party loyalty in private.',
+        tone: 'red',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    case EXECUTIVE_POWERS.SPECIAL_ELECTION:
+      return createStoryBeat({
+        key: `story:executive-special:${gameState.currentPresident || 'none'}`,
+        stageLabel: 'Executive Action',
+        title: `${presidentName} Is Calling A Special Election`,
+        description: 'The next presidency is being reassigned for one round.',
+        tone: 'red',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    case EXECUTIVE_POWERS.PEEK:
+      return createStoryBeat({
+        key: `story:executive-peek:${gameState.currentPresident || 'none'}`,
+        stageLabel: 'Executive Action',
+        title: `${presidentName} Is Reviewing The Top Deck`,
+        description: 'The next three policies are being seen in private.',
+        tone: 'red',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    case EXECUTIVE_POWERS.EXECUTION:
+      return createStoryBeat({
+        key: `story:executive-execution:${gameState.currentPresident || 'none'}`,
+        stageLabel: 'Executive Action',
+        title: `${presidentName} Is Choosing An Execution`,
+        description: 'One player will be eliminated by presidential order.',
+        tone: 'red',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    default:
+      return null;
+  }
+}
+
+function getStoryBeatFromTransition(previous, gameState) {
+  if (!previous) return null;
+
+  const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
+  const nomineeName = getPlayerName(gameState, gameState.nominatedChancellor, 'the nominee');
+  const chancellorName = getPlayerName(gameState, gameState.currentChancellor || gameState.nominatedChancellor, 'the Chancellor');
+
+  if (previous.phase !== gameState.phase && gameState.phase === PHASES.NOMINATION && !gameState.nominatedChancellor) {
+    return createStoryBeat({
+      key: `story:nominating:${gameState.currentPresident || 'none'}:${gameState.roomId || 'room'}`,
+      stageLabel: 'Nomination',
+      title: `${presidentName} Is Nominating`,
+      description: 'The President is choosing the next Chancellor.',
+      tone: 'neutral',
+    });
+  }
+
+  if (previous.nominatedChancellor !== gameState.nominatedChancellor && gameState.nominatedChancellor) {
+    return createStoryBeat({
+      key: `story:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
+      stageLabel: 'Nomination Locked',
+      title: `${presidentName} Nominated ${nomineeName}`,
+      description: 'The table now moves to a vote on this government.',
+      tone: 'blue',
+      autoCloseMs: EVENT_BRIEFING_MS,
+    });
+  }
+
+  if (previous.phase !== gameState.phase && gameState.phase === PHASES.LEGISLATIVE_PRESIDENT) {
+    return createStoryBeat({
+      key: `story:president-hand:${gameState.currentPresident || 'none'}:${gameState.drawPileCount}`,
+      stageLabel: 'Legislative Session',
+      title: `${presidentName} Is Reviewing Policies`,
+      description: 'Three policies were drawn. Two will be passed to the Chancellor.',
+      tone: 'neutral',
+      autoCloseMs: EVENT_BRIEFING_MS,
+    });
+  }
+
+  if (!previous.vetoRequested && gameState.vetoRequested) {
+    return createStoryBeat({
+      key: `story:veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
+      stageLabel: 'Legislative Session',
+      title: `${chancellorName} Requested A Veto`,
+      description: `${presidentName} must now accept or reject the request.`,
+      tone: 'red',
+      autoCloseMs: EVENT_BRIEFING_MS,
+    });
+  }
+
+  if (previous.phase !== gameState.phase && gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && !gameState.vetoRequested) {
+    return createStoryBeat({
+      key: `story:chancellor-hand:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}:${gameState.drawPileCount}`,
+      stageLabel: 'Legislative Session',
+      title: `${chancellorName} Is Deciding The Policy`,
+      description: 'The final policy choice is now in the Chancellor\'s hands.',
+      tone: 'neutral',
+      autoCloseMs: EVENT_BRIEFING_MS,
+    });
+  }
+
+  if (previous.phase !== gameState.phase && gameState.phase === PHASES.EXECUTIVE_ACTION) {
+    return getExecutiveBeat(gameState);
+  }
+
+  return null;
+}
+
+function getInitialStoryBeat(gameState) {
+  const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
+  const nomineeName = getPlayerName(gameState, gameState.nominatedChancellor, 'the nominee');
+  const chancellorName = getPlayerName(gameState, gameState.currentChancellor || gameState.nominatedChancellor, 'the Chancellor');
+
+  switch (gameState.phase) {
+    case PHASES.NOMINATION:
+      if (!gameState.nominatedChancellor) {
+        return createStoryBeat({
+          key: `story:init-nominating:${gameState.currentPresident || 'none'}:${gameState.roomId || 'room'}`,
+          stageLabel: 'Nomination',
+          title: `${presidentName} Is Nominating`,
+          description: 'The President is choosing the next Chancellor.',
+          tone: 'neutral',
+        });
+      }
+      return null;
+    case PHASES.VOTING:
+      if (gameState.nominatedChancellor) {
+        return createStoryBeat({
+          key: `story:init-nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
+          stageLabel: 'Vote',
+          title: `${presidentName} Nominated ${nomineeName}`,
+          description: 'The table is now voting on this government.',
+          tone: 'blue',
+          autoCloseMs: EVENT_BRIEFING_MS,
+        });
+      }
+      return null;
+    case PHASES.LEGISLATIVE_PRESIDENT:
+      return createStoryBeat({
+        key: `story:init-president-hand:${gameState.currentPresident || 'none'}:${gameState.drawPileCount}`,
+        stageLabel: 'Legislative Session',
+        title: `${presidentName} Is Reviewing Policies`,
+        description: 'Three policies were drawn and two will be passed forward.',
+        tone: 'neutral',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    case PHASES.LEGISLATIVE_CHANCELLOR:
+      return createStoryBeat({
+        key: `story:init-chancellor-hand:${gameState.currentChancellor || gameState.nominatedChancellor || 'none'}:${gameState.drawPileCount}`,
+        stageLabel: 'Legislative Session',
+        title: `${chancellorName} Is Deciding The Policy`,
+        description: 'The final policy choice is now in the Chancellor\'s hands.',
+        tone: 'neutral',
+        autoCloseMs: EVENT_BRIEFING_MS,
+      });
+    case PHASES.EXECUTIVE_ACTION:
+      return getExecutiveBeat(gameState);
+    default:
+      return null;
+  }
+}
 
 function getSpotlightSceneId({
   displayPhase,
@@ -93,6 +274,10 @@ export default function GameOverlay({
   const [pendingVote, setPendingVote] = useState(null);
   const [dismissedSpotlightKey, setDismissedSpotlightKey] = useState(null);
   const [dismissedVoteDeskKey, setDismissedVoteDeskKey] = useState(null);
+  const [storyBeatQueue, setStoryBeatQueue] = useState([]);
+  const [activeStoryBeat, setActiveStoryBeat] = useState(null);
+  const activeStoryBeatRef = useRef(null);
+  const storySnapshotRef = useRef(null);
   const displayPhase = gameState.phase;
   const activePendingVote =
     pendingVote?.ballotKey === currentBallotKey &&
@@ -100,6 +285,75 @@ export default function GameOverlay({
     !me?.hasVoted
       ? pendingVote.vote
       : null;
+
+  useEffect(() => {
+    activeStoryBeatRef.current = activeStoryBeat;
+  }, [activeStoryBeat]);
+
+  useEffect(() => {
+    const snapshot = {
+      phase: gameState.phase,
+      currentPresident: gameState.currentPresident || null,
+      nominatedChancellor: gameState.nominatedChancellor || null,
+      currentChancellor: gameState.currentChancellor || null,
+      executivePower: gameState.executivePower || null,
+      vetoRequested: Boolean(gameState.vetoRequested),
+      drawPileCount: gameState.drawPileCount,
+      roomId: gameState.roomId || null,
+    };
+
+    if (!storySnapshotRef.current) {
+      storySnapshotRef.current = snapshot;
+      const initialBeat = getInitialStoryBeat(gameState);
+      if (initialBeat) {
+        const timer = window.setTimeout(() => {
+          setStoryBeatQueue((current) => (current.length ? current : [initialBeat]));
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
+
+    const beat = getStoryBeatFromTransition(storySnapshotRef.current, gameState);
+    storySnapshotRef.current = snapshot;
+
+    if (!beat) return;
+
+    const timer = window.setTimeout(() => {
+      setStoryBeatQueue((current) => {
+        if (activeStoryBeatRef.current?.key === beat.key || current.some((entry) => entry.key === beat.key)) {
+          return current;
+        }
+
+        return [...current, beat];
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    gameState,
+    gameState.currentChancellor,
+    gameState.currentPresident,
+    gameState.drawPileCount,
+    gameState.executivePower,
+    gameState.nominatedChancellor,
+    gameState.phase,
+    gameState.roomId,
+    gameState.vetoRequested,
+  ]);
+
+  useEffect(() => {
+    if (activeStoryBeat || !storyBeatQueue.length) return;
+
+    const [nextBeat, ...rest] = storyBeatQueue;
+    const timer = window.setTimeout(() => {
+      setActiveStoryBeat(nextBeat);
+      setStoryBeatQueue(rest);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [activeStoryBeat, storyBeatQueue]);
 
   const handleVoteSelection = async (approve) => {
     if (activePendingVote || me?.hasVoted) return;
@@ -472,7 +726,7 @@ export default function GameOverlay({
     !pendingSelection && Array.isArray(primaryInstruction?.actions)
       ? primaryInstruction.actions.map((action) => action.label)
       : [];
-  const spotlightKey =
+  const actionableSpotlightKey =
     !isActive || pendingSelection || waitingForPrivateActionPayload || !hasActionContent || displayPhase === PHASES.VOTING
       ? null
       : getSpotlightSceneId({
@@ -484,9 +738,10 @@ export default function GameOverlay({
           isPresident,
           isChancellor,
         });
-  const spotlightVisible =
-    Boolean(spotlightKey) &&
-    spotlightKey !== dismissedSpotlightKey;
+  const actionableSpotlightVisible =
+    Boolean(actionableSpotlightKey) &&
+    actionableSpotlightKey !== dismissedSpotlightKey;
+  const spotlightVisible = Boolean(activeStoryBeat) || actionableSpotlightVisible;
   const votingDeskDismissible = Boolean(votingDrawerKey);
   const voteDeskHidden = votingDeskDismissible && dismissedVoteDeskKey === votingDrawerKey;
   const deskBadgeLabel = displayPhase === PHASES.VOTING ? 'Vote Desk' : 'Action Desk';
@@ -501,9 +756,24 @@ export default function GameOverlay({
 
   return (
     <AnimatePresence>
-      {spotlightVisible && (
+      {activeStoryBeat && (
         <StageSpotlight
-          key={spotlightKey}
+          key={activeStoryBeat.key}
+          stageLabel={activeStoryBeat.stageLabel}
+          title={activeStoryBeat.title}
+          description={activeStoryBeat.description}
+          audienceLabel="Table"
+          visibility="public"
+          tone={activeStoryBeat.tone}
+          autoCloseMs={activeStoryBeat.autoCloseMs}
+          enforceMinimum={false}
+          onDismiss={() => setActiveStoryBeat(null)}
+        />
+      )}
+
+      {!activeStoryBeat && actionableSpotlightVisible && (
+        <StageSpotlight
+          key={actionableSpotlightKey}
           stageLabel={directorState?.stageLabel || 'Live Match'}
           timelineLabel={directorState?.timelinePositionLabel}
           title={title}
@@ -513,7 +783,7 @@ export default function GameOverlay({
           actionLabels={spotlightActions}
           tone={spotlightTone}
           autoCloseMs={spotlightAutoCloseMs}
-          onDismiss={() => setDismissedSpotlightKey(spotlightKey)}
+          onDismiss={() => setDismissedSpotlightKey(actionableSpotlightKey)}
         />
       )}
 
