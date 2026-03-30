@@ -66,6 +66,22 @@ const ALL_BOT_TABLE_BONUS_MS = {
   EXECUTIVE_ACTION_MIN: 1100,
   EXECUTIVE_ACTION_MAX: 1800,
 };
+const SOLO_HUMAN_TABLE_BONUS_MS = {
+  ROLE_REVEAL_MIN: 420,
+  ROLE_REVEAL_MAX: 760,
+  VOTING_MIN: 850,
+  VOTING_MAX: 1400,
+  NOMINATION_MIN: 1300,
+  NOMINATION_MAX: 2100,
+  DEFAULT_MIN: 900,
+  DEFAULT_MAX: 1500,
+  LEGISLATIVE_PRESIDENT_MIN: 1400,
+  LEGISLATIVE_PRESIDENT_MAX: 2300,
+  LEGISLATIVE_CHANCELLOR_MIN: 1500,
+  LEGISLATIVE_CHANCELLOR_MAX: 2400,
+  EXECUTIVE_ACTION_MIN: 1600,
+  EXECUTIVE_ACTION_MAX: 2500,
+};
 
 function pickBotThinkDelayMs(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -73,76 +89,104 @@ function pickBotThinkDelayMs(min: number, max: number) {
 
 function getBotThinkDelayMs(room: any, players: any[]) {
   const alivePlayers = getAlivePlayers(players);
+  const aliveHumans = alivePlayers.filter((player) => !player.isBot);
+  const aliveBots = alivePlayers.filter((player) => player.isBot);
   const isAllBotTable = alivePlayers.length > 0 && alivePlayers.every((player) => player.isBot);
-  const withAllBotBonus = (min: number, max: number, bonusMin: number, bonusMax: number) => {
+  const isSoloHumanTable = aliveHumans.length === 1 && aliveBots.length >= 1;
+  const withTableTempo = (
+    min: number,
+    max: number,
+    allBotBonusMin: number,
+    allBotBonusMax: number,
+    soloHumanBonusMin: number,
+    soloHumanBonusMax: number,
+  ) => {
     const baseDelay = pickBotThinkDelayMs(min, max);
 
-    if (!isAllBotTable) {
-      return baseDelay;
+    if (isAllBotTable) {
+      return baseDelay + pickBotThinkDelayMs(allBotBonusMin, allBotBonusMax);
     }
 
-    return baseDelay + pickBotThinkDelayMs(bonusMin, bonusMax);
+    if (isSoloHumanTable) {
+      return baseDelay + pickBotThinkDelayMs(soloHumanBonusMin, soloHumanBonusMax);
+    }
+
+    return baseDelay;
   };
 
   if (room.phase === PHASES.ROLE_REVEAL) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.ROLE_REVEAL_MIN,
       BOT_THINK_DELAYS_MS.ROLE_REVEAL_MAX,
       ALL_BOT_TABLE_BONUS_MS.ROLE_REVEAL_MIN,
       ALL_BOT_TABLE_BONUS_MS.ROLE_REVEAL_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.ROLE_REVEAL_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.ROLE_REVEAL_MAX,
     );
   }
 
   if (room.phase === PHASES.VOTING) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.VOTING_MIN,
       BOT_THINK_DELAYS_MS.VOTING_MAX,
       ALL_BOT_TABLE_BONUS_MS.VOTING_MIN,
       ALL_BOT_TABLE_BONUS_MS.VOTING_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.VOTING_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.VOTING_MAX,
     );
   }
 
   if (room.phase === PHASES.NOMINATION) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.NOMINATION_MIN,
       BOT_THINK_DELAYS_MS.NOMINATION_MAX,
       ALL_BOT_TABLE_BONUS_MS.NOMINATION_MIN,
       ALL_BOT_TABLE_BONUS_MS.NOMINATION_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.NOMINATION_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.NOMINATION_MAX,
     );
   }
 
   if (room.phase === PHASES.LEGISLATIVE_PRESIDENT) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MIN,
       BOT_THINK_DELAYS_MS.LEGISLATIVE_PRESIDENT_MAX,
       ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MIN,
       ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.LEGISLATIVE_PRESIDENT_MAX,
     );
   }
 
   if (room.phase === PHASES.LEGISLATIVE_CHANCELLOR) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MIN,
       BOT_THINK_DELAYS_MS.LEGISLATIVE_CHANCELLOR_MAX,
       ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MIN,
       ALL_BOT_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.LEGISLATIVE_CHANCELLOR_MAX,
     );
   }
 
   if (room.phase === PHASES.EXECUTIVE_ACTION) {
-    return withAllBotBonus(
+    return withTableTempo(
       BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MIN,
       BOT_THINK_DELAYS_MS.EXECUTIVE_ACTION_MAX,
       ALL_BOT_TABLE_BONUS_MS.EXECUTIVE_ACTION_MIN,
       ALL_BOT_TABLE_BONUS_MS.EXECUTIVE_ACTION_MAX,
+      SOLO_HUMAN_TABLE_BONUS_MS.EXECUTIVE_ACTION_MIN,
+      SOLO_HUMAN_TABLE_BONUS_MS.EXECUTIVE_ACTION_MAX,
     );
   }
 
-  return withAllBotBonus(
+  return withTableTempo(
     BOT_THINK_DELAYS_MS.DEFAULT_MIN,
     BOT_THINK_DELAYS_MS.DEFAULT_MAX,
     ALL_BOT_TABLE_BONUS_MS.DEFAULT_MIN,
     ALL_BOT_TABLE_BONUS_MS.DEFAULT_MAX,
+    SOLO_HUMAN_TABLE_BONUS_MS.DEFAULT_MIN,
+    SOLO_HUMAN_TABLE_BONUS_MS.DEFAULT_MAX,
   );
 }
 

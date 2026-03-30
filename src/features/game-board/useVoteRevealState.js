@@ -9,6 +9,31 @@ import {
   VOTE_REVEAL_FINAL_HOLD_MS,
 } from './boardConfig';
 
+const getVoteRevealTiming = (players) => {
+  const alivePlayers = players.filter((player) => player.isAlive);
+  const aliveHumanCount = alivePlayers.filter((player) => !player.isBot).length;
+
+  if (aliveHumanCount === 1) {
+    return {
+      voteLockPulseMs: 1150,
+      voteLockStaggerMs: 420,
+      voteRevealStageDelayMs: 240,
+      voteRevealStartDelayMs: 620,
+      voteRevealStepMs: 520,
+      voteRevealFinalHoldMs: 1900,
+    };
+  }
+
+  return {
+    voteLockPulseMs: VOTE_LOCK_PULSE_MS,
+    voteLockStaggerMs: VOTE_LOCK_STAGGER_MS,
+    voteRevealStageDelayMs: VOTE_REVEAL_STAGE_DELAY_MS,
+    voteRevealStartDelayMs: VOTE_REVEAL_START_DELAY_MS,
+    voteRevealStepMs: VOTE_REVEAL_STEP_MS,
+    voteRevealFinalHoldMs: VOTE_REVEAL_FINAL_HOLD_MS,
+  };
+};
+
 export default function useVoteRevealState(gameState) {
   const [revealState, setRevealState] = React.useState(null);
   const [revealStage, setRevealStage] = React.useState(0);
@@ -18,6 +43,7 @@ export default function useVoteRevealState(gameState) {
   const prevVoteStateRef = React.useRef({});
   const voteStateReadyRef = React.useRef(false);
   const voteHighlightTimersRef = React.useRef(new Map());
+  const voteRevealTiming = React.useMemo(() => getVoteRevealTiming(gameState.players), [gameState.players]);
 
   const revealedVoteMap = React.useMemo(
     () =>
@@ -93,16 +119,16 @@ export default function useVoteRevealState(gameState) {
         const clearTimer = window.setTimeout(() => {
           setRecentVoteIds((current) => current.filter((currentId) => currentId !== id));
           voteHighlightTimersRef.current.delete(id);
-        }, VOTE_LOCK_PULSE_MS);
+        }, voteRevealTiming.voteLockPulseMs);
 
         voteHighlightTimersRef.current.set(id, { startTimer: null, clearTimer });
-      }, index * VOTE_LOCK_STAGGER_MS);
+      }, index * voteRevealTiming.voteLockStaggerMs);
 
       voteHighlightTimersRef.current.set(id, { startTimer, clearTimer: null });
     });
 
     return undefined;
-  }, [gameState.phase, gameState.players]);
+  }, [gameState.phase, gameState.players, voteRevealTiming.voteLockPulseMs, voteRevealTiming.voteLockStaggerMs]);
 
   React.useEffect(() => {
     if (prevPhaseRef.current === PHASES.VOTING && gameState.phase !== PHASES.VOTING && gameState.lastVotes) {
@@ -139,11 +165,11 @@ export default function useVoteRevealState(gameState) {
 
     const revealSeatCount = revealState.orderedRevealPlayerIds?.length || 0;
     const dynamicRevealDuration =
-      VOTE_REVEAL_START_DELAY_MS +
-      Math.max(0, revealSeatCount - 1) * VOTE_REVEAL_STEP_MS +
-      VOTE_REVEAL_FINAL_HOLD_MS;
+      voteRevealTiming.voteRevealStartDelayMs +
+      Math.max(0, revealSeatCount - 1) * voteRevealTiming.voteRevealStepMs +
+      voteRevealTiming.voteRevealFinalHoldMs;
 
-    const revealTimer = window.setTimeout(() => setRevealStage(1), VOTE_REVEAL_STAGE_DELAY_MS);
+    const revealTimer = window.setTimeout(() => setRevealStage(1), voteRevealTiming.voteRevealStageDelayMs);
     const cleanupTimer = window.setTimeout(() => {
       setRevealState((current) => (current?.id === revealState.id ? null : current));
       setRevealStage(0);
@@ -153,7 +179,14 @@ export default function useVoteRevealState(gameState) {
       window.clearTimeout(revealTimer);
       window.clearTimeout(cleanupTimer);
     };
-  }, [revealState?.id, revealState?.orderedRevealPlayerIds?.length]);
+  }, [
+    revealState?.id,
+    revealState?.orderedRevealPlayerIds?.length,
+    voteRevealTiming.voteRevealFinalHoldMs,
+    voteRevealTiming.voteRevealStageDelayMs,
+    voteRevealTiming.voteRevealStartDelayMs,
+    voteRevealTiming.voteRevealStepMs,
+  ]);
 
   React.useEffect(() => {
     if (gameState.phase === PHASES.VOTING || !revealState?.votes) {
@@ -171,11 +204,11 @@ export default function useVoteRevealState(gameState) {
             ? current
             : [...current, { playerId, vote }],
         );
-      }, VOTE_REVEAL_START_DELAY_MS + index * VOTE_REVEAL_STEP_MS),
+      }, voteRevealTiming.voteRevealStartDelayMs + index * voteRevealTiming.voteRevealStepMs),
     );
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [gameState.phase, revealState]);
+  }, [gameState.phase, revealState, voteRevealTiming.voteRevealStartDelayMs, voteRevealTiming.voteRevealStepMs]);
 
   return {
     recentVoteIds,
