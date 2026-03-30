@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-const MOBILE_BREAKPOINT = 1024;
-const MAX_TOUCH_DEVICE_LONG_SIDE = 1400;
+const MOBILE_BREAKPOINT = 1280;
+const MAX_TOUCH_DEVICE_LONG_SIDE = 1600;
 
 const DEFAULT_STATE = {
   canFullscreen: false,
@@ -39,9 +39,15 @@ const getIsMobileViewport = () => {
   const touchPoints = navigator.maxTouchPoints || 0;
   const touchCapable = touchPoints > 0 || 'ontouchstart' in window;
   const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|Mobile|Tablet|Silk/i.test(navigator.userAgent);
+  const userAgentDataMobile = navigator.userAgentData?.mobile === true;
   const fitsTouchLayout = shortSide <= MOBILE_BREAKPOINT && longSide <= MAX_TOUCH_DEVICE_LONG_SIDE;
+  const handheldSizedViewport = shortSide <= 900;
 
-  return mobileUserAgent || (touchCapable && coarsePointer && fitsTouchLayout);
+  return (
+    mobileUserAgent ||
+    userAgentDataMobile ||
+    (touchCapable && fitsTouchLayout && (coarsePointer || handheldSizedViewport))
+  );
 };
 
 const getIsIosDevice = () => {

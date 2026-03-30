@@ -3,7 +3,7 @@ import { EXECUTIVE_POWERS, PHASES } from '../../lib/constants';
 import {
   getExpectedVoteRevealDurationMs,
   getLiveTempoProfile,
-  getMajorBeatDurationMs,
+  getStoryBeatDurationMs,
 } from './liveTempoProfile';
 
 const getPlayerName = (gameState, playerId, fallback = 'Someone') =>
@@ -34,6 +34,19 @@ const createStoryBeat = ({
   subjectId,
   policyType,
 });
+
+const createAutoTimedStoryBeat = (config, players = []) => {
+  const beat = createStoryBeat(config);
+  return {
+    ...beat,
+    autoCloseMs: getStoryBeatDurationMs({
+      kind: beat.kind,
+      title: beat.title,
+      description: beat.description,
+      players,
+    }),
+  };
+};
 
 const createSnapshot = (gameState) => ({
   phase: gameState.phase,
@@ -74,16 +87,15 @@ function getExecutionBeat(gameState) {
 
   const presidentName = getPlayerName(gameState, gameState.currentPresident, 'The President');
 
-  return createStoryBeat({
+  return createAutoTimedStoryBeat({
     kind: 'execution',
     key: `major:executive-execution:${gameState.currentPresident || 'none'}`,
     stageLabel: 'Executive Action',
     title: `${presidentName} Is Choosing An Execution`,
     description: 'One player will be eliminated from the table.',
     tone: 'red',
-    autoCloseMs: getMajorBeatDurationMs('execution', gameState.players),
     actorId: gameState.currentPresident || null,
-  });
+  }, gameState.players);
 }
 
 function getPolicyBeat(gameState, policyType) {
@@ -107,16 +119,15 @@ function getPolicyBeat(gameState, policyType) {
           ? 'The liberal track advances by one.'
           : 'The fascist track advances by one.';
 
-  return createStoryBeat({
+  return createAutoTimedStoryBeat({
     kind: 'policy-enacted',
     key: `major:policy-enacted:${policyType}:${gameState.liberalPolicies}:${gameState.fascistPolicies}:${gameState.phase}`,
     stageLabel: 'Policy Enacted',
     title: isLiberal ? 'Liberal Policy Enacted' : 'Fascist Policy Enacted',
     description: executiveCopy,
     tone: isLiberal ? 'blue' : 'red',
-    autoCloseMs: getMajorBeatDurationMs('policy-enacted', gameState.players),
     policyType,
-  });
+  }, gameState.players);
 }
 
 function getStoryBeatsFromTransition(previous, gameState) {
@@ -131,31 +142,29 @@ function getStoryBeatsFromTransition(previous, gameState) {
   const fascistAdvanced = previous.fascistPolicies !== gameState.fascistPolicies;
 
   if (previous.nominatedChancellor !== gameState.nominatedChancellor && gameState.nominatedChancellor) {
-    beats.push(createStoryBeat({
+    beats.push(createAutoTimedStoryBeat({
       kind: 'nomination-locked',
       key: `major:nominated:${gameState.currentPresident || 'none'}:${gameState.nominatedChancellor}`,
       stageLabel: 'Nomination Locked',
       title: `${presidentName} Nominated ${nomineeName}`,
       description: 'The table is moving into a government vote.',
       tone: 'blue',
-      autoCloseMs: getMajorBeatDurationMs('nomination-locked', gameState.players),
       actorId: gameState.currentPresident || null,
       subjectId: gameState.nominatedChancellor || null,
-    }));
+    }, gameState.players));
   }
 
   if (previous.phase !== gameState.phase && gameState.phase === PHASES.LEGISLATIVE_PRESIDENT) {
-    beats.push(createStoryBeat({
+    beats.push(createAutoTimedStoryBeat({
       kind: 'policy-president',
       key: `major:policy-president:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}:${gameState.liberalPolicies}:${gameState.fascistPolicies}`,
       stageLabel: 'Policy Review',
       title: `${presidentName} Is Reviewing Three Policies`,
       description: `Two policies will be passed to ${chancellorName}.`,
       tone: 'neutral',
-      autoCloseMs: getMajorBeatDurationMs('policy-president', gameState.players),
       actorId: gameState.currentPresident || null,
       subjectId: chancellorId,
-    }));
+    }, gameState.players));
   }
 
   if (
@@ -163,17 +172,16 @@ function getStoryBeatsFromTransition(previous, gameState) {
     gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR &&
     !gameState.vetoRequested
   ) {
-    beats.push(createStoryBeat({
+    beats.push(createAutoTimedStoryBeat({
       kind: 'policy-chancellor',
       key: `major:policy-chancellor:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}:${gameState.liberalPolicies}:${gameState.fascistPolicies}`,
       stageLabel: 'Final Decision',
       title: `${chancellorName} Is Choosing The Final Policy`,
       description: 'One of the remaining policies will be enacted.',
       tone: 'neutral',
-      autoCloseMs: getMajorBeatDurationMs('policy-chancellor', gameState.players),
       actorId: chancellorId,
       subjectId: gameState.currentPresident || null,
-    }));
+    }, gameState.players));
   }
 
   if (liberalAdvanced || fascistAdvanced) {
@@ -181,17 +189,16 @@ function getStoryBeatsFromTransition(previous, gameState) {
   }
 
   if (!previous.vetoRequested && gameState.vetoRequested) {
-    beats.push(createStoryBeat({
+    beats.push(createAutoTimedStoryBeat({
       kind: 'veto-request',
       key: `major:veto-request:${gameState.currentPresident || 'none'}:${chancellorId || 'none'}`,
       stageLabel: 'Veto Request',
       title: `${chancellorName} Requested A Veto`,
       description: `${presidentName} must now accept or reject the request.`,
       tone: 'red',
-      autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
       actorId: chancellorId,
       subjectId: gameState.currentPresident || null,
-    }));
+    }, gameState.players));
   }
 
   if (previous.phase !== gameState.phase && gameState.phase === PHASES.EXECUTIVE_ACTION) {
@@ -206,7 +213,7 @@ function getStoryBeatsFromTransition(previous, gameState) {
       typeof gameState.winReason === 'string' &&
       gameState.winReason.toLowerCase().includes('hitler was elected chancellor');
 
-    beats.push(createStoryBeat({
+    beats.push(createAutoTimedStoryBeat({
       kind: isHitlerElectionWin ? 'hitler-elected' : 'game-over',
       key: `major:game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
       stageLabel: isHitlerElectionWin ? 'Hitler Elected' : 'Game Over',
@@ -217,11 +224,7 @@ function getStoryBeatsFromTransition(previous, gameState) {
           : 'Fascist Victory',
       description: gameState.winReason || 'The match has ended.',
       tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
-      autoCloseMs: getMajorBeatDurationMs(
-        isHitlerElectionWin ? 'hitler-elected' : 'game-over',
-        gameState.players,
-      ),
-    }));
+    }, gameState.players));
   }
 
   return beats.filter(Boolean);
@@ -230,7 +233,7 @@ function getStoryBeatsFromTransition(previous, gameState) {
 function getInitialStoryBeats(gameState) {
   if (gameState.phase === PHASES.LEGISLATIVE_CHANCELLOR && gameState.vetoRequested) {
     return [
-      createStoryBeat({
+      createAutoTimedStoryBeat({
         kind: 'veto-request',
         key: `major:init-veto-request:${gameState.currentPresident || 'none'}:${gameState.currentChancellor || 'none'}`,
         stageLabel: 'Veto Request',
@@ -241,10 +244,9 @@ function getInitialStoryBeats(gameState) {
         )} Requested A Veto`,
         description: `${getPlayerName(gameState, gameState.currentPresident, 'The President')} must now accept or reject the request.`,
         tone: 'red',
-        autoCloseMs: getMajorBeatDurationMs('veto-request', gameState.players),
         actorId: gameState.currentChancellor || gameState.nominatedChancellor || null,
         subjectId: gameState.currentPresident || null,
-      }),
+      }, gameState.players),
     ];
   }
 
@@ -255,15 +257,14 @@ function getInitialStoryBeats(gameState) {
 
   if (gameState.phase === PHASES.GAME_OVER) {
     return [
-      createStoryBeat({
+      createAutoTimedStoryBeat({
         kind: 'game-over',
         key: `major:init-game-over:${gameState.winner || 'none'}:${gameState.winReason || 'unknown'}`,
         stageLabel: 'Game Over',
         title: gameState.winner === 'LIBERAL' ? 'Liberal Victory' : 'Fascist Victory',
         description: gameState.winReason || 'The match has ended.',
         tone: gameState.winner === 'LIBERAL' ? 'blue' : 'red',
-        autoCloseMs: getMajorBeatDurationMs('game-over', gameState.players),
-      }),
+      }, gameState.players),
     ];
   }
 

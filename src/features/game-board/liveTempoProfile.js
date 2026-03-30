@@ -7,24 +7,33 @@ const TABLE_MODES = {
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const STORY_READING_MS_PER_WORD = 240;
+const STORY_READING_BASE_MS = 1250;
+const STORY_READING_VISUAL_BONUS_MS = 320;
+const STORY_READING_MAX_EXTRA_MS = 2600;
+const countWords = (text = '') =>
+  text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 
 const LIVE_TEMPO_PROFILES = {
   [TABLE_MODES.MIXED]: {
     voteLockPulseMs: 540,
     voteLockStaggerMs: 160,
     voteLockStaggerMinMs: 120,
-    voteRevealStageDelayMs: 420,
+    voteRevealStageDelayMs: 1450,
     voteRevealStartDelayMs: 180,
     voteRevealStepMs: 210,
     voteRevealStepMinMs: 145,
     voteRevealFinalHoldMs: 430,
     voteRevealFinalHoldMinMs: 340,
-    nominationLockedMs: 950,
-    policyHandoffMs: 980,
-    policyEnactedMs: 1120,
-    vetoRequestMs: 1250,
-    executionMs: 1350,
-    gameOverMs: 1650,
+    nominationLockedMs: 2200,
+    policyHandoffMs: 2350,
+    policyEnactedMs: 2250,
+    vetoRequestMs: 2550,
+    executionMs: 2650,
+    gameOverMs: 3050,
     majorBeatGraceMs: 650,
     voteRevealGraceMs: 700,
     liveStateIdleHealthCheckMs: 5200,
@@ -34,18 +43,18 @@ const LIVE_TEMPO_PROFILES = {
     voteLockPulseMs: 620,
     voteLockStaggerMs: 190,
     voteLockStaggerMinMs: 135,
-    voteRevealStageDelayMs: 520,
+    voteRevealStageDelayMs: 1650,
     voteRevealStartDelayMs: 220,
     voteRevealStepMs: 225,
     voteRevealStepMinMs: 165,
     voteRevealFinalHoldMs: 520,
     voteRevealFinalHoldMinMs: 430,
-    nominationLockedMs: 1100,
-    policyHandoffMs: 1080,
-    policyEnactedMs: 1220,
-    vetoRequestMs: 1400,
-    executionMs: 1500,
-    gameOverMs: 1750,
+    nominationLockedMs: 2350,
+    policyHandoffMs: 2500,
+    policyEnactedMs: 2380,
+    vetoRequestMs: 2680,
+    executionMs: 2820,
+    gameOverMs: 3200,
     majorBeatGraceMs: 700,
     voteRevealGraceMs: 800,
     liveStateIdleHealthCheckMs: 4800,
@@ -55,18 +64,18 @@ const LIVE_TEMPO_PROFILES = {
     voteLockPulseMs: 420,
     voteLockStaggerMs: 120,
     voteLockStaggerMinMs: 90,
-    voteRevealStageDelayMs: 320,
+    voteRevealStageDelayMs: 1180,
     voteRevealStartDelayMs: 160,
     voteRevealStepMs: 175,
     voteRevealStepMinMs: 125,
     voteRevealFinalHoldMs: 330,
     voteRevealFinalHoldMinMs: 270,
-    nominationLockedMs: 800,
-    policyHandoffMs: 820,
-    policyEnactedMs: 920,
-    vetoRequestMs: 1000,
-    executionMs: 1150,
-    gameOverMs: 1350,
+    nominationLockedMs: 1850,
+    policyHandoffMs: 1980,
+    policyEnactedMs: 1880,
+    vetoRequestMs: 2200,
+    executionMs: 2350,
+    gameOverMs: 2700,
     majorBeatGraceMs: 550,
     voteRevealGraceMs: 650,
     liveStateIdleHealthCheckMs: 5600,
@@ -215,6 +224,26 @@ export function getMajorBeatDurationMs(kind, players = []) {
     default:
       return tempo.nominationLockedMs;
   }
+}
+
+export function getStoryBeatDurationMs({
+  kind,
+  title = '',
+  description = '',
+  players = [],
+}) {
+  const baseDurationMs = getMajorBeatDurationMs(kind, players);
+  const wordCount = countWords(title) + countWords(description);
+  const readingDurationMs =
+    STORY_READING_BASE_MS +
+    (wordCount * STORY_READING_MS_PER_WORD) +
+    STORY_READING_VISUAL_BONUS_MS;
+
+  return clamp(
+    Math.max(baseDurationMs, readingDurationMs),
+    baseDurationMs,
+    baseDurationMs + STORY_READING_MAX_EXTRA_MS,
+  );
 }
 
 export function getBotThinkDelayRange({ phase, players = [] }) {
