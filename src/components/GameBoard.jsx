@@ -703,11 +703,15 @@ export default function GameBoard({
                         const presidencyOrder = presidencyOrderMap.get(player.id);
                         const isNextPresident = player.id === nextPresidentId;
                         const isAfterNextPresident = player.id === afterNextPresidentId;
+                        const isSeatInteractionDisabled = selectionPhaseActive && !isSelectable;
 
                         return (
                           <button
                             key={player.id}
                             type="button"
+                            disabled={isSeatInteractionDisabled}
+                            aria-disabled={isSeatInteractionDisabled}
+                            tabIndex={isSeatInteractionDisabled ? -1 : 0}
                             onClick={() => {
                               if (!isSelectable) return;
                               if (displayPhase === PHASES.NOMINATION) handleNominate(player.id);
@@ -728,6 +732,7 @@ export default function GameBoard({
                               ${selectionPhaseActive && isSelectable ? 'border-[#d4c098]/65 shadow-[0_0_0_1px_rgba(212,192,152,0.22),0_12px_22px_rgba(0,0,0,0.22)]' : ''}
                               ${selectionPhaseActive && !isSelectable ? 'border-red-400/18 bg-[linear-gradient(180deg,rgba(30,14,17,0.96)_0%,rgba(17,10,12,0.96)_100%)]' : ''}
                               ${isSelectable ? 'cursor-pointer hover:scale-[1.04] hover:border-[#d4c098] active:scale-[0.98]' : 'cursor-default'}
+                              ${isSeatInteractionDisabled ? 'pointer-events-none select-none touch-none' : ''}
                               ${isInactiveLegislator ? 'opacity-35 grayscale-[0.45]' : ''}
                               ${!player.isAlive ? 'opacity-45 brightness-75' : ''}
                               ${displayPhase === PHASES.EXECUTIVE_ACTION && executivePower === EXECUTIVE_POWERS.INVESTIGATE && alreadyInvestigated ? 'opacity-45 grayscale-[0.3]' : ''}
