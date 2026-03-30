@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Skull } from 'lucide-react';
 import FactionAccentText from '../../components/FactionAccentText';
@@ -7,7 +8,7 @@ import {
   getTrackSlotMeta,
 } from './boardConfig';
 
-export default function PolicyTrack({
+function PolicyTrack({
   current,
   isTrackDetailOpen,
   onInspect,
@@ -153,3 +154,5 @@ export default function PolicyTrack({
     </motion.div>
   );
 }
+
+export default React.memo(PolicyTrack);

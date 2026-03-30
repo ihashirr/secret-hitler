@@ -26,6 +26,34 @@ import {
 } from '../features/game-board/boardConfig';
 import { triggerHaptic } from '../lib/haptics';
 
+const VOTE_TARGETS = [
+  {
+    key: 'YA',
+    label: 'JA',
+    x: 28,
+    y: 69,
+    accentClassName: 'border-cyan-300/28 bg-[linear-gradient(180deg,rgba(8,27,40,0.96)_0%,rgba(8,18,28,0.94)_100%)] text-cyan-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
+    dotClassName: 'bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.52)]',
+    laneColor: 'rgba(103, 232, 249, 0.86)',
+  },
+  {
+    key: 'NEIN',
+    label: 'NEIN',
+    x: 72,
+    y: 69,
+    accentClassName: 'border-red-400/28 bg-[linear-gradient(180deg,rgba(33,10,14,0.96)_0%,rgba(24,8,10,0.94)_100%)] text-red-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
+    dotClassName: 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]',
+    laneColor: 'rgba(248, 113, 113, 0.84)',
+  },
+];
+
+const getVoteLanePath = (seat, target) => {
+  const direction = target.key === 'YA' ? -1 : 1;
+  const controlX = ((seat.x + target.x) / 2) + direction * 12;
+  const controlY = Math.min(seat.y, target.y) - 16;
+  return `M ${seat.x} ${seat.y} Q ${controlX} ${controlY} ${target.x} ${target.y}`;
+};
+
 export default function GameBoard({
   gameState,
   playerId,
@@ -178,6 +206,77 @@ export default function GameBoard({
           executivePower: gameState.executivePower,
         })
       : null;
+  const tablePlayers = React.useMemo(
+    () => getTablePlayers(gameState.players),
+    [gameState.players],
+  );
+  const seatLayouts = React.useMemo(
+    () =>
+      tablePlayers.map((player, index) => {
+        const seatStyle = getTableRingSeatStyle(index, tablePlayers.length);
+        return {
+          ...player,
+          seatStyle,
+          x: Number.parseFloat(seatStyle.left),
+          y: Number.parseFloat(seatStyle.top),
+        };
+      }),
+    [tablePlayers],
+  );
+  const { orderMap: presidencyOrderMap, nextPresidentId, afterNextPresidentId } = React.useMemo(
+    () => getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId),
+    [gameState.currentPresident, gameState.players, gameState.specialElectionCallerId],
+  );
+  const currentPresidentPlayer = React.useMemo(
+    () => seatLayouts.find((player) => player.id === gameState.currentPresident) || null,
+    [gameState.currentPresident, seatLayouts],
+  );
+  const currentChancellorPlayer = React.useMemo(
+    () =>
+      seatLayouts.find(
+        (player) => player.id === (gameState.currentChancellor || gameState.nominatedChancellor),
+      ) || null,
+    [gameState.currentChancellor, gameState.nominatedChancellor, seatLayouts],
+  );
+  const nextPresidentPlayer = React.useMemo(
+    () => seatLayouts.find((player) => player.id === nextPresidentId) || null,
+    [nextPresidentId, seatLayouts],
+  );
+  const orbitStatusItems = React.useMemo(
+    () => [
+      {
+        label: 'President',
+        value: currentPresidentPlayer?.name || 'Open',
+        accentClassName: 'bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.32)]',
+      },
+      {
+        label: 'Chancellor',
+        value: currentChancellorPlayer?.name || 'Open',
+        accentClassName: 'bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.16)]',
+      },
+      {
+        label: 'Next',
+        value: nextPresidentPlayer?.name || 'Open',
+        accentClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.3)]',
+      },
+    ],
+    [currentChancellorPlayer?.name, currentPresidentPlayer?.name, nextPresidentPlayer?.name],
+  );
+  const voteTargetLookup = React.useMemo(() => new Map(VOTE_TARGETS.map((target) => [target.key, target])), []);
+  const ringShellWidth = React.useMemo(() => (
+    playerCount >= 9
+      ? 'min(100%, clamp(272px, calc(var(--app-vh) - var(--app-header-offset) - 288px), 400px))'
+      : playerCount >= 7
+        ? 'min(100%, clamp(294px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 420px))'
+        : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))'
+  ), [playerCount]);
+  const ringPanelMinHeight = React.useMemo(() => (
+    playerCount >= 9
+      ? 'clamp(352px, calc(var(--app-vh) - var(--app-header-offset) - 312px), 432px)'
+      : playerCount >= 7
+        ? 'clamp(364px, calc(var(--app-vh) - var(--app-header-offset) - 292px), 456px)'
+        : 'clamp(376px, calc(var(--app-vh) - var(--app-header-offset) - 272px), 480px)'
+  ), [playerCount]);
   const getSeatSelectionMeta = (player) => {
     const isSelf = player.id === myActualId;
     const alreadyInvestigated = gameState.investigatedPlayerIds?.includes(player.id);
@@ -442,82 +541,7 @@ export default function GameBoard({
 
   const renderPlayerDock = () => {
     const isLegislativePhase = displayPhase === PHASES.LEGISLATIVE_PRESIDENT || displayPhase === PHASES.LEGISLATIVE_CHANCELLOR;
-    const tablePlayers = getTablePlayers(gameState.players);
-    const seatLayouts = tablePlayers.map((player, index) => {
-      const seatStyle = getTableRingSeatStyle(index, tablePlayers.length);
-      return {
-        ...player,
-        seatStyle,
-        x: Number.parseFloat(seatStyle.left),
-        y: Number.parseFloat(seatStyle.top),
-      };
-    });
-    const {
-      orderMap: presidencyOrderMap,
-      nextPresidentId,
-      afterNextPresidentId,
-    } = getPresidencyQueue(gameState.players, gameState.currentPresident, gameState.specialElectionCallerId);
-    const currentPresidentPlayer = seatLayouts.find((player) => player.id === gameState.currentPresident) || null;
-    const currentChancellorPlayer =
-      seatLayouts.find((player) => player.id === (gameState.currentChancellor || gameState.nominatedChancellor)) || null;
-    const nextPresidentPlayer = seatLayouts.find((player) => player.id === nextPresidentId) || null;
-    const orbitStatusItems = [
-      {
-        label: 'President',
-        value: currentPresidentPlayer?.name || 'Open',
-        accentClassName: 'bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.32)]',
-      },
-      {
-        label: 'Chancellor',
-        value: currentChancellorPlayer?.name || 'Open',
-        accentClassName: 'bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.16)]',
-      },
-      {
-        label: 'Next',
-        value: nextPresidentPlayer?.name || 'Open',
-        accentClassName: 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.3)]',
-      },
-    ];
-    const voteTargets = [
-      {
-        key: 'YA',
-        label: 'JA',
-        x: 28,
-        y: 69,
-        accentClassName: 'border-cyan-300/28 bg-[linear-gradient(180deg,rgba(8,27,40,0.96)_0%,rgba(8,18,28,0.94)_100%)] text-cyan-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
-        dotClassName: 'bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.52)]',
-        laneColor: 'rgba(103, 232, 249, 0.86)',
-      },
-      {
-        key: 'NEIN',
-        label: 'NEIN',
-        x: 72,
-        y: 69,
-        accentClassName: 'border-red-400/28 bg-[linear-gradient(180deg,rgba(33,10,14,0.96)_0%,rgba(24,8,10,0.94)_100%)] text-red-100 shadow-[0_18px_34px_rgba(0,0,0,0.3)]',
-        dotClassName: 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]',
-        laneColor: 'rgba(248, 113, 113, 0.84)',
-      },
-    ];
-    const voteTargetLookup = new Map(voteTargets.map((target) => [target.key, target]));
-    const getVoteLanePath = (seat, target) => {
-      const direction = target.key === 'YA' ? -1 : 1;
-      const controlX = ((seat.x + target.x) / 2) + direction * 12;
-      const controlY = Math.min(seat.y, target.y) - 16;
-      return `M ${seat.x} ${seat.y} Q ${controlX} ${controlY} ${target.x} ${target.y}`;
-    };
     const ringSeatClass = getTableRingSeatClass(playerCount);
-    const ringShellWidth =
-      playerCount >= 9
-        ? 'min(100%, clamp(272px, calc(var(--app-vh) - var(--app-header-offset) - 288px), 400px))'
-        : playerCount >= 7
-          ? 'min(100%, clamp(294px, calc(var(--app-vh) - var(--app-header-offset) - 270px), 420px))'
-          : 'min(100%, clamp(308px, calc(var(--app-vh) - var(--app-header-offset) - 252px), 440px))';
-    const ringPanelMinHeight =
-      playerCount >= 9
-        ? 'clamp(352px, calc(var(--app-vh) - var(--app-header-offset) - 312px), 432px)'
-        : playerCount >= 7
-          ? 'clamp(364px, calc(var(--app-vh) - var(--app-header-offset) - 292px), 456px)'
-          : 'clamp(376px, calc(var(--app-vh) - var(--app-header-offset) - 272px), 480px)';
 
     return (
       <div className="flex w-full min-w-0 flex-1">
@@ -577,7 +601,7 @@ export default function GameBoard({
                       })}
                     </svg>
 
-                    {voteTargets.map((target) => (
+                    {VOTE_TARGETS.map((target) => (
                       <div
                         key={target.key}
                         className={`pointer-events-none absolute z-[2] min-w-[74px] rounded-[18px] border px-2.5 py-2 text-center ${target.accentClassName}`}

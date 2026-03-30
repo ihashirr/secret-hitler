@@ -1,12 +1,14 @@
+import React from 'react';
+import dynamic from 'next/dynamic';
 import { PHASES } from '../lib/constants';
 import ConnectPhaseView from './views/ConnectPhaseView';
-import GameOverPhaseView from './views/GameOverPhaseView';
-import LiveGamePhaseView from './views/LiveGamePhaseView';
 import LoadingPhaseView from './views/LoadingPhaseView';
-import LobbyPhaseView from './views/LobbyPhaseView';
-import RoleRevealPhaseView from './views/RoleRevealPhaseView';
+const LobbyPhaseView = dynamic(() => import('./views/LobbyPhaseView'));
+const RoleRevealPhaseView = dynamic(() => import('./views/RoleRevealPhaseView'));
+const LiveGamePhaseView = dynamic(() => import('./views/LiveGamePhaseView'));
+const GameOverPhaseView = dynamic(() => import('./views/GameOverPhaseView'));
 
-export default function PhaseRouter({ viewKey, gameState, playerId, directorState, actions }) {
+function PhaseRouter({ viewKey, gameState, playerId, directorState, actions }) {
   switch (viewKey) {
     case 'LOADING':
       return <LoadingPhaseView />;
@@ -57,3 +59,5 @@ export default function PhaseRouter({ viewKey, gameState, playerId, directorStat
       return <ConnectPhaseView onConnect={actions.onConnect} />;
   }
 }
+
+export default React.memo(PhaseRouter);

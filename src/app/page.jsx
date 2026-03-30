@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../backend/convex/_generated/api";
 import GlobalControls from '../components/GlobalControls';
 import MobileModeGate from '../components/MobileModeGate';
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator';
 import StageInfoButton from '../components/StageInfoButton';
-import StageInfoOverlay from '../components/StageInfoOverlay';
 import { buildDirectorState } from '../engine/gameEngine';
 import useMobileAccessState from '../lib/useMobileAccessState';
 import usePullToRefresh from '../lib/usePullToRefresh';
 import useViewportShell from '../lib/useViewportShell';
 import PhaseRouter from '../phases/PhaseRouter';
 import { getPhaseViewKey } from '../phases/config';
+
+const StageInfoOverlay = dynamic(() => import('../components/StageInfoOverlay'));
 
 const STORAGE_KEYS = {
   roomId: 'eclipse_roomId',
@@ -91,10 +93,7 @@ export default function App() {
   const killPlayer = useMutation(api.game.killPlayer);
   const addBot = useMutation(api.game.addBot);
 
-  // Prevent hydration mismatch: render nothing until client-side state is ready
-  if (!mounted) return null;
-
-  const handleConnect = async (name, rId, avatarId) => {
+  const handleConnect = useCallback(async (name, rId, avatarId) => {
     const result = await joinRoom({ roomId: rId, name, avatarId });
 
     if (result.success) {
@@ -108,9 +107,9 @@ export default function App() {
     }
 
     throw new Error(result.error);
-  };
+  }, [joinRoom]);
 
-  const handleExit = async () => {
+  const handleExit = useCallback(async () => {
     if (roomId && playerId) {
       await leaveRoom({ roomId, playerId });
     }
@@ -124,21 +123,81 @@ export default function App() {
     if (window.location.search) {
       window.history.replaceState(null, '', '/');
     }
-  };
+  }, [leaveRoom, playerId, roomId]);
 
-  const viewKey = getPhaseViewKey({ roomId, gameState, playerId });
-  const directorState = buildDirectorState({ roomId, playerId, gameState, viewKey });
+  const viewKey = useMemo(
+    () => getPhaseViewKey({ roomId, gameState, playerId }),
+    [gameState, playerId, roomId],
+  );
+  const directorState = useMemo(
+    () => buildDirectorState({ roomId, playerId, gameState, viewKey }),
+    [gameState, playerId, roomId, viewKey],
+  );
   const showGlobalControls = viewKey !== 'CONNECT' && viewKey !== 'LOADING';
   const mobileGateActive = viewKey !== 'LOADING';
   const installResumeUrl =
     typeof window !== 'undefined' && roomId && playerId
       ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}&player=${encodeURIComponent(playerId)}&resume=1`
       : null;
+  const handleReset = useCallback(async () => {
+    await resetRoom({ roomId });
+    await handleExit();
+  }, [handleExit, resetRoom, roomId]);
+
+  const handleWipe = useCallback(async () => {
+    await wipeAllData();
+    sessionStorage.clear();
+    localStorage.removeItem(STORAGE_KEYS.roomId);
+    localStorage.removeItem(STORAGE_KEYS.playerId);
+    window.location.href = '/';
+  }, [wipeAllData]);
+
+  const phaseActions = useMemo(
+    () => ({
+      onConnect: handleConnect,
+      onStart: () => startGame({ roomId }),
+      onAddBot: () => addBot({ roomId, playerId }),
+      onReplay: handleExit,
+      onReady: () => toggleReady({ roomId, playerId }),
+      onNominate: (id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id }),
+      onVote: (approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" }),
+      onDiscard: (index) => presidentDiscard({ roomId, presidentId: playerId, discardedIndex: index }),
+      onRequestVeto: () => requestVeto({ roomId, chancellorId: playerId }),
+      onRespondVeto: (accept) => respondVeto({ roomId, presidentId: playerId, accept }),
+      onEnact: (index) => chancellorEnact({ roomId, chancellorId: playerId, enactedIndex: index }),
+      onInvestigate: (targetPlayerId) => investigateLoyalty({ roomId, presidentId: playerId, targetPlayerId }),
+      onSpecialElection: (targetPlayerId) => callSpecialElection({ roomId, presidentId: playerId, targetPlayerId }),
+      onAcknowledgePeek: () => completePolicyPeek({ roomId, presidentId: playerId }),
+      onKill: (targetPlayerId) => killPlayer({ roomId, presidentId: playerId, targetPlayerId }),
+    }),
+    [
+      addBot,
+      callSpecialElection,
+      chancellorEnact,
+      completePolicyPeek,
+      handleConnect,
+      handleExit,
+      investigateLoyalty,
+      killPlayer,
+      nominateChancellor,
+      playerId,
+      presidentDiscard,
+      requestVeto,
+      respondVeto,
+      roomId,
+      startGame,
+      submitVote,
+      toggleReady,
+    ],
+  );
   const shouldRenderOnlyGate =
     mobileAccess.isReady &&
     mobileGateActive &&
     mobileAccess.isMobile &&
     !mobileAccess.gateSatisfied;
+
+  // Prevent hydration mismatch: render nothing until client-side state is ready
+  if (!mounted) return null;
 
   if (!mobileAccess.isReady) {
     return <div className="h-[var(--app-vh)] bg-obsidian-950" />;
@@ -169,17 +228,8 @@ export default function App() {
           directorState={directorState}
           infoOpen={showStageInfo}
           onOpenInfo={() => setShowStageInfo(true)}
-          onReset={async () => {
-            await resetRoom({ roomId });
-            handleExit();
-          }}
-          onWipe={async () => {
-            await wipeAllData();
-            sessionStorage.clear();
-            localStorage.removeItem(STORAGE_KEYS.roomId);
-            localStorage.removeItem(STORAGE_KEYS.playerId);
-            window.location.href = '/';
-          }}
+          onReset={handleReset}
+          onWipe={handleWipe}
           onExit={handleExit}
         />
       )}
@@ -205,23 +255,7 @@ export default function App() {
           gameState={gameState}
           playerId={playerId}
           directorState={directorState}
-          actions={{
-            onConnect: handleConnect,
-            onStart: () => startGame({ roomId }),
-            onAddBot: () => addBot({ roomId, playerId }),
-            onReplay: handleExit,
-            onReady: () => toggleReady({ roomId, playerId }),
-            onNominate: (id) => nominateChancellor({ roomId, presidentId: playerId, chancellorId: id }),
-            onVote: (approve) => submitVote({ roomId, playerId, vote: approve ? "YA" : "NEIN" }),
-            onDiscard: (index) => presidentDiscard({ roomId, presidentId: playerId, discardedIndex: index }),
-            onRequestVeto: () => requestVeto({ roomId, chancellorId: playerId }),
-            onRespondVeto: (accept) => respondVeto({ roomId, presidentId: playerId, accept }),
-            onEnact: (index) => chancellorEnact({ roomId, chancellorId: playerId, enactedIndex: index }),
-            onInvestigate: (targetPlayerId) => investigateLoyalty({ roomId, presidentId: playerId, targetPlayerId }),
-            onSpecialElection: (targetPlayerId) => callSpecialElection({ roomId, presidentId: playerId, targetPlayerId }),
-            onAcknowledgePeek: () => completePolicyPeek({ roomId, presidentId: playerId }),
-            onKill: (targetPlayerId) => killPlayer({ roomId, presidentId: playerId, targetPlayerId }),
-          }}
+          actions={phaseActions}
         />
       </div>
     </div>
