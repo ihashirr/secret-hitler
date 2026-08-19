@@ -1,93 +1,202 @@
-# Eclipse: Secret Hitler (Mobile-First Web Clone)
+# Eclipse — Real-Time Social Deduction Game
 
-**Eclipse** is a mobile-first, real-time web adaptation of the Secret Hitler social deduction board game, built with Next.js, React, and powered by a Convex backend. Designed with a mobile-centric UI and modern web technologies, Eclipse supports snappy, engaging social gameplay for friends anywhere.
+A browser-based multiplayer adaptation of **Secret Hitler** built around a server-authoritative game state, real-time Convex synchronization, phase-driven UI, and automated bot players.
 
-## Features
+The engineering focus is the game engine: elections, hidden roles, policy decks, legislative sessions, executive powers, win conditions, reconnectable room state, and client transitions all have to remain consistent across multiple players.
 
-- **Real-Time Multiplayer:** Seamless online play for groups, with live state synchronization (Convex as backend state engine).
-- **Mobile-First Design:** Optimized for narrow portrait devices with custom UI and "classified dossier" styling; responsive layouts ensure usability across mobile, tablet, and desktop.
-- **Modern Stack:** Next.js 16 (React 19) frontend, Tailwind 4 styling, Convex DB in the backend.
-- **Zero-Setup Onboarding:** Simple room creation and joining via alias/avatar selection and room codes—no accounts needed.
-- **Rich Game Logic:** Implements all Secret Hitler game phases: lobby, role reveal, government formation, voting, legislative session, policy passage, executive actions, and game conclusion.
-- **Session Persistence:** State is managed server-side; players reconnect and recover automatically using `sessionStorage`.
-- **Admin Controls:** Hosts can reset rooms and fully wipe state from an in-game admin bar.
-- **Accessible and Friendly:** Designed for touch devices with large tap targets, action clarity, and a vintage aesthetic.
+> **Stack:** Next.js 16 · React 19 · Convex · Tailwind CSS 4 · Framer Motion
 
-## Architecture
+## What is actually implemented
 
-- **Frontend:**  
-  - Located in `app/` (Next.js).
-  - Entry: `src/app/page.jsx`.  
-  - Phase routing and views under `src/phases/`.
-  - UI components like `Splash`, `Lobby`, `RoleReveal`, `GameBoard`, `GameOverlay`, and `GameOver`.
-  - Styling via Tailwind 4 and `src/app/globals.css`.
-- **Backend:**  
-  - Located in `backend/convex/`.
-  - Core game logic in `game.ts`: manages rooms, voting, policies, executions, state queries.
-  - Schema/types: `schema.ts` for `rooms`, `players`, and `gameLog`.
-  - Secure query/mutation API; only exposes roles to authorized clients.
-- **Config:**  
-  - Shared linting and CSS config in `config/`.
+- **5–10 player rooms** with automatically assigned host ownership
+- Anonymous room joining with generated player identities when no authenticated identity exists
+- Role distribution for Liberal, Fascist, and Hitler based on player count
+- Server-side policy deck creation, draw/discard piles, and reshuffling
+- Complete government cycle: President → Chancellor nomination → voting → legislative session
+- Term-limit checks for Chancellor eligibility
+- Election tracker and chaos-policy handling
+- Liberal and Fascist policy tracks
+- Veto flow once the Fascist track permits it
+- Executive powers that vary by player count and policy progress:
+  - loyalty investigation
+  - special election
+  - policy peek
+  - execution
+- Hitler-specific victory/loss conditions
+- Player elimination and living-player rotation
+- Persistent game log per room
+- Room reset and host reassignment when the host leaves
+- Automated bot players with delayed server-scheduled turns
+- Bot decision logic for voting, nominations, legislative choices, vetoes, investigations, special elections, and executions
 
-## Mobile-First Strategy
+## State machine
 
-- Game board and interface are readable and navigable on narrow screens.
-- Top status banner and bottom action desk for clarity.
-- No full-screen modals during play—decisions are always accessible.
-- Onboarding is split and streamlined: alias/avatar/room code.
-- Dossier/Paper visual theme, large controls for touch accuracy.
+The backend models the match as explicit phases rather than letting individual clients infer what happens next.
 
-## Local Development
+```text
+LOBBY
+  ↓
+ROLE_REVEAL
+  ↓
+NOMINATION
+  ↓
+VOTING
+  ├─ government rejected → election tracker → next nomination / chaos
+  └─ government elected
+         ↓
+LEGISLATIVE_PRESIDENT
+         ↓
+LEGISLATIVE_CHANCELLOR
+         ├─ enact policy
+         └─ optional veto flow
+                ↓
+EXECUTIVE_ACTION   (when unlocked)
+         ↓
+next NOMINATION
+         ↓
+GAME_OVER
+```
 
-1. Clone the repo and install dependencies:  
-   ```
-   npm install
-   ```
-2. Start Convex backend (from repo root):  
-   ```
-   npx convex dev --config convex.json
-   ```
-3. Launch the Next.js frontend:  
-   ```
-   npm run dev
-   ```
-4. The app is now available at [http://localhost:3000](http://localhost:3000)
+Convex is the source of truth for this state. The room record stores the current phase, office holders, election tracker, policy piles, enacted policies, votes, executive power, investigations, special-election state, chaos state, winner, and bot scheduling metadata.
 
-## Scripts
+## Backend architecture
 
-- `npm run dev`: Run frontend dev server
-- `npm run build`: Production build
-- `npm run start`: Start production server
-- `npm run lint`: Lint all relevant source code
+The core backend is deliberately centralized in `backend/convex/game.ts` because game transitions need to be atomic and authoritative.
 
-## State Model
+### Data model
 
-- Convex is the source of truth for all in-game state.
-- Players are tracked with `eclipse_roomId` and `eclipse_playerId` in browser storage.
-- Role and sensitive data are strictly secured and scoped.
+`backend/convex/schema.ts` defines three indexed tables:
 
-## Documentation
+```text
+rooms
+  ├─ phase / status
+  ├─ drawPile / discardPile / drawnCards
+  ├─ liberalPolicies / fascistPolicies
+  ├─ president / chancellor / previous government
+  ├─ electionTracker / lastVotes
+  ├─ executivePower / veto state
+  ├─ investigation / peek / special-election state
+  ├─ chaos state
+  └─ winner / winReason / botThinkAt
 
-- **Technical:** `/docs/tech/architecture.md` — system architecture, state model.
-- **Product:** `/docs/product/mobile-strategy.md` — mobile UX goals.
+players
+  ├─ roomId / playerId / name / avatar
+  ├─ role / party
+  ├─ alive / ready / host
+  ├─ president / chancellor flags
+  ├─ seat position / vote
+  └─ bot flag
 
-## Project Direction
+gameLog
+  └─ roomId / message / timestamp
+```
 
-- Intended as a polished, mobile-first experience for the well-known board game.
-- Provides a strong demonstration of full stack engineering, live collaboration, websocket-style play, and advanced CSS/UI thinking.
+### Server-authoritative actions
+
+The Convex mutation layer validates who is allowed to act and whether the room is in the correct phase before changing state. Examples include:
+
+- `joinRoom`
+- `addBot`
+- `toggleReady`
+- `startGame`
+- `nominateChancellor`
+- `castVote`
+- `presidentDrawPolicies`
+- `chancellorEnactPolicy`
+- `requestVeto` / `respondVeto`
+- `investigateLoyalty`
+- `callSpecialElection`
+- `killPlayer`
+- `completePolicyPeek`
+- `leaveRoom`
+- `resetRoom`
+
+Clients submit intent; the backend decides whether that intent is legal and advances the game.
+
+## Bot engine
+
+Bots are not simple random button presses.
+
+The backend detects when a bot owns the next decision, calculates a human-like delay from the current live-game tempo profile, and schedules the action through Convex. Bot logic considers game state when choosing:
+
+- government votes
+- Chancellor nominations
+- President policy discards
+- Chancellor policy enactment
+- veto requests and responses
+- loyalty investigations
+- special-election targets
+- execution targets
+
+This lets a room reach the minimum player count without requiring every seat to be occupied by a human.
+
+## Frontend architecture
+
+The UI is split by game phase rather than implemented as one large conditional screen.
+
+```text
+src/
+├─ app/                     Next.js application shell
+├─ phases/
+│  ├─ PhaseRouter.jsx       maps backend phase → view
+│  └─ views/                connect, lobby, role reveal, live game, game over
+├─ features/game-board/
+│  ├─ PolicyTrack.jsx
+│  ├─ TrackDetailSheet.jsx
+│  ├─ boardConfig.js
+│  ├─ liveTempoProfile.js
+│  ├─ useLiveStateHealth.js
+│  ├─ useLiveTransitionGate.js
+│  └─ useVoteRevealState.js
+├─ components/              shared UI
+├─ engine/                  client-side game presentation helpers
+└─ lib/                     shared utilities
+```
+
+The live-game layer includes explicit transition gating, vote-reveal state, policy-track presentation, and state-health logic so that real-time backend updates do not become jarring client-side UI jumps.
+
+## Why this project is technically interesting
+
+A multiplayer board-game implementation has a deceptively large consistency problem. Every connected browser can see a different subset of information, but all players must agree on the same election, policy deck, office holders, legal actions, and winner.
+
+This project addresses that by keeping the authoritative rules in Convex and using the React client mainly as a projection of server state. That is substantially safer than allowing each browser to advance its own copy of the game.
+
+## Running locally
+
+```bash
+npm install
+npx convex dev --config convex.json
+npm run dev
+```
+
+Then open `http://localhost:3000`.
+
+### Other scripts
+
+```bash
+npm run build
+npm run start
+npm run lint
+```
+
+## Repository map
+
+```text
+backend/convex/game.ts       authoritative game engine and mutations
+backend/convex/schema.ts     room, player and game-log persistence
+src/phases/                  phase routing and top-level views
+src/features/game-board/     live board behavior and transition state
+src/components/              reusable UI
+config/                      lint/tooling configuration
+public/                      visual assets
+```
+
+## Deployment
+
+The project has been configured for Next.js/Vercel deployment and Convex as the realtime backend.
+
+**Project deployment:** https://secret-hitler-jet.vercel.app
 
 ---
 
-## Screenshots
-
-*(Add screenshots/gifs here for best effect!)*
-
----
-
-## License
-
-This project is for educational and personal use; see LICENSE for details.
-
----
-
-**Live Demo:** [secret-hitler-jet.vercel.app](https://secret-hitler-jet.vercel.app)
+This repository is an independent educational web implementation of the board game mechanics. Secret Hitler and its original artwork/brand are owned by their respective rights holders.
